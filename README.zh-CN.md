@@ -22,6 +22,10 @@ mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server �
 
 ---
 
+<p align="center">
+  <img src="assets/demo.gif" alt="mcprism 在终端扫描 MCP server" width="78%">
+</p>
+
 MCP 让 AI agent 连接外部 server 来获取工具、文件和数据。Claude Desktop 和 Claude Code、Cursor、VS Code、Windsurf 等客户端都内置了这个协议，所以一套环境装下来，往往会接上好几个 server。这些 server 会执行命令、读取文件系统、看到你的提示词。一个恶意或权限过大的 server 可以窃取凭据、执行命令，或者通过返回的文本诱导 agent。mcprism 在你让 agent 使用这些 server 之前，给出逐个 server 的报告和评分，就像用 `trivy` 扫镜像一样。
 
 <p align="center">
@@ -37,6 +41,7 @@ mcprism scan
 
 ## 目录
 
+- [更新日志](CHANGELOG.md)
 - [功能](#功能)
 - [适用场景](#适用场景)
 - [报告](#报告)
