@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a problem with mcprism
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to file a bug report!
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include the exact command you ran, the expected behavior and the actual behavior.
+      placeholder: |
+        Command: mcprism scan ...
+        Expected: ...
+        Actual: ...
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: mcprism version
+      description: Output of `mcprism version`
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS & architecture
+      placeholder: e.g. Ubuntu 24.04 arm64, macOS 15 amd64, Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: MCP config (redact secrets)
+      render: json
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmations
+      options:
+        - label: I searched existing issues and could not find a duplicate
+          required: true
+        - label: This is not a security vulnerability (those are reported privately via SECURITY.md)
+          required: true

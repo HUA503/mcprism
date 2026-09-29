@@ -1,0 +1,14 @@
+{
+  "//": "A hardened example: pinned versions, secrets referenced from the environment, HTTPS.",
+  "mcpServers": {
+    "notes": {
+      "command": "npx",
+      "args": ["-y", "@acme/notes-mcp@2.0.1"],
+      "env": { "API_TOKEN": "${NOTES_TOKEN}" }
+    },
+    "secure-remote": {
+      "url": "https://mcp.example.com/v1",
+      "headers": { "Authorization": "Bearer ${MCP_TOKEN}" }
+    }
+  }
+}

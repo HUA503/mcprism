@@ -1,0 +1,8 @@
+{
+  "//": "Points at the locally built demo server (run: go build -o bin/testserver ./examples/testserver)",
+  "mcpServers": {
+    "demo-server": {
+      "command": "./bin/testserver"
+    }
+  }
+}

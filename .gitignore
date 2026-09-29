@@ -1,0 +1,24 @@
+# Binaries & build output
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Local reports / artifacts
+*.sarif
+report.html
+report.md
+report.json
+
+# Logs & temp
+*.log
+tmp/
+.tmp/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

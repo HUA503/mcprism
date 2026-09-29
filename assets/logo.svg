@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="prismFace" x1="180" y1="110" x2="350" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#cdd6f4" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#89b4fa" stop-opacity="0.10"/>
+    </linearGradient>
+  </defs>
+
+  <!-- incoming white light -->
+  <line x1="48" y1="205" x2="196" y2="232" stroke="#cdd6f4" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- prism -->
+  <path d="M180 104 L180 408 L352 256 Z" fill="url(#prismFace)" stroke="#cdd6f4" stroke-width="7" stroke-linejoin="round"/>
+
+  <!-- light inside prism -->
+  <line x1="196" y1="232" x2="318" y2="252" stroke="#cdd6f4" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- refracted spectrum -->
+  <line x1="318" y1="252" x2="466" y2="138" stroke="#f38ba8" stroke-width="6" stroke-linecap="round"/>
+  <line x1="318" y1="252" x2="466" y2="182" stroke="#fab387" stroke-width="6" stroke-linecap="round"/>
+  <line x1="318" y1="252" x2="466" y2="226" stroke="#f9e2af" stroke-width="6" stroke-linecap="round"/>
+  <line x1="318" y1="252" x2="466" y2="270" stroke="#a6e3a1" stroke-width="6" stroke-linecap="round"/>
+  <line x1="318" y1="252" x2="466" y2="314" stroke="#89b4fa" stroke-width="6" stroke-linecap="round"/>
+  <line x1="318" y1="252" x2="466" y2="358" stroke="#cba6f7" stroke-width="6" stroke-linecap="round"/>
+</svg>

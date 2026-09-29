@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/HUA503/mcprism/security/advisories/new
+    about: Please report security issues privately rather than opening a public issue.
+  - name: MCP specification
+    url: https://modelcontextprotocol.io/
+    about: Reference documentation for the Model Context Protocol.
