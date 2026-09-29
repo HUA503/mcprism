@@ -1,5 +1,7 @@
 <div align="center">
 
+<p>English · <a href="README.zh-CN.md">简体中文</a></p>
+
 <img src="assets/logo.svg" width="128" height="128" alt="mcprism logo">
 
 # mcprism
