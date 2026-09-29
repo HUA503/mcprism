@@ -1,0 +1,10 @@
+# Accepted-risk register. Every entry needs a reason; expires is optional but
+# recommended. Expired entries stop suppressing on their own, and suppressed
+# findings stay visible in reports for audit.
+suppressions:
+  - rule: MCP103
+    server: local-files
+    reason: Read-only access to the project folder is intended for this tool.
+    expires: "2027-01-01"
+  - rule: MCP206
+    reason: Internal servers do not all ship descriptions yet; tracked as SEC-142.

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/HUA503/mcprism/internal/rules"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/HUA503/mcprism/internal/rules"
 )
 
 var (

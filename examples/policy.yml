@@ -1,0 +1,41 @@
+# Example policy-as-code for mcprism.
+# Use it with: mcprism scan --policy examples/policy.yml
+version: "1"
+description: Team baseline for production MCP usage
+
+# Any of these failing makes the whole run fail.
+fail:
+  grade: B        # a server graded below B fails
+  score: 70       # a server scoring below 70 fails
+  on: high        # a high or critical finding fails
+
+# Turn rules on/off or change their default severity.
+rules:
+  MCP106:
+    severity: high
+  MCP107:
+    enabled: false
+
+# Trusted entries take precedence over deny entries.
+allow:
+  packages:
+    - "@modelcontextprotocol/*"
+  commands:
+    - node
+  domains:
+    - "*.internal.example.com"
+
+# Anything matching here is reported as MCP700 unless it is allow-listed.
+deny:
+  packages:
+    - "*shell*"
+    - "*shodan*"
+  commands:
+    - nc
+    - ncat
+  domains:
+    - "*.ngrok.io"
+
+capabilities:
+  # Servers that run commands or read/write files must not also have network.
+  requireNetworkIsolation: true

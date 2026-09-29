@@ -1,23 +1,25 @@
 # Rule catalog
 
-mcprism ships with ~20 deterministic rules. Every finding is mapped to the
-**OWASP Top 10 for Agentic Applications – MCP risks** (MCP01–MCP07). No rule
-requires an LLM or an internet connection; everything runs locally.
+mcprism ships with 24 deterministic rules. Every finding is mapped to the
+OWASP Top 10 for Agentic Applications - MCP risks (MCP01-MCP07). No rule needs
+an LLM or an internet connection; everything runs locally.
 
-Severity is contextual and can be raised by additional signals (e.g. a live
-token prefix, an Authorization header over plaintext HTTP).
+Severity is contextual and can be raised by other signals, such as a recognized
+credential format or an Authorization header over plaintext HTTP. Rules can be
+disabled, reweighted or suppressed through policy; see POLICIES.md.
 
 ## Static configuration
 
 | Rule | OWASP | Default | What it detects |
 |---|---|---|---|
-| MCP101 | MCP01 | High (Critical for live tokens) | Long-lived secret/credential embedded in `env` |
+| MCP101 | MCP01 | High (Critical for recognized credentials) | Secret/credential embedded in `env`, with type detection (AWS, Google, GitHub, Slack, Stripe, GitLab, OpenAI, JWT, ...) |
 | MCP102 | MCP01 | Medium (High with auth header) | Cleartext `http://` transport |
 | MCP103 | MCP02 | High | Filesystem server scoped to `/`, a home dir, etc. |
 | MCP104 | MCP05 | Critical | Shell that downloads and executes remote code (`curl\|sh`) |
 | MCP105 | MCP02 | Medium–Critical | Sandbox/permission checks disabled by flags |
 | MCP106 | MCP04 | Medium | Server package not pinned to a version (rug pull) |
 | MCP107 | MCP07 | Info | Remote server configured without authentication |
+| MCP108 | MCP01 | Medium | High-entropy value that looks like a generated secret |
 
 ## Tool metadata poisoning
 
@@ -36,6 +38,7 @@ token prefix, an Authorization header over plaintext HTTP).
 |---|---|---|---|
 | MCP301 | MCP02 | High–Critical | Dangerous capability combinations (shell+network, write+shell, read+network …) |
 | MCP302 | MCP05 | High | A tool that executes arbitrary commands |
+| MCP303 | MCP02/MCP07 | High (Low for private ranges) | Cloud metadata endpoint (`169.254.169.254`) or private/loopback target |
 
 ## Supply chain
 
@@ -52,16 +55,24 @@ token prefix, an Authorization header over plaintext HTTP).
 | MCP501 | MCP07 | Medium–High | Handshake failures, classified (DNS/TLS/refused/timeout/command missing) |
 | MCP601 | MCP03 | Medium | Cross-server tool name collision / shadowing |
 
+## Policy
+
+| Rule | OWASP | Default | What it detects |
+|---|---|---|---|
+| MCP700 | MCP07 | High | A package, command or domain matched by a `deny` policy entry |
+| MCP701 | MCP02 | High | File/shell capability combined with network when isolation is required |
+
 ## OWASP MCP risk crosswalk
 
 | OWASP | Risk | Covered by |
 |---|---|---|
-| MCP01 | Token mismanagement & secret exposure | MCP101, MCP102, MCP404 |
-| MCP02 | Privilege escalation via scope creep | MCP103, MCP105, MCP301 |
-| MCP03 | Tool poisoning (rug pull, schema poisoning, shadowing) | MCP201–MCP206, MCP601 |
+| MCP01 | Token mismanagement & secret exposure | MCP101, MCP102, MCP108, MCP404 |
+| MCP02 | Privilege escalation via scope creep | MCP103, MCP105, MCP301, MCP303, MCP701 |
+| MCP03 | Tool poisoning (rug pull, schema poisoning, shadowing) | MCP201-MCP206, MCP601 |
 | MCP04 | Software supply chain & dependency tampering | MCP106, MCP402, MCP403 |
 | MCP05 | Command injection & execution | MCP104, MCP302 |
-| MCP07 | Insufficient authentication & authorization | MCP107, MCP501 |
+| MCP07 | Insufficient authentication & authorization | MCP107, MCP501, MCP700 |
 
-> False-positive handling: secrets referenced as `${VAR}`, obvious placeholders
-> (`your-*`, `changeme`), and pinned packages are not flagged.
+> False positives: secrets referenced as `${VAR}`, obvious placeholders
+> (`your-*`, `changeme`) and pinned packages are not flagged. A high-entropy
+> value that is not a secret can be suppressed with a reason; see POLICIES.md.

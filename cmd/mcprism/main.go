@@ -1,7 +1,8 @@
-// Command mcprism 是一个零依赖、单二进制的 MCP（Model Context Protocol）
-// 安全审查工具：自动发现并连接你各个 AI 客户端配置的 MCP server，枚举其真实能力，
-// 检测提示注入、工具投毒、权限过宽、供应链与跨 server 攻击，并输出
-// table / json / sarif / markdown / html 报告。
+// Command mcprism is a single-binary security scanner for MCP
+// (Model Context Protocol) servers. It discovers configured servers,
+// enumerates what they can do, runs a set of deterministic checks and
+// reports findings with a score. Policy files and profiles let teams
+// enforce their own baseline.
 package main
 
 import (
@@ -10,10 +11,12 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/HUA503/mcprism/internal/config"
+	"github.com/HUA503/mcprism/internal/policy"
 	"github.com/HUA503/mcprism/internal/protocol"
 	"github.com/HUA503/mcprism/internal/report"
 	"github.com/HUA503/mcprism/internal/rules"
@@ -21,16 +24,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func main() {
 	root := &cobra.Command{
 		Use:   "mcprism",
 		Short: "Vet MCP servers before your AI trusts them",
-		Long: "mcprism discovers, connects to and audits the MCP (Model Context Protocol) " +
-			"servers configured across your AI clients, mapping every finding to the OWASP MCP Top 10.",
 	}
-	root.AddCommand(scanCmd(), inspectCmd(), versionCmd())
+	root.AddCommand(scanCmd(), inspectCmd(), rulesCmd(), profilesCmd(), versionCmd())
 	if err := root.Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -40,9 +41,7 @@ func versionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print the mcprism version",
-		Run: func(_ *cobra.Command, _ []string) {
-			fmt.Println("mcprism", version)
-		},
+		Run:   func(_ *cobra.Command, _ []string) { fmt.Println("mcprism", version) },
 	}
 }
 
@@ -50,37 +49,45 @@ func versionCmd() *cobra.Command {
 
 func scanCmd() *cobra.Command {
 	var (
-		format    string
-		output    string
-		timeout   time.Duration
-		noDynamic bool
-		failOn    string
-		interact  bool
-		project   string
-		transport string
+		format     string
+		output     string
+		failOn     string
+		project    string
+		transport  string
+		policyFile string
+		profile    string
+		suppFile   string
+		timeout    time.Duration
+		noDynamic  bool
+		interact   bool
 	)
 	cmd := &cobra.Command{
-		Use:   "scan [target]",
+		Use:   "scan [target ...]",
 		Short: "Discover and audit MCP servers",
-		Long: "Scan MCP servers. A target may be a client config file or an http(s) server URL; " +
-			"with no target, mcprism auto-discovers configurations across all installed AI clients.",
-		Args: cobra.MaximumNArgs(1),
+		Long: `Targets can be config files, directories (searched recursively) or http(s)
+server URLs. With no targets, mcprism auto-discovers configs across the
+installed AI clients.`,
+		Args: cobra.ArbitraryArgs,
 		RunE: func(_ *cobra.Command, args []string) error {
-			target := ""
-			if len(args) == 1 {
-				target = args[0]
+			pol, err := policy.Builtin(profile)
+			if err != nil {
+				return err
 			}
-			projectDir := project
-			if projectDir == "" {
-				projectDir, _ = os.Getwd()
+			policyPath := ""
+			if policyFile != "" {
+				pol, err = policy.Load(policyFile)
+				if err != nil {
+					return err
+				}
+				policyPath = policyFile
 			}
 
-			servers, files, err := collectServers(target, projectDir, transport)
+			servers, files, err := collectMany(args, project, transport)
 			if err != nil {
 				return err
 			}
 			if len(servers) == 0 {
-				return fmt.Errorf("no MCP servers found (use a config file or a server URL)")
+				return fmt.Errorf("no MCP servers found (point at a config file, a directory or a server URL)")
 			}
 
 			inputs := make([]rules.Input, 0, len(servers))
@@ -93,16 +100,31 @@ func scanCmd() *cobra.Command {
 			}
 
 			results := rules.AnalyzeAll(inputs)
+			results = policy.Enforce(results, pol)
+
+			var sups []policy.Suppression
+			if suppFile != "" {
+				sups, err = policy.LoadSuppressions(suppFile)
+				if err != nil {
+					return err
+				}
+			}
+			results = policy.ApplySuppressions(results, sups, time.Now())
+			for _, r := range results {
+				rules.Rescore(r)
+			}
+
+			compliance := policy.Evaluate(results, pol, profile, policyPath)
 
 			if interact {
 				if err := tui.Run(results); err != nil {
-					return fmt.Errorf("interactive mode requires a real terminal; rerun without -i for non-interactive output: %w", err)
+					return fmt.Errorf("interactive mode requires a real terminal; rerun without -i for normal output: %w", err)
 				}
 				return nil
 			}
 
-			generated := time.Now().Format(time.RFC3339)
-			rep := report.Build(results, files, version, generated)
+			rep := report.Build(results, files, version, time.Now().Format(time.RFC3339))
+			rep.Compliance = &compliance
 			out, err := renderReport(rep, format)
 			if err != nil {
 				return err
@@ -116,21 +138,24 @@ func scanCmd() *cobra.Command {
 				fmt.Print(string(out))
 			}
 
-			if failOn != "" && reaches(rep, failOn) {
+			if !compliance.Pass || (failOn != "" && reaches(rep, failOn)) {
 				os.Exit(1)
 			}
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVarP(&format, "format", "f", "table", "output format: table|json|sarif|md|html")
-	cmd.Flags().StringVarP(&output, "output", "o", "", "write report to a file instead of stdout")
+	cmd.Flags().StringVarP(&format, "format", "f", "table", "output format: table|json|sarif|md|html|junit|cyclonedx|csv")
+	cmd.Flags().StringVarP(&output, "output", "o", "", "write the report to a file instead of stdout")
 	cmd.Flags().DurationVar(&timeout, "timeout", 10*time.Second, "per-server connection timeout")
-	cmd.Flags().BoolVar(&noDynamic, "no-dynamic", false, "only statically analyze configs; do not connect to servers")
+	cmd.Flags().BoolVar(&noDynamic, "no-dynamic", false, "only statically analyze; do not spawn processes or connect")
 	cmd.Flags().StringVar(&failOn, "fail-on", "", "exit non-zero when a finding of this severity exists (critical|high|medium|low)")
 	cmd.Flags().BoolVarP(&interact, "interactive", "i", false, "open the interactive terminal UI")
 	cmd.Flags().StringVar(&project, "project", "", "project directory for project-level config discovery")
-	cmd.Flags().StringVar(&transport, "transport", "", "force transport for a URL target: http|sse")
+	cmd.Flags().StringVar(&transport, "transport", "", "force transport for URL targets: http|sse")
+	cmd.Flags().StringVarP(&policyFile, "policy", "p", "", "path to a policy YAML file")
+	cmd.Flags().StringVar(&profile, "profile", "", "built-in profile: default|strict|ci")
+	cmd.Flags().StringVar(&suppFile, "suppressions", "", "path to a suppressions YAML file")
 	return cmd
 }
 
@@ -146,7 +171,7 @@ func inspectCmd() *cobra.Command {
 		Short: "Connect and list a server's tools, resources and prompts",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			servers, _, err := collectServers(args[0], "", "")
+			servers, _, err := collectMany([]string{args[0]}, "", "")
 			if err != nil {
 				return err
 			}
@@ -155,7 +180,7 @@ func inspectCmd() *cobra.Command {
 				return in.ConnectErr
 			}
 			if format == "json" {
-				b, _ := jsonMarshalIndent(in)
+				b, _ := json.MarshalIndent(in, "", "  ")
 				fmt.Println(string(b))
 				return nil
 			}
@@ -179,8 +204,7 @@ func printInspection(in rules.Input) {
 
 	fmt.Printf("tools (%d):\n", len(in.Tools))
 	for _, t := range in.Tools {
-		desc := strings.TrimSpace(t.Description)
-		desc = strings.ReplaceAll(desc, "\n", " ")
+		desc := strings.ReplaceAll(strings.TrimSpace(t.Description), "\n", " ")
 		if len(desc) > 100 {
 			desc = desc[:100] + "…"
 		}
@@ -203,36 +227,105 @@ func dim(s string) string {
 	return "\x1b[38;5;245m" + s + "\x1b[0m"
 }
 
-// ---------- shared ----------
+// ---------- rules / profiles ----------
 
-func collectServers(target, projectDir, transport string) ([]*config.Server, []string, error) {
-	if target != "" {
-		if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
-			s := &config.Server{
-				Name:      hostFromURL(target),
-				URL:       target,
-				Transport: transportFor(target, transport),
+func rulesCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "rules",
+		Short: "List the built-in rules",
+		Run: func(_ *cobra.Command, _ []string) {
+			for _, c := range rules.Catalog() {
+				owasp := c.OWASP
+				if owasp == "" {
+					owasp = "-"
+				}
+				fmt.Printf("%s\t%s\t%s\t%s\n", c.ID, owasp, c.DefaultSeverity, c.Title)
 			}
-			return []*config.Server{s}, nil, nil
+		},
+	}
+}
+
+func profilesCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "profiles",
+		Short: "List the built-in policy profiles",
+		Run: func(_ *cobra.Command, _ []string) {
+			for _, p := range policy.ListProfiles() {
+				fmt.Printf("%s\t%s\n", p, policy.DescribeProfile(p))
+			}
+		},
+	}
+}
+
+// ---------- collection ----------
+
+func collectMany(targets []string, projectDir, transport string) ([]*config.Server, []string, error) {
+	if len(targets) == 0 {
+		return discoverAll(projectDir)
+	}
+	var servers []*config.Server
+	var files []string
+	seen := map[string]bool{}
+
+	addFile := func(cf *config.ClientFile) {
+		for _, s := range cf.Servers {
+			key := cf.Path + "::" + s.Name
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			servers = append(servers, s)
 		}
-		cf, err := config.ParseFile(target, "explicit", "explicit")
+		files = append(files, cf.Path)
+	}
+
+	for _, t := range targets {
+		if strings.HasPrefix(t, "http://") || strings.HasPrefix(t, "https://") {
+			servers = append(servers, &config.Server{
+				Name: hostFromURL(t), URL: t, Transport: transportFor(t, transport),
+			})
+			continue
+		}
+		info, err := os.Stat(t)
 		if err != nil {
 			return nil, nil, err
 		}
-		return cf.Servers, []string{target}, nil
+		if info.IsDir() {
+			cfs, err := config.WalkDir(t)
+			if err != nil {
+				return nil, nil, err
+			}
+			for _, cf := range cfs {
+				addFile(cf)
+			}
+			continue
+		}
+		cf, err := config.ParseFile(t, "explicit", "explicit")
+		if err != nil {
+			return nil, nil, err
+		}
+		addFile(cf)
 	}
+	sort.Strings(files)
+	return servers, files, nil
+}
 
-	files, err := config.Discover(projectDir)
+func discoverAll(projectDir string) ([]*config.Server, []string, error) {
+	if projectDir == "" {
+		projectDir, _ = os.Getwd()
+	}
+	cfs, err := config.Discover(projectDir)
 	if err != nil {
 		return nil, nil, err
 	}
 	var servers []*config.Server
-	var paths []string
-	for _, f := range files {
-		servers = append(servers, f.Servers...)
-		paths = append(paths, f.Path)
+	var files []string
+	for _, cf := range cfs {
+		servers = append(servers, cf.Servers...)
+		files = append(files, cf.Path)
 	}
-	return servers, paths, nil
+	sort.Strings(files)
+	return servers, files, nil
 }
 
 func probeServer(parent context.Context, srv *config.Server, timeout time.Duration) rules.Input {
@@ -265,6 +358,8 @@ func probeServer(parent context.Context, srv *config.Server, timeout time.Durati
 	return in
 }
 
+// ---------- rendering / exit ----------
+
 func renderReport(r *report.Report, format string) ([]byte, error) {
 	switch strings.ToLower(format) {
 	case "json":
@@ -275,6 +370,12 @@ func renderReport(r *report.Report, format string) ([]byte, error) {
 		return []byte(report.RenderMarkdown(r)), nil
 	case "html":
 		return []byte(report.RenderHTML(r)), nil
+	case "junit":
+		return report.RenderJUnit(r)
+	case "cyclonedx", "cdx", "sbom":
+		return report.RenderCycloneDX(r)
+	case "csv":
+		return report.RenderCSV(r)
 	case "table":
 		return []byte(report.RenderTable(r)), nil
 	}
@@ -321,8 +422,4 @@ func hostFromURL(raw string) string {
 		return raw
 	}
 	return u.Host
-}
-
-func jsonMarshalIndent(v any) ([]byte, error) {
-	return json.MarshalIndent(v, "", "  ")
 }

@@ -34,26 +34,43 @@ func staticConfigRules(in Input) []Finding {
 	var f []Finding
 	s := in.Server
 
-	// 1. 环境变量中硬编码凭据
+	// 1. 环境变量中的凭据：已知 token 类型 > secret-like 变量名 > 高熵疑似
 	for k, v := range s.Env {
-		if v == "" || !secretKeyRe.MatchString(k) {
+		if v == "" || isVarReference(v) || isPlaceholder(v) {
 			continue
 		}
-		if isVarReference(v) || isPlaceholder(v) {
+		loc := "env." + k
+		if kind, ok := detectKnownToken(v); ok {
+			f = append(f, Finding{
+				RuleID: "MCP101", Title: "Known credential type embedded in configuration",
+				Severity: SeverityCritical, OWASP: "MCP01", Server: s.Name, Location: loc,
+				Evidence:    k + "=" + maskSecret(v) + " (" + kind + ")",
+				Description: "A recognizable credential is embedded in the configuration and handed to the process. The server, or a compromised dependency, can read and exfiltrate it.",
+				Advice:      "Reference the secret from your environment or a secret manager instead of hardcoding it; rotate any credential that was committed.",
+				References:  []string{"https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications/"},
+			})
 			continue
 		}
-		sev := SeverityHigh
-		if looksLikeLiveToken(v) {
-			sev = SeverityCritical
+		if secretKeyRe.MatchString(k) {
+			f = append(f, Finding{
+				RuleID: "MCP101", Title: "Long-lived credential embedded in configuration",
+				Severity: SeverityHigh, OWASP: "MCP01", Server: s.Name, Location: loc,
+				Evidence:    k + "=" + maskSecret(v),
+				Description: "A secret is embedded in the server configuration and handed to the process. The server, or a compromised dependency, can read it from its environment and exfiltrate it.",
+				Advice:      "Reference the secret from your environment or a secret manager instead of hardcoding it; rotate any credential that was committed.",
+				References:  []string{"https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications/"},
+			})
+			continue
 		}
-		f = append(f, Finding{
-			RuleID: "MCP101", Title: "Long-lived credential embedded in configuration",
-			Severity: sev, OWASP: "MCP01", Server: s.Name, Location: "env." + k,
-			Evidence:    k + "=" + maskSecret(v),
-			Description: "A secret is embedded in the server configuration and handed to the process. The server, or a compromised dependency, can read it from its environment and exfiltrate it.",
-			Advice:      "Reference the secret from your shell environment or a secret manager instead of hardcoding it; rotate any credential that was committed.",
-			References:  []string{"https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications/"},
-		})
+		if len(v) >= 20 && shannonEntropy(v) >= 4.5 {
+			f = append(f, Finding{
+				RuleID: "MCP108", Title: "High-entropy value that may be a secret",
+				Severity: SeverityMedium, OWASP: "MCP01", Server: s.Name, Location: loc,
+				Evidence:    k + "=" + maskSecret(v),
+				Description: "The value has high character entropy, which is typical of generated credentials or API keys, even though the variable name does not advertise it.",
+				Advice:      "Check whether this is a secret and, if so, move it to a secret manager and rotate it. Non-sensitive values can be suppressed with a documented reason.",
+			})
+		}
 	}
 
 	// 2. 明文 HTTP

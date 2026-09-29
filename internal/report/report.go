@@ -6,24 +6,26 @@ import "github.com/HUA503/mcprism/internal/rules"
 
 // Report 聚合一次扫描的全部结果与元信息。
 type Report struct {
-	Tool         string          `json:"tool"`
-	Version      string          `json:"version"`
-	GeneratedAt  string          `json:"generatedAt"`
-	ScannedFiles []string        `json:"scannedFiles,omitempty"`
-	Results      []*rules.Result `json:"results"`
-	Summary      Summary         `json:"summary"`
+	Tool         string            `json:"tool"`
+	Version      string            `json:"version"`
+	GeneratedAt  string            `json:"generatedAt"`
+	ScannedFiles []string          `json:"scannedFiles,omitempty"`
+	Results      []*rules.Result   `json:"results"`
+	Summary      Summary           `json:"summary"`
+	Compliance   *rules.Compliance `json:"compliance,omitempty"`
 }
 
 // Summary 是全报告的计数汇总。
 type Summary struct {
-	Servers   int `json:"servers"`
-	Connected int `json:"connected"`
-	Tools     int `json:"tools"`
-	Findings  int `json:"findings"`
-	Critical  int `json:"critical"`
-	High      int `json:"high"`
-	Medium    int `json:"medium"`
-	Low       int `json:"low"`
+	Servers    int `json:"servers"`
+	Connected  int `json:"connected"`
+	Tools      int `json:"tools"`
+	Findings   int `json:"findings"`
+	Critical   int `json:"critical"`
+	High       int `json:"high"`
+	Medium     int `json:"medium"`
+	Low        int `json:"low"`
+	Suppressed int `json:"suppressed"`
 }
 
 // Build 由引擎结果构造报告并计算汇总。
@@ -38,6 +40,7 @@ func Build(results []*rules.Result, files []string, version, generatedAt string)
 			r.Summary.Connected++
 		}
 		r.Summary.Tools += res.ToolCount
+		r.Summary.Suppressed += len(res.Suppressed)
 		for _, fnd := range res.Findings {
 			r.Summary.Findings++
 			switch fnd.Severity {

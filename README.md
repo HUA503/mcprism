@@ -6,10 +6,9 @@
 
 **Vet MCP servers before your AI trusts them.**
 
-A fast, single-binary, zero-configuration security scanner for
-[Model Context Protocol](https://modelcontextprotocol.io/) servers —
-static config review, live capability enumeration, tool-poisoning detection
-and risk grading, fully offline.
+A single-binary security scanner for [Model Context Protocol](https://modelcontextprotocol.io/)
+servers: static config review, live capability enumeration, tool-poisoning
+detection, policy as code and risk grading. It runs offline.
 
 [![CI](https://github.com/HUA503/mcprism/actions/workflows/ci.yml/badge.svg)](https://github.com/HUA503/mcprism/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
@@ -21,31 +20,31 @@ and risk grading, fully offline.
 
 ---
 
-MCP lets your AI agent connect to external servers for tools, files and data.
-Those servers run commands, read your filesystem and receive your prompts — and
-a single malicious or over-privileged one can steal secrets, run arbitrary
-commands or hijack the agent through poisoned tool descriptions. **mcprism**
-shows you exactly what every MCP server can do and what it can get away with,
-the same way `trivy` made vulnerability scanning one command.
+MCP connects your AI agent to outside servers for tools, files and data. Those
+servers run commands, read the filesystem and see your prompts. A malicious or
+over-privileged server can steal credentials, run commands, or steer the agent
+through the text it returns. mcprism gives you a per-server report and a score
+before you let an agent use them, the way you would run `trivy` against an image.
 
 <p align="center">
   <img src="assets/comparison.png" alt="Before and after using mcprism" width="100%">
 </p>
 
-## Why mcprism
+## What it does
 
-- **One binary, zero runtime dependencies.** No Python venv, no Node modules,
-  no LLM API key, no account. Download one file and run it.
-- **Zero configuration.** Point it at a file, a URL, or nothing — it
-  auto-discovers the MCP configs of the AI tools on your machine.
-- **Static *and* dynamic.** It reviews your config *and* performs the MCP
-  handshake to enumerate the tools, resources and prompts a server actually
-  exposes — without calling any tool.
-- **Deterministic & offline.** ~20 rules mapped to the OWASP Top 10 for
-  Agentic Applications (MCP01–MCP07); results are reproducible and never leave
-  your machine.
-- **Built for CI.** A security score (0–100, A–F), `--fail-on`, and
-  **SARIF** output you can upload straight to GitHub code scanning.
+- One binary. No Python or Node setup, no LLM API key, no account.
+- Static and live checks. It reads the config and performs the MCP handshake to
+  list tools, resources and prompts. It never calls a tool.
+- Policy as code. Turn rules on/off, change severity, allow or deny packages,
+  commands and domains, and require network isolation. Built-in profiles give
+  you `default`, `strict` and `ci` baselines.
+- Accepted-risk register. Suppress findings with a reason and an expiry.
+  Suppressed items stay visible in the report, and expired ones come back.
+- Deterministic and offline. 24 rules mapped to OWASP MCP01–MCP07; nothing
+  leaves your machine.
+- Reports for people and machines: table, JSON, Markdown, HTML, SARIF, JUnit
+  XML, CycloneDX SBOM and CSV.
+- Scan several targets at once: files, directories (recursively), or URLs.
 
 ## Report
 
@@ -62,7 +61,7 @@ Batch review across many servers (static mode):
 ## Install
 
 ```sh
-# One-line installer (Linux / macOS / Windows* via Git Bash)
+# One-line installer (Linux / macOS / Windows via Git Bash)
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 
@@ -71,85 +70,144 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-Or grab a prebuilt binary from the [**releases**](https://github.com/HUA503/mcprism/releases)
-page (Linux/macOS/Windows, amd64 & arm64). Homebrew, Scoop and more are on the roadmap.
+Or download a binary from the [releases](https://github.com/HUA503/mcprism/releases)
+page (Linux/macOS/Windows, amd64 and arm64). Homebrew, Scoop and Nix are on the roadmap.
 
 ## Quick start
 
 ```sh
-# Auto-discover configs for Claude Desktop, Claude Code, Cursor, VS Code, …
+# Auto-discover configs for Claude Desktop, Claude Code, Cursor, VS Code, ...
 mcprism scan
 
-# Scan a specific config file
+# A specific config file
 mcprism scan ~/.claude.json
 
-# Scan a remote server directly
+# A directory, searched recursively
+mcprism scan ./configs
+
+# A remote server
 mcprism scan https://mcp.example.com/v1
 
-# Fully offline / static-only (no process spawned, no network connection)
+# Several targets together
+mcprism scan a.json b.json ./configs
+
+# Fully offline / static-only (no process spawned, no connection)
 mcprism scan mcp.json --no-dynamic
+
+# Enforce a baseline or a custom policy
+mcprism scan --profile strict
+mcprism scan --policy policy.yml --suppressions suppressions.yml
 
 # Interactive terminal UI
 mcprism scan -i
 
-# List a server's capabilities without running the full audit
-mcprism inspect mcp.json
+# Reference
+mcprism inspect mcp.json     # list a server's tools/resources/prompts
+mcprism rules                # list built-in rules
+mcprism profiles             # list built-in profiles
 ```
 
-### Useful flags
+### Flags
 
 | Flag | Description |
 |---|---|
-| `-f, --format` | `table` (default) · `json` · `sarif` · `md` · `html` |
+| `-f, --format` | `table` (default) · `json` · `sarif` · `md` · `html` · `junit` · `cyclonedx` · `csv` |
 | `-o, --output` | Write the report to a file |
-| `--no-dynamic` | Static analysis only — never spawn a process or connect |
+| `-p, --policy` | Path to a policy YAML file |
+| `--profile` | Built-in profile: `default` · `strict` · `ci` |
+| `--suppressions` | Path to a suppressions YAML file |
+| `--no-dynamic` | Static analysis only; never spawn a process or connect |
 | `--fail-on` | Exit non-zero on `critical` / `high` / `medium` / `low` |
 | `--timeout` | Per-server handshake timeout (default `10s`) |
 | `-i, --interactive` | Browse findings in a TUI |
 | `--transport` | Force `http` (Streamable HTTP) or `sse` (legacy) for URLs |
 
+## Policy as code
+
+A policy file is a versioned YAML document. It sets the pass/fail conditions,
+overrides individual rules, lists allowed and denied packages/commands/domains,
+and can require that servers with file or shell access have no network egress.
+
+```yaml
+version: "1"
+fail:
+  on: high
+  grade: B
+  score: 70
+rules:
+  MCP106:
+    severity: high
+allow:
+  packages: ["@modelcontextprotocol/*"]
+deny:
+  commands: [nc, ncat]
+  domains: ["*.ngrok.io"]
+capabilities:
+  requireNetworkIsolation: true
+```
+
+A deny match is reported as `MCP700`; a file/shell server with network access
+under isolation is reported as `MCP701`. See [`examples/policy.yml`](examples/policy.yml),
+[`examples/suppressions.yml`](examples/suppressions.yml) and the
+[policy guide](docs/POLICIES.md). For compliance gates and machine output, see
+[docs/COMPLIANCE.md](docs/COMPLIANCE.md).
+
 ## What it detects
 
-- **Secrets in config** — live API tokens/keys embedded in `env` (placeholders
-  and `${ENV_VAR}` references are not flagged).
-- **Cleartext transport & disabled TLS** — `http://` endpoints,
-  `NODE_TLS_REJECT_UNAUTHORIZED=0`, etc.
-- **Over-broad permissions** — filesystem servers mounted at `/` or your home
-  directory; sandbox/permission checks turned off by flags.
-- **Tool poisoning** — prompt-injection directives, zero-width/bidirectional
-  Unicode, hidden HTML/Markdown, and encoded blobs in tool names, descriptions
-  and schemas.
-- **Dangerous capability combinations** — e.g. shell execution **+** network
-  egress, file read **+** network, file write **+** shell.
-- **Supply-chain risk** — unpinned packages (rug pull), typosquat look-alikes,
-  and code executed straight from a remote URL (`curl|sh`).
-- **Cross-server shadowing** — identical tool names from different servers that
-  can mask one another.
-- **Connectivity failures**, classified (DNS / TLS / connection refused /
-  timeout / command not found).
+- Secrets in config. Recognized credential formats (AWS, Google, GitHub, Slack,
+  Stripe, GitLab, OpenAI, JWT and more) are flagged by type, and high-entropy
+  values that look like generated keys are flagged as suspected secrets.
+  Placeholders and `${ENV_VAR}` references are not flagged.
+- Cleartext transport and disabled TLS (`http://`,
+  `NODE_TLS_REJECT_UNAUTHORIZED=0`).
+- Over-broad permissions. Filesystem servers mounted at `/` or the home
+  directory; sandbox or permission checks turned off.
+- Tool poisoning. Injection directives, zero-width/bidirectional Unicode,
+  hidden HTML/Markdown and encoded blobs in tool names, descriptions and schemas.
+- Dangerous capability combinations, such as shell plus network, file read
+  plus network, or file write plus shell.
+- Network targets. Cloud metadata endpoints (`169.254.169.254`) and
+  private/loopback ranges.
+- Supply-chain risk: unpinned packages, typosquat look-alikes, and code run
+  straight from a remote URL.
+- Policy violations: denied packages/commands/domains and broken network isolation.
+- Cross-server tool name collisions, and classified connectivity failures
+  (DNS / TLS / refused / timeout / command not found).
 
-See the full [**rule catalog**](docs/RULES.md), including the OWASP crosswalk.
+The full list with the OWASP crosswalk is in [docs/RULES.md](docs/RULES.md).
+
+## Output formats
+
+| Format | Typical use |
+|---|---|
+| `table` | Terminal output |
+| `json` | Custom tooling |
+| `sarif` | GitHub code scanning |
+| `md` | Markdown reports / tickets |
+| `html` | Shareable standalone report |
+| `junit` | Jenkins, GitLab and GitHub test reports |
+| `cyclonedx` | SBOM / vulnerability ingestion |
+| `csv` | Spreadsheets and GRC workflows |
 
 ## Supported clients & transports
 
-mcprism understands the JSON/JSONC MCP config used by **Claude Desktop**,
-**Claude Code**, **Cursor**, **VS Code (GitHub Copilot Chat)**, **Windsurf**,
-**Cline**, **Continue** and similar tools — both the `mcpServers` object and
-array forms. It speaks all three MCP transports: **stdio**, **Streamable HTTP**,
-and the legacy **HTTP+SSE**.
+mcprism reads the JSON/JSONC MCP config used by Claude Desktop, Claude Code,
+Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Continue and similar
+tools, in both the `mcpServers` object and array forms. It speaks all three MCP
+transports: stdio, Streamable HTTP, and the legacy HTTP+SSE.
 
 ## CI/CD
 
-Block risky MCP servers in your pipeline:
+Block risky servers in a pipeline with the `ci` profile:
 
 ```yaml
 - name: Audit MCP servers
   run: |
     curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-    mcprism scan mcp.json --no-dynamic --fail-on high
+    mcprism scan mcp.json --no-dynamic --profile ci
 ```
 
-Or publish results to GitHub code scanning via SARIF:
+Publish to GitHub code scanning via SARIF:
 
 ```yaml
 - name: Scan & upload
@@ -159,22 +217,28 @@ Or publish results to GitHub code scanning via SARIF:
     sarif_file: mcp.sarif
 ```
 
+JUnit output works with the test report steps in Jenkins and GitLab, and
+CycloneDX output can be handed to an SBOM or vulnerability tracker.
+
 ## How it works
 
 ```
-discover configs  →  MCP handshake (initialize, tools/resources/prompts list)
-                  →  deterministic rules (static · poisoning · capability · supply-chain)
-                  →  score & grade (0–100, A–F)
-                  →  report (table / json / sarif / md / html)
+collect targets (discover / files / directories / URLs)
+  -> MCP handshake (initialize; list tools, resources, prompts)
+  -> deterministic rules (static, poisoning, capability, supply-chain, network)
+  -> policy enforcement (overrides, allow/deny, isolation)
+  -> suppressions (accepted risk, with reason and expiry)
+  -> score & grade, compliance gate
+  -> report
 ```
 
-mcprism only **enumerates** capabilities — it never calls a server's tools, so
-analysis has no side effects. The bundled demo server (`examples/testserver`)
-simulates malicious behavior without performing any.
+mcprism only enumerates capabilities, so analysis has no side effects. The
+bundled demo server (`examples/testserver`) simulates risky behavior without
+performing any of it.
 
 ## Comparison
 
-Based on the public project descriptions (features may change):
+Based on public project descriptions (features may change):
 
 | | **mcprism** | mcp-scan | mcp-audit | manual review |
 |---|---|---|---|---|
@@ -184,29 +248,31 @@ Based on the public project descriptions (features may change):
 | Live capability enumeration | ✅ | partial | partial | ❌ |
 | Tool-poisoning detection | ✅ | ✅ | partial | ❌ |
 | Capability-combination modeling | ✅ | ❌ | ❌ | ❌ |
-| SARIF + `--fail-on` for CI | ✅ | ✅ | ❌ | ❌ |
+| Policy as code (allow/deny/isolation) | ✅ | ❌ | ❌ | ❌ |
+| JUnit / CycloneDX / CSV output | ✅ | ❌ | ❌ | ❌ |
+| Recursive, multi-target scan | ✅ | partial | ❌ | ❌ |
+| SARIF + CI exit codes | ✅ | ✅ | ❌ | ❌ |
 | Fully offline, no LLM | ✅ | ✅ | partial | ✅ |
 | Cross-platform | ✅ | partial | partial | — |
 
 ## Roadmap
 
-- [ ] More rules & reduced false positives as the MCP spec evolves
+- [ ] More rules and fewer false positives as the MCP spec evolves
 - [ ] MCP registry / marketplace scanning
-- [ ] Custom, policy-as-code rules and an SBOM export
+- [ ] User-defined rules beyond policy overrides
 - [ ] Pre-commit hook and editor integrations
-- [ ] Homebrew, Scoop, Nix packages
+- [ ] Homebrew, Scoop and Nix packages
 
 ## Contributing
 
-Issues and PRs are very welcome. A good rule contribution is a high-signal,
-deterministic check with low false-positive rate — add it under
-`internal/rules`, map it to an OWASP MCP risk, and include a test. Please run
+Issues and PRs are welcome. A good rule contribution is a high-signal,
+deterministic check with a low false-positive rate: add it under
+`internal/rules`, map it to an OWASP MCP risk, and include a test. Run
 `go vet ./... && go test ./...` before opening a PR.
 
 ## License
 
 [MIT](LICENSE) © mcprism contributors.
 
-> **Note:** mcprism is a defensive tool. It reports risk; it does not guarantee
-> a server is safe, and a clean report is not a substitute for trusting only
-> servers you understand.
+mcprism is a defensive tool. It reports risk; it does not prove a server is
+safe, and a clean report is not a reason to trust a server you do not understand.
