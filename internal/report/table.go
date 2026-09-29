@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/HUA503/mcprism/internal/rules"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/term"
-	"github.com/HUA503/mcprism/internal/rules"
 )
 
 // Catppuccin Mocha 调色板

@@ -39,3 +39,19 @@ type Capabilities struct {
 	CanSendEmail  bool     `json:"canSendEmail"`
 	Labels        []string `json:"labels,omitempty"`
 }
+
+// SuppressedFinding 是被策略显式抑制的发现，连同原因和到期日一起保留，
+// 方便审计回看，而不是静默丢弃。
+type SuppressedFinding struct {
+	Finding Finding `json:"finding"`
+	Reason  string  `json:"reason"`
+	Expires string  `json:"expires,omitempty"`
+}
+
+// Compliance 是按策略得到的整体合规结论。
+type Compliance struct {
+	Profile string `json:"profile"`
+	Policy  string `json:"policy,omitempty"`
+	Pass    bool   `json:"pass"`
+	Reason  string `json:"reason,omitempty"`
+}

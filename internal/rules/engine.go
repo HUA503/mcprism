@@ -20,17 +20,23 @@ type Input struct {
 
 // Result 是单个 server 的审查结果。
 type Result struct {
-	Server        *config.Server `json:"-"`
-	Capabilities  Capabilities   `json:"capabilities"`
-	Findings      []Finding      `json:"findings"`
-	Connected     bool           `json:"connected"`
-	Probed        bool           `json:"probed"`
-	ConnectError  string         `json:"connectError,omitempty"`
-	ToolCount     int            `json:"toolCount"`
-	ResourceCount int            `json:"resourceCount"`
-	PromptCount   int            `json:"promptCount"`
-	Score         int            `json:"score"`
-	Grade         string         `json:"grade"`
+	Server        *config.Server      `json:"-"`
+	Capabilities  Capabilities        `json:"capabilities"`
+	Findings      []Finding           `json:"findings"`
+	Connected     bool                `json:"connected"`
+	Probed        bool                `json:"probed"`
+	ConnectError  string              `json:"connectError,omitempty"`
+	ToolCount     int                 `json:"toolCount"`
+	ResourceCount int                 `json:"resourceCount"`
+	PromptCount   int                 `json:"promptCount"`
+	Score         int                 `json:"score"`
+	Grade         string              `json:"grade"`
+	Suppressed    []SuppressedFinding `json:"suppressed,omitempty"`
+}
+
+// Rescore 在策略调整 findings 后重新计算分数与等级。
+func Rescore(r *Result) {
+	r.Score, r.Grade = score(r)
 }
 
 // Analyze 对单个 server 执行完整分析。
@@ -52,6 +58,7 @@ func Analyze(in Input) *Result {
 	r.Findings = append(r.Findings, toolPoisoningRules(in)...)
 	r.Findings = append(r.Findings, capabilityRules(in, r.Capabilities)...)
 	r.Findings = append(r.Findings, supplyChainRules(in)...)
+	r.Findings = append(r.Findings, networkTargetRules(in)...)
 	if !r.Connected {
 		r.Findings = append(r.Findings, connectionRules(in)...)
 	}

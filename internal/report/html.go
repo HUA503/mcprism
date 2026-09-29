@@ -68,6 +68,12 @@ tr.sev td:first-child{font-weight:700}
 .advice{color:#a6e3a1}
 .evidence{color:#f9e2af;font-size:12.5px}
 .ok{color:#a6e3a1}
+.gate-pass{color:#a6e3a1}.gate-fail{color:#f38ba8}
+.card.gate .num{font-size:20px;padding-top:3px}
+.sup{margin-top:12px;border-top:1px dashed #45475a;padding-top:10px}
+.sup summary{cursor:pointer;color:#a6adc8;font-size:13px}
+.sup table{font-size:12.5px}
+.sup .reason{color:#cba6f7}
 </style></head><body><div class="prism-bar"></div><main>`)
 
 	b.WriteString(`<h1>◆ mcprism <span class="dim">security report</span></h1>`)
@@ -85,6 +91,18 @@ tr.sev td:first-child{font-weight:700}
 	stat("high", fmt.Sprint(s.High), "high")
 	stat("med", fmt.Sprint(s.Medium), "medium")
 	stat("low", fmt.Sprint(s.Low), "low")
+	if s.Suppressed > 0 {
+		stat("", fmt.Sprint(s.Suppressed), "suppressed")
+	}
+	if r.Compliance != nil {
+		gate := "PASS"
+		cls := "gate-pass"
+		if !r.Compliance.Pass {
+			gate = "FAIL"
+			cls = "gate-fail"
+		}
+		b.WriteString(fmt.Sprintf(`<div class="card gate"><div class="num %s">%s</div><div class="label">gate: %s</div></div>`, cls, gate, esc(r.Compliance.Profile)))
+	}
 	b.WriteString(`</section>`)
 
 	for _, res := range r.Results {
@@ -134,19 +152,39 @@ tr.sev td:first-child{font-weight:700}
 		b.WriteString(`</div>`)
 
 		if len(res.Findings) == 0 {
-			b.WriteString(`<p class="ok">✓ No issues detected</p></section>`)
-			continue
-		}
-		b.WriteString(`<table><thead><tr><th>Severity</th><th>Rule</th><th>Title</th><th>Location</th><th>Evidence</th><th>Advice</th></tr></thead><tbody>`)
-		for _, f := range res.Findings {
-			b.WriteString(fmt.Sprintf(`<tr class="sev" style="box-shadow:inset 3px 0 0 %s"><td style="color:%s">%s</td>
+			b.WriteString(`<p class="ok">✓ No issues detected</p>`)
+		} else {
+			b.WriteString(`<table><thead><tr><th>Severity</th><th>Rule</th><th>Title</th><th>Location</th><th>Evidence</th><th>Advice</th></tr></thead><tbody>`)
+			for _, f := range res.Findings {
+				b.WriteString(fmt.Sprintf(`<tr class="sev" style="box-shadow:inset 3px 0 0 %s"><td style="color:%s">%s</td>
 <td class="rule">%s</td><td>%s</td><td>%s</td><td class="evidence">%s</td><td class="advice">%s</td></tr>`,
-				sevHex(f.Severity), sevHex(f.Severity), f.Severity, f.RuleID,
-				esc(f.Title), esc(f.Location), esc(f.Evidence), esc(f.Advice)))
+					sevHex(f.Severity), sevHex(f.Severity), f.Severity, f.RuleID,
+					esc(f.Title), esc(f.Location), esc(f.Evidence), esc(f.Advice)))
+			}
+			b.WriteString(`</tbody></table>`)
 		}
-		b.WriteString(`</tbody></table></section>`)
+		b.WriteString(renderSuppressedHTML(res))
+		b.WriteString(`</section>`)
 	}
 
 	b.WriteString(`</main></body></html>`)
+	return b.String()
+}
+
+func renderSuppressedHTML(res *rules.Result) string {
+	if len(res.Suppressed) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf(`<details class="sup" open><summary>Suppressed (accepted risk) · %d</summary><table><tbody>`, len(res.Suppressed)))
+	for _, s := range res.Suppressed {
+		exp := s.Expires
+		if exp == "" {
+			exp = "no expiry"
+		}
+		b.WriteString(fmt.Sprintf(`<tr><td class="rule">%s</td><td>%s</td><td class="reason">%s <span class="dim">(%s)</span></td></tr>`,
+			s.Finding.RuleID, html.EscapeString(s.Finding.Title), html.EscapeString(s.Reason), html.EscapeString(exp)))
+	}
+	b.WriteString(`</tbody></table></details>`)
 	return b.String()
 }
