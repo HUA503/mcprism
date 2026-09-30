@@ -28,6 +28,10 @@ func gradeHex(g string) string {
 	}[g]
 }
 
+func gradeRank(g string) int {
+	return map[string]int{"A": 5, "B": 4, "C": 3, "D": 2, "F": 1}[g]
+}
+
 // RenderHTML 渲染独立、可分享的 HTML 报告（内联样式，无外部依赖）。
 func RenderHTML(r *Report) string {
 	esc := html.EscapeString
@@ -74,12 +78,51 @@ tr.sev td:first-child{font-weight:700}
 .sup summary{cursor:pointer;color:#a6adc8;font-size:13px}
 .sup table{font-size:12.5px}
 .sup .reason{color:#cba6f7}
+.overview{display:flex;align-items:center;gap:26px;background:#28283a;border:1px solid #313244;border-radius:16px;padding:20px 24px;margin:20px 0 16px;flex-wrap:wrap}
+.ring{--pct:100;--ring:#a6e3a1;flex:0 0 auto;width:128px;height:128px;border-radius:50%;background:conic-gradient(var(--ring) calc(var(--pct)*1%),#313244 0);display:flex;align-items:center;justify-content:center}
+.ring-hole{width:94px;height:94px;border-radius:50%;background:#1e1e2e;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-grade{font-size:36px;font-weight:800;line-height:1}
+.ring-score{font-size:12px;color:#a6adc8;margin-top:3px}
+.ov-body{flex:1;min-width:230px}
+.ov-label{color:#6c7086;font-size:12px;letter-spacing:.6px;margin-bottom:7px}
+.ov-line{font-size:14px;margin:3px 0;color:#cdd6f4}
+.ov-gate{text-align:center;padding:12px 22px;border-radius:12px;background:#11111b;min-width:108px}
+.gate-word{font-size:26px;font-weight:800;line-height:1}
+.gate-profile{font-size:12px;color:#a6adc8;margin-top:4px}
+.ov-gate.pass .gate-word{color:#a6e3a1}.ov-gate.fail .gate-word{color:#f38ba8}
 </style></head><body><div class="prism-bar"></div><main>`)
 
 	b.WriteString(`<h1>◆ mcprism <span class="dim">security report</span></h1>`)
 	b.WriteString(fmt.Sprintf(`<p class="dim">v%s · %s</p>`, esc(r.Version), esc(r.GeneratedAt)))
 
+	// 总体风险取最差 grade 与最低分：安全由短板决定。
+	overallGrade, overallScore := "A", 100
+	for _, res := range r.Results {
+		if gradeRank(res.Grade) < gradeRank(overallGrade) {
+			overallGrade = res.Grade
+		}
+		if res.Score < overallScore {
+			overallScore = res.Score
+		}
+	}
 	s := r.Summary
+	b.WriteString(`<section class="overview">`)
+	b.WriteString(fmt.Sprintf(`<div class="ring" style="--pct:%d;--ring:%s"><div class="ring-hole"><span class="ring-grade">%s</span><span class="ring-score">%d / 100</span></div></div>`,
+		overallScore, gradeHex(overallGrade), overallGrade, overallScore))
+	b.WriteString(fmt.Sprintf(`<div class="ov-body"><div class="ov-label">OVERALL RISK</div>
+<div class="ov-line">%d servers · %d reachable · %d tools</div>
+<div class="ov-line">%d findings · %d critical · %d high · %d medium · %d low</div></div>`,
+		s.Servers, s.Connected, s.Tools, s.Findings, s.Critical, s.High, s.Medium, s.Low))
+	if r.Compliance != nil {
+		pass, word := "pass", "PASS"
+		if !r.Compliance.Pass {
+			pass, word = "fail", "FAIL"
+		}
+		b.WriteString(fmt.Sprintf(`<div class="ov-gate %s"><div class="gate-word">%s</div><div class="gate-profile">gate: %s</div></div>`,
+			pass, word, esc(r.Compliance.Profile)))
+	}
+	b.WriteString(`</section>`)
+
 	b.WriteString(`<section class="cards">`)
 	stat := func(cls, num, label string) {
 		b.WriteString(fmt.Sprintf(`<div class="card %s"><div class="num">%s</div><div class="label">%s</div></div>`, cls, num, label))
@@ -93,15 +136,6 @@ tr.sev td:first-child{font-weight:700}
 	stat("low", fmt.Sprint(s.Low), "low")
 	if s.Suppressed > 0 {
 		stat("", fmt.Sprint(s.Suppressed), "suppressed")
-	}
-	if r.Compliance != nil {
-		gate := "PASS"
-		cls := "gate-pass"
-		if !r.Compliance.Pass {
-			gate = "FAIL"
-			cls = "gate-fail"
-		}
-		b.WriteString(fmt.Sprintf(`<div class="card gate"><div class="num %s">%s</div><div class="label">gate: %s</div></div>`, cls, gate, esc(r.Compliance.Profile)))
 	}
 	b.WriteString(`</section>`)
 

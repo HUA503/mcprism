@@ -31,6 +31,10 @@ effects.
   <img src="assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
 </p>
 
+<p align="center">
+  <img src="assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
+</p>
+
 MCP connects your AI agent to outside servers for tools, files and data. The
 protocol is built into Claude Desktop and Claude Code, Cursor, VS Code,
 Windsurf and others, so a typical setup reaches several servers before long.

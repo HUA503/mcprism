@@ -22,10 +22,18 @@ var (
 	colInfo   = lipgloss.Color("#a6adc8")
 	colGreen  = lipgloss.Color("#a6e3a1")
 	colCyan   = lipgloss.Color("#94e2d5")
-	colSel    = lipgloss.Color("#45475a")
+	colSel    = lipgloss.Color("#313244")
+	colBorder = lipgloss.Color("#45475a")
+	colAccent = lipgloss.Color("#89b4fa")
 )
 
-const leftWidth = 32
+const leftOuter = 30 // 左侧面板外框宽度（含边框与内边距）
+
+type seg struct {
+	t    string
+	c    lipgloss.Color
+	bold bool
+}
 
 type model struct {
 	results  []*rules.Result
@@ -54,8 +62,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
-		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height - 2
+		m.viewport.Width = m.w - 4
+		m.viewport.Height = m.h - 5
 		return m, nil
 	case tea.KeyMsg:
 		if m.pane == 2 {
@@ -120,83 +128,119 @@ func (m model) moved(d int) model {
 }
 
 func (m model) View() string {
-	if m.pane == 2 {
-		return m.titleBar() + "\n" + m.viewport.View() + "\n" + m.detailHelp()
+	if m.w < 40 || m.h < 10 {
+		return "starting…"
 	}
-	left := m.serverPane()
-	right := m.findingPane()
+	if m.pane == 2 {
+		return m.titleBar() + "\n" + m.detailBox() + "\n" + m.helpBar(true)
+	}
+	leftBody := m.serverContent()
+	res := m.results[m.sSel]
+	rightBody := m.findingContent(res)
+	inner := lipgloss.Height(leftBody)
+	if h := lipgloss.Height(rightBody); h > inner {
+		inner = h
+	}
+	outerH := inner + 3 // title line plus border
+	if cap := m.h - 2; outerH > cap {
+		outerH = cap
+	}
+	left := box(leftBody, fmt.Sprintf("SERVERS · %d", len(m.results)), leftOuter, outerH, m.pane == 0)
+	rightW := m.w - leftOuter
+	right := box(rightBody, fmt.Sprintf("FINDINGS · %s · %d", res.Server.Name, len(res.Findings)), rightW, outerH, m.pane == 1)
 	body := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
-	return m.titleBar() + "\n" + body + "\n" + m.helpBar()
+	return m.titleBar() + "\n" + body + "\n" + m.helpBar(false)
+}
+
+func box(body, title string, w, h int, active bool) string {
+	border := colBorder
+	titleC := colSubtle
+	if active {
+		border = colAccent
+		titleC = colAccent
+	}
+	titleLine := lipgloss.NewStyle().Foreground(titleC).Bold(true).Render(title)
+	content := titleLine + "\n" + body
+	return lipgloss.NewStyle().
+		Width(w).Height(h).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(border).
+		Padding(0, 1).
+		Render(content)
 }
 
 func (m model) titleBar() string {
-	return lipgloss.NewStyle().Foreground(colText).Bold(true).Render("◆ mcprism") +
-		"  " + lipgloss.NewStyle().Foreground(colSubtle).Render("interactive security review")
+	left := lipgloss.NewStyle().Foreground(colText).Bold(true).Render("◆ mcprism") +
+		" " + lipgloss.NewStyle().Foreground(colSubtle).Render("interactive security review")
+	right := lipgloss.NewStyle().Foreground(colSubtle).Render(fmt.Sprintf("%d servers", len(m.results)))
+	return lipgloss.JoinHorizontal(lipgloss.Top, lipgloss.NewStyle().Width(m.w-12).Render(left), right)
 }
 
-func (m model) helpBar() string {
-	return lipgloss.NewStyle().Foreground(colSubtle).Render("↑↓/j,k navigate · tab switch pane · enter details · esc back · q quit")
+func (m model) helpBar(detail bool) string {
+	var keys string
+	if detail {
+		keys = "↑↓/j,k scroll · esc back · q quit"
+	} else {
+		keys = "↑↓/j,k navigate · tab switch pane · enter details · esc back · q quit"
+	}
+	return lipgloss.NewStyle().Width(m.w).Foreground(colSubtle).Render(keys)
 }
 
-func (m model) detailHelp() string {
-	return lipgloss.NewStyle().Foreground(colSubtle).Render("↑↓/j,k scroll · esc back · q quit")
+func (m model) detailBox() string {
+	f := m.results[m.sSel].Findings[m.fSel]
+	title := fmt.Sprintf("%s · %s", shortSev(f.Severity), f.RuleID)
+	return box(m.viewport.View(), title, m.w, m.h-2, true)
 }
 
-func (m model) serverPane() string {
+func (m model) serverContent() string {
+	innerW := leftOuter - 4
+	maxRows := m.h
+	s, e := window(len(m.results), m.sSel, maxRows)
 	var rows []string
-	for i, r := range m.results {
-		gc := gradeColor(r.Grade)
-		g := lipgloss.NewStyle().Foreground(gc).Bold(true).Render(r.Grade)
-		dotC := colGreen
-		conn := "●"
+	for i := s; i < e; i++ {
+		r := m.results[i]
+		selected := i == m.sSel && m.pane == 0
+		dotC, conn := colGreen, "●"
 		if !r.Connected {
-			dotC = colCrit
-			conn = "○"
+			dotC, conn = colCrit, "○"
 		}
-		dot := lipgloss.NewStyle().Foreground(dotC).Render(conn)
-		line := fmt.Sprintf("%s %s %s", g, dot, trunc(r.Server.Name, leftWidth-7))
-		st := lipgloss.NewStyle().Width(leftWidth).PaddingLeft(1)
-		if i == m.sSel && m.pane == 0 {
-			st = st.Background(colSel)
-		}
-		rows = append(rows, st.Render(line))
+		rows = append(rows, renderRow(innerW, selected,
+			selPrefix(selected),
+			seg{r.Grade, gradeColor(r.Grade), true},
+			seg{" ", colText, false},
+			seg{conn, dotC, false},
+			seg{" ", colText, false},
+			seg{trunc(r.Server.Name, innerW-7), colText, false},
+		))
 	}
-	header := lipgloss.NewStyle().Foreground(colSubtle).PaddingLeft(1).Render("SERVERS")
-	return header + "\n" + strings.Join(rows, "\n")
+	return strings.Join(rows, "\n")
 }
 
-func (m model) findingPane() string {
-	rw := m.w - leftWidth
-	if rw < 40 {
-		rw = 40
-	}
-	res := m.results[m.sSel]
-	header := lipgloss.NewStyle().Foreground(colSubtle).PaddingLeft(1).
-		Render(fmt.Sprintf("FINDINGS · %s (%d)", res.Server.Name, len(res.Findings)))
-
+func (m model) findingContent(res *rules.Result) string {
+	innerW := m.w - leftOuter - 4
 	if len(res.Findings) == 0 {
-		ok := lipgloss.NewStyle().Foreground(colGreen).PaddingLeft(1).Render("✓ No issues detected")
-		return header + "\n" + ok
+		return lipgloss.NewStyle().Foreground(colGreen).Render("✓ No issues detected")
 	}
-
 	fSel := m.fSel
 	if fSel >= len(res.Findings) {
 		fSel = len(res.Findings) - 1
 	}
-
+	maxRows := m.h
+	s, e := window(len(res.Findings), fSel, maxRows)
 	var rows []string
-	for i, f := range res.Findings {
-		c := sevColor(f.Severity)
-		tag := lipgloss.NewStyle().Foreground(c).Bold(true).Render(shortSev(f.Severity))
-		rid := lipgloss.NewStyle().Foreground(colSubtle).Render(f.RuleID)
-		line := fmt.Sprintf("%s %s %s", tag, rid, trunc(f.Title, rw-19))
-		st := lipgloss.NewStyle().Width(rw).PaddingLeft(1)
-		if i == fSel && m.pane == 1 {
-			st = st.Background(colSel)
-		}
-		rows = append(rows, st.Render(line))
+	for i := s; i < e; i++ {
+		f := res.Findings[i]
+		selected := i == fSel && m.pane == 1
+		rows = append(rows, renderRow(innerW, selected,
+			selPrefix(selected),
+			seg{shortSev(f.Severity), sevColor(f.Severity), true},
+			seg{" ", colText, false},
+			seg{f.RuleID, colSubtle, false},
+			seg{" ", colText, false},
+			seg{trunc(f.Title, innerW-14), colText, false},
+		))
 	}
-	return header + "\n" + strings.Join(rows, "\n")
+	return strings.Join(rows, "\n")
 }
 
 func (m model) detailText() string {
@@ -226,7 +270,57 @@ func (m model) detailText() string {
 	return b.String()
 }
 
-// ---------- helpers ----------
+// ---------- rendering helpers ----------
+
+func selPrefix(selected bool) seg {
+	if selected {
+		return seg{"▸ ", colAccent, true}
+	}
+	return seg{"  ", colText, false}
+}
+
+func renderRow(width int, selected bool, parts ...seg) string {
+	var bg lipgloss.Color
+	if selected {
+		bg = colSel
+	}
+	var b strings.Builder
+	for _, p := range parts {
+		st := lipgloss.NewStyle().Foreground(p.c)
+		if p.bold {
+			st = st.Bold(true)
+		}
+		if selected {
+			st = st.Background(bg)
+		}
+		b.WriteString(st.Render(p.t))
+	}
+	if pad := width - lipgloss.Width(b.String()); pad > 0 {
+		st := lipgloss.NewStyle()
+		if selected {
+			st = st.Background(bg)
+		}
+		b.WriteString(st.Render(strings.Repeat(" ", pad)))
+	}
+	return b.String()
+}
+
+// window 返回在最多 max 行的窗口中应显示的 [start,end) 行范围，并保证 sel 可见。
+func window(n, sel, max int) (int, int) {
+	if n <= max {
+		return 0, n
+	}
+	start := sel - max/2
+	if start < 0 {
+		start = 0
+	}
+	if start > n-max {
+		start = n - max
+	}
+	return start, start + max
+}
+
+// ---------- color / text helpers ----------
 
 func gradeColor(g string) lipgloss.Color {
 	return map[string]lipgloss.Color{
