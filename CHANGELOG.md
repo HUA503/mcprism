@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.3.0] - 2026-09-30
+
+### Added
+
+- Overall-risk dashboard at the top of the HTML report: a score ring, the
+  worst grade across servers, and the compliance gate result in one block.
+
+### Changed
+
+- The interactive TUI (`-i`) is rebuilt with rounded panels, an active-pane
+  border, a selected-row marker, and color-coded grades and severities.
+- Panels size to their content instead of filling the terminal.
+
 ## [0.2.0] - 2026-09-29
 
 ### Added
