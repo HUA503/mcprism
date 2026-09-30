@@ -54,6 +54,8 @@ mcprism scan
 ## Contents
 
 - [Changelog](CHANGELOG.md)
+- [Attack surface writeup](docs/MCP-ATTACK-SURFACE.md)
+- [Launch kit](docs/LAUNCH-KIT.md)
 - [What it does](#what-it-does)
 - [When to use it](#when-to-use-it)
 - [Report](#report)

@@ -42,6 +42,8 @@ mcprism scan
 ## 目录
 
 - [更新日志](CHANGELOG.md)
+- [攻击面分析](docs/MCP-ATTACK-SURFACE.md)
+- [发布工具包](docs/LAUNCH-KIT.md)
 - [功能](#功能)
 - [适用场景](#适用场景)
 - [报告](#报告)
