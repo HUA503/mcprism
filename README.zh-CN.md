@@ -43,6 +43,22 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 mcprism scan
 ```
 
+## 一行审查单个 server
+
+不用写进任何配置，直接检查启动命令、URL 或包名：
+
+```sh
+mcprism vet -- npx -y some-mcp-server
+mcprism vet https://mcp.example.com
+mcprism vet npm:@scope/name
+```
+
+`vet` 默认只做静态分析，不会运行目标。加 `--probe` 才会启动它并枚举 tools、resources 和 prompts。
+
+<p align="center">
+  <img src="assets/vet.png" alt="mcprism vet 拦截 curl|sh 启动命令" width="94%">
+</p>
+
 ## 目录
 
 - [更新日志](CHANGELOG.md)
@@ -135,6 +151,13 @@ mcprism scan --policy policy.yml --suppressions suppressions.yml
 # 交互式终端界面
 mcprism scan -i
 
+# 不写配置，直接审查启动命令 / URL / 包名
+mcprism vet -- npx -y some-mcp-server
+mcprism vet "uvx some-mcp-server"
+mcprism vet https://mcp.example.com
+mcprism vet npm:@scope/name
+mcprism vet --probe -- npx -y some-mcp-server   # 真正运行并列出 tools
+
 # 参考信息
 mcprism inspect mcp.json     # 列出 server 的 tools/resources/prompts
 mcprism rules                # 列出内置规则
@@ -155,6 +178,7 @@ mcprism profiles             # 列出内置基线
 | `--timeout` | 单个 server 的握手超时（默认 `10s`） |
 | `-i, --interactive` | 在 TUI 中浏览发现 |
 | `--transport` | 对 URL 强制使用 `http`（Streamable HTTP）或 `sse`（旧版） |
+| `--probe`（`vet`） | 真正启动/连接并枚举工具；会运行目标，建议在沙箱内进行 |
 
 ## 示例输出
 

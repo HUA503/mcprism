@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.4.0] - 2026-10-06
+
+### Added
+
+- `vet` command: audit a server straight from a launch command
+  (`vet -- npx -y pkg`), a quoted command string, an http(s) URL, or an
+  `npm:`/`pypi:` package shorthand, without adding it to a client config.
+- `vet --probe` launches the process or connects to the URL to enumerate
+  tools, resources and prompts. `vet` is static by default and has no side
+  effects.
+
+### Changed
+
+- `scan` and `vet` run through one shared audit pipeline.
+
 ## [0.3.0] - 2026-09-30
 
 ### Added

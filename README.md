@@ -55,6 +55,23 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 mcprism scan
 ```
 
+## Vet one server in one line
+
+Check a launch command, URL or package name without adding it to any config:
+
+```sh
+mcprism vet -- npx -y some-mcp-server
+mcprism vet https://mcp.example.com
+mcprism vet npm:@scope/name
+```
+
+`vet` is static by default and does not run the target. Add `--probe` to
+launch it and enumerate its tools, resources and prompts.
+
+<p align="center">
+  <img src="assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
+</p>
+
 ## Contents
 
 - [Changelog](CHANGELOG.md)
@@ -158,6 +175,13 @@ mcprism scan --policy policy.yml --suppressions suppressions.yml
 # Interactive terminal UI
 mcprism scan -i
 
+# Vet a launch command / URL / package without writing a config
+mcprism vet -- npx -y some-mcp-server
+mcprism vet "uvx some-mcp-server"
+mcprism vet https://mcp.example.com
+mcprism vet npm:@scope/name
+mcprism vet --probe -- npx -y some-mcp-server   # actually run it and list tools
+
 # Reference
 mcprism inspect mcp.json     # list a server's tools/resources/prompts
 mcprism rules                # list built-in rules
@@ -178,6 +202,7 @@ mcprism profiles             # list built-in profiles
 | `--timeout` | Per-server handshake timeout (default `10s`) |
 | `-i, --interactive` | Browse findings in a TUI |
 | `--transport` | Force `http` (Streamable HTTP) or `sse` (legacy) for URLs |
+| `--probe` (`vet`) | Actually launch/connect and enumerate tools; runs the target, prefer a sandbox |
 
 ## Example output
 

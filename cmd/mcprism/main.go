@@ -20,18 +20,17 @@ import (
 	"github.com/HUA503/mcprism/internal/protocol"
 	"github.com/HUA503/mcprism/internal/report"
 	"github.com/HUA503/mcprism/internal/rules"
-	"github.com/HUA503/mcprism/internal/tui"
 	"github.com/spf13/cobra"
 )
 
-const version = "0.3.0"
+const version = "0.4.0"
 
 func main() {
 	root := &cobra.Command{
 		Use:   "mcprism",
 		Short: "Vet MCP servers before your AI trusts them",
 	}
-	root.AddCommand(scanCmd(), inspectCmd(), rulesCmd(), profilesCmd(), versionCmd())
+	root.AddCommand(scanCmd(), vetCmd(), inspectCmd(), rulesCmd(), profilesCmd(), versionCmd())
 	if err := root.Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -49,113 +48,35 @@ func versionCmd() *cobra.Command {
 
 func scanCmd() *cobra.Command {
 	var (
-		format     string
-		output     string
-		failOn     string
-		project    string
-		transport  string
-		policyFile string
-		profile    string
-		suppFile   string
-		timeout    time.Duration
-		noDynamic  bool
-		interact   bool
+		o         auditOpts
+		project   string
+		transport string
+		noDynamic bool
 	)
 	cmd := &cobra.Command{
 		Use:   "scan [target ...]",
 		Short: "Discover and audit MCP servers",
 		Long: `Targets can be config files, directories (searched recursively) or http(s)
 server URLs. With no targets, mcprism auto-discovers configs across the
-installed AI clients.`,
+installed AI clients. To check a launch command or package without writing
+a config, use 'vet'.`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(_ *cobra.Command, args []string) error {
-			pol, err := policy.Builtin(profile)
-			if err != nil {
-				return err
-			}
-			policyPath := ""
-			if policyFile != "" {
-				pol, err = policy.Load(policyFile)
-				if err != nil {
-					return err
-				}
-				policyPath = policyFile
-			}
-
 			servers, files, err := collectMany(args, project, transport)
 			if err != nil {
 				return err
 			}
 			if len(servers) == 0 {
-				return fmt.Errorf("no MCP servers found (point at a config file, a directory or a server URL)")
+				return fmt.Errorf("no MCP servers found (point at a config file, a directory, a server URL, or use 'vet' for a launch command)")
 			}
-
-			inputs := make([]rules.Input, 0, len(servers))
-			for _, srv := range servers {
-				if noDynamic {
-					inputs = append(inputs, rules.Input{Server: srv})
-					continue
-				}
-				inputs = append(inputs, probeServer(context.Background(), srv, timeout))
-			}
-
-			results := rules.AnalyzeAll(inputs)
-			results = policy.Enforce(results, pol)
-
-			var sups []policy.Suppression
-			if suppFile != "" {
-				sups, err = policy.LoadSuppressions(suppFile)
-				if err != nil {
-					return err
-				}
-			}
-			results = policy.ApplySuppressions(results, sups, time.Now())
-			for _, r := range results {
-				rules.Rescore(r)
-			}
-
-			compliance := policy.Evaluate(results, pol, profile, policyPath)
-
-			if interact {
-				if err := tui.Run(results); err != nil {
-					return fmt.Errorf("interactive mode requires a real terminal; rerun without -i for normal output: %w", err)
-				}
-				return nil
-			}
-
-			rep := report.Build(results, files, version, time.Now().Format(time.RFC3339))
-			rep.Compliance = &compliance
-			out, err := renderReport(rep, format)
-			if err != nil {
-				return err
-			}
-			if output != "" {
-				if err := os.WriteFile(output, out, 0o644); err != nil {
-					return err
-				}
-				fmt.Fprintf(os.Stderr, "report written to %s\n", output)
-			} else {
-				fmt.Print(string(out))
-			}
-
-			if !compliance.Pass || (failOn != "" && reaches(rep, failOn)) {
-				os.Exit(1)
-			}
-			return nil
+			return audit(servers, files, !noDynamic, o)
 		},
 	}
 
-	cmd.Flags().StringVarP(&format, "format", "f", "table", "output format: table|json|sarif|md|html|junit|cyclonedx|csv")
-	cmd.Flags().StringVarP(&output, "output", "o", "", "write the report to a file instead of stdout")
-	cmd.Flags().DurationVar(&timeout, "timeout", 10*time.Second, "per-server connection timeout")
+	addAuditFlags(cmd, &o)
 	cmd.Flags().BoolVar(&noDynamic, "no-dynamic", false, "only statically analyze; do not spawn processes or connect")
-	cmd.Flags().StringVar(&failOn, "fail-on", "", "exit non-zero when a finding of this severity exists (critical|high|medium|low)")
-	cmd.Flags().BoolVarP(&interact, "interactive", "i", false, "open the interactive terminal UI")
 	cmd.Flags().StringVar(&project, "project", "", "project directory for project-level config discovery")
 	cmd.Flags().StringVar(&transport, "transport", "", "force transport for URL targets: http|sse")
-	cmd.Flags().StringVarP(&policyFile, "policy", "p", "", "path to a policy YAML file")
-	cmd.Flags().StringVar(&profile, "profile", "", "built-in profile: default|strict|ci")
-	cmd.Flags().StringVar(&suppFile, "suppressions", "", "path to a suppressions YAML file")
 	return cmd
 }
 
