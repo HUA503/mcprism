@@ -1,6 +1,6 @@
 # Rule catalog
 
-mcprism ships with 24 deterministic rules. Every finding is mapped to the
+mcprism ships with 30 deterministic rules. Every finding is mapped to the
 OWASP Top 10 for Agentic Applications - MCP risks (MCP01-MCP07). No rule needs
 an LLM or an internet connection; everything runs locally.
 
@@ -48,6 +48,20 @@ disabled, reweighted or suppressed through policy; see POLICIES.md.
 | MCP403 | MCP04 | High | Code executed directly from a remote URL |
 | MCP404 | MCP01 | High | TLS certificate verification disabled via env |
 
+## Source code review
+
+These rules review the server's own JS/TS/Python implementation and trace tool
+arguments into sinks. [SAST.md](SAST.md) has vulnerable and fixed code for each.
+
+| Rule | OWASP | Default | What it detects |
+|---|---|---|---|
+| MCP801 | MCP05 | Critical | Tool input reaches a command/process sink |
+| MCP802 | MCP02 | High | Tool input controls a request URL (SSRF) |
+| MCP803 | MCP02 | High | Tool input used as a filesystem path without confinement |
+| MCP804 | MCP05 | High (Critical with input) | Dynamic code execution (eval/Function/exec) |
+| MCP805 | MCP05 | High | Unsafe deserialization (pickle/marshal/yaml.load) |
+| MCP806 | MCP01 | High (Medium suspected) | Hardcoded credential in the source |
+
 ## Connectivity & cross-server
 
 | Rule | OWASP | Default | What it detects |
@@ -66,11 +80,11 @@ disabled, reweighted or suppressed through policy; see POLICIES.md.
 
 | OWASP | Risk | Covered by |
 |---|---|---|
-| MCP01 | Token mismanagement & secret exposure | MCP101, MCP102, MCP108, MCP404 |
-| MCP02 | Privilege escalation via scope creep | MCP103, MCP105, MCP301, MCP303, MCP701 |
+| MCP01 | Token mismanagement & secret exposure | MCP101, MCP102, MCP108, MCP404, MCP806 |
+| MCP02 | Privilege escalation via scope creep | MCP103, MCP105, MCP301, MCP303, MCP701, MCP802, MCP803 |
 | MCP03 | Tool poisoning (rug pull, schema poisoning, shadowing) | MCP201-MCP206, MCP601 |
 | MCP04 | Software supply chain & dependency tampering | MCP106, MCP402, MCP403 |
-| MCP05 | Command injection & execution | MCP104, MCP302 |
+| MCP05 | Command injection & execution | MCP104, MCP302, MCP801, MCP804, MCP805 |
 | MCP07 | Insufficient authentication & authorization | MCP107, MCP501, MCP700 |
 
 > False positives: secrets referenced as `${VAR}`, obvious placeholders

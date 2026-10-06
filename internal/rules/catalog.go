@@ -41,6 +41,13 @@ var ruleCatalog = []CatalogEntry{
 	{"MCP403", "Code run from a remote URL", "MCP04", "high", "supplychain"},
 	{"MCP404", "TLS verification disabled", "MCP01", "high", "supplychain"},
 
+	{"MCP801", "Tool input reaches a command/process sink", "MCP05", "critical", "source"},
+	{"MCP802", "Tool input reaches a network sink (SSRF)", "MCP02", "high", "source"},
+	{"MCP803", "Tool input reaches a filesystem path", "MCP02", "high", "source"},
+	{"MCP804", "Unsafe dynamic code execution", "MCP05", "high", "source"},
+	{"MCP805", "Unsafe deserialization", "MCP05", "high", "source"},
+	{"MCP806", "Hardcoded secret in server source", "MCP01", "high", "source"},
+
 	{"MCP501", "MCP handshake failure", "MCP07", "medium", "connection"},
 	{"MCP601", "Cross-server tool name collision", "MCP03", "medium", "cross-server"},
 

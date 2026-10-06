@@ -59,6 +59,7 @@ func Analyze(in Input) *Result {
 	r.Findings = append(r.Findings, capabilityRules(in, r.Capabilities)...)
 	r.Findings = append(r.Findings, supplyChainRules(in)...)
 	r.Findings = append(r.Findings, networkTargetRules(in)...)
+	r.Findings = append(r.Findings, sourceCodeRules(in)...)
 	if !r.Connected {
 		r.Findings = append(r.Findings, connectionRules(in)...)
 	}

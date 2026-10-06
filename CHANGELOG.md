@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.5.0] - 2026-10-06
+
+### Added
+
+- Source-code review (SAST). `vet` reads a server checkout on disk and traces
+  tool arguments an agent can control into dangerous sinks:
+  - MCP801 command/process execution (`exec`, `spawn`, `os.system`,
+    `subprocess shell=True`),
+  - MCP802 SSRF through a controlled request URL (`fetch`, `requests`, `httpx`),
+  - MCP803 path traversal through an uncontrolled file path,
+  - MCP804 dynamic code execution (`eval`, `Function`, `exec`),
+  - MCP805 unsafe deserialization (`pickle`, `marshal`, `yaml.load`),
+  - MCP806 hardcoded credentials in the source.
+- Source targets: `vet ./path/to/server` reviews a whole tree and
+  `vet server.py` reviews one file. No build step or network required.
+- Recognizes the JS/TS `McpServer` and low-level `setRequestHandler`, and the
+  Python `FastMCP` `@mcp.tool()` and low-level `call_tool` handlers.
+- `docs/SAST.md` with vulnerable and fixed code for every rule, plus a source
+  review screenshot.
+
+### Notes
+
+- The engine is pattern-based with one level of taint tracking and no
+  third-party parser. It targets direct handler-to-sink paths and does not
+  cover everything a full data-flow analyzer would.
+- Built-in rules rise from 24 to 30.
+
 ## [0.4.0] - 2026-10-06
 
 ### Added

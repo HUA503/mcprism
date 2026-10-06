@@ -37,6 +37,14 @@ type Server struct {
 	Headers   map[string]string `json:"headers,omitempty"`
 	Cwd       string            `json:"cwd,omitempty"`
 
+	// ProjectDir is the root of a server implementation checked out on disk.
+	// When set, mcprism runs source-code review over it in addition to the
+	// configuration checks.
+	ProjectDir string `json:"projectDir,omitempty"`
+	// ProjectFiles limits source review to specific files. When empty, the
+	// whole ProjectDir is reviewed.
+	ProjectFiles []string `json:"projectFiles,omitempty"`
+
 	// Source 是该定义所在配置文件的绝对路径。
 	Source string `json:"source,omitempty"`
 	// Client 是客户端标识（如 claude-desktop、cursor）。
@@ -50,10 +58,18 @@ type Server struct {
 
 // Target 返回该 server 的人类可读目标描述。
 func (s *Server) Target() string {
-	if s.Transport == TransportStdio {
+	switch {
+	case s.Transport == TransportStdio && s.Command != "":
 		return strings.TrimSpace(s.Command + " " + strings.Join(s.Args, " "))
+	case s.URL != "":
+		return s.URL
+	case s.ProjectDir != "":
+		if len(s.ProjectFiles) == 1 {
+			return "source file: " + s.ProjectFiles[0]
+		}
+		return "source tree: " + s.ProjectDir
 	}
-	return s.URL
+	return ""
 }
 
 // ClientFile 表示一个已发现的 MCP 客户端配置文件。

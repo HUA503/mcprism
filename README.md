@@ -9,13 +9,21 @@
 **Vet MCP servers before your AI trusts them.**
 
 mcprism is a security scanner for [Model Context Protocol](https://modelcontextprotocol.io/)
-servers. It finds the servers you have configured, connects to list what each
-one can do, and checks them against a built-in rule set and a policy you
-control. Every server gets a list of findings, a 0–100 score and an A–F grade.
+servers. It looks at a server from three angles:
 
-It ships as one Go binary with no runtime dependencies, runs fully offline,
-and only enumerates servers. It never calls a tool, so a scan has no side
-effects.
+1. **Configuration** — how a client launches or reaches it: pinned packages,
+   cleartext transport, credentials in config, cloud metadata and private
+   network targets.
+2. **Source code** — when the implementation is on disk, it reads the
+   JS/TS/Python tool handlers and traces arguments an agent can control into
+   dangerous sinks: process execution, outbound requests (SSRF) and filesystem
+   paths, along with eval, unsafe deserialization and hardcoded secrets.
+3. **Runtime** — it performs the MCP handshake to list tools, resources and
+   prompts and checks tool metadata for poisoning. It never calls a tool.
+
+Every server gets a list of findings, a 0–100 score and an A–F grade. mcprism
+ships as one Go binary with no runtime dependencies, runs fully offline, and
+has no side effects.
 
 [![CI](https://github.com/HUA503/mcprism/actions/workflows/ci.yml/badge.svg)](https://github.com/HUA503/mcprism/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
@@ -57,16 +65,20 @@ mcprism scan
 
 ## Vet one server in one line
 
-Check a launch command, URL or package name without adding it to any config:
+Check a launch command, URL, package or a checkout on disk without adding it
+to any config:
 
 ```sh
 mcprism vet -- npx -y some-mcp-server
 mcprism vet https://mcp.example.com
 mcprism vet npm:@scope/name
+mcprism vet ./path/to/server     # review a source tree
+mcprism vet server.py            # review one file
 ```
 
 `vet` is static by default and does not run the target. Add `--probe` to
-launch it and enumerate its tools, resources and prompts.
+launch it and enumerate its tools, resources and prompts. A source tree or
+file goes through the SAST engine below, with no network needed.
 
 <p align="center">
   <img src="assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
@@ -84,6 +96,7 @@ launch it and enumerate its tools, resources and prompts.
 - [Quick start](#quick-start)
 - [Example output](#example-output)
 - [Policy as code](#policy-as-code)
+- [Source-code review (SAST)](#source-code-review-sast)
 - [What it detects](#what-it-detects)
 - [Output formats](#output-formats)
 - [Supported clients & transports](#supported-clients--transports)
@@ -97,14 +110,15 @@ launch it and enumerate its tools, resources and prompts.
 ## What it does
 
 - One binary. No Python or Node setup, no LLM API key, no account.
-- Static and live checks. It reads the config and performs the MCP handshake to
-  list tools, resources and prompts. It never calls a tool.
+- Static, source and live checks. It reads the config, reviews JS/TS/Python
+  source when a checkout is present, and performs the MCP handshake to list
+  tools, resources and prompts. It never calls a tool.
 - Policy as code. Turn rules on/off, change severity, allow or deny packages,
   commands and domains, and require network isolation. Built-in profiles give
   you `default`, `strict` and `ci` baselines.
 - Accepted-risk register. Suppress findings with a reason and an expiry.
   Suppressed items stay visible in the report, and expired ones come back.
-- Deterministic and offline. 24 rules mapped to OWASP MCP01–MCP07; nothing
+- Deterministic and offline. 30 rules mapped to OWASP MCP01–MCP07; nothing
   leaves your machine.
 - Reports for people and machines: table, JSON, Markdown, HTML, SARIF, JUnit
   XML, CycloneDX SBOM and CSV.
@@ -258,6 +272,81 @@ under isolation is reported as `MCP701`. See [`examples/policy.yml`](examples/po
 [policy guide](docs/POLICIES.md). For compliance gates and machine output, see
 [docs/COMPLIANCE.md](docs/COMPLIANCE.md).
 
+## Source-code review (SAST)
+
+Configuration says how a server is launched, not what a handler does with an
+argument. A server that looks fine in config can still pass a tool parameter
+straight to a shell, use it as a request URL, or open a path built from it.
+Those bugs are in the implementation, so mcprism reads the code.
+
+Point `vet` at a checkout or a single file. It needs no build step, no
+dependencies installed and no network:
+
+```sh
+mcprism vet ./mcp-server
+mcprism vet ./mcp-server/src/tool.ts
+```
+
+It recognizes the common SDKs and frameworks:
+
+- JavaScript/TypeScript: the `@modelcontextprotocol/sdk` `McpServer`, the
+  low-level `Server.setRequestHandler`, and `.tool(...)` registrations.
+- Python: the `FastMCP` `@mcp.tool()` decorator and the low-level `call_tool`
+  handler.
+
+For each tool it treats the handler arguments as attacker-controlled data and
+follows them one hop into a sink. Findings name the file and line, show the
+code, and say how to fix it:
+
+| Rule | Sink | Default |
+|---|---|---|
+| MCP801 | Tool input reaches a process/command sink (`exec`, `spawn`, `os.system`, `subprocess shell=True`) | critical |
+| MCP802 | Tool input controls a request URL (`fetch`, `requests`, `httpx`) — SSRF | high |
+| MCP803 | Tool input used as a filesystem path without confinement | high |
+| MCP804 | Dynamic code execution (`eval`, `Function`, `exec`) | high |
+| MCP805 | Unsafe deserialization (`pickle`, `marshal`, `yaml.load`) | high |
+| MCP806 | Hardcoded credential in the source | high |
+
+It recognizes the usual safe patterns and stays quiet when they are present, to
+keep false positives down:
+
+- A fixed command with arguments passed as an array (`execFile(cmd, args)`,
+  `subprocess.run([...])`) instead of a shell string.
+- Path confinement: `path.resolve(base, name)` checked with `startsWith(base)`,
+  or `realpath` + `startswith` in Python.
+- A constant base URL instead of an agent-chosen host, plus `yaml.safe_load` /
+  `SafeLoader`.
+
+This handler is flagged MCP801 because the agent controls the command:
+
+```js
+server.tool("run", { command: z.string() }, async ({ command }) => {
+  exec(command, (err, stdout) => callback(stdout));
+});
+```
+
+The fixed version uses an allow-list and never runs a shell:
+
+```js
+const ALLOWED = { status: ["git", "status"], log: ["git", "log", "-5"] };
+server.tool("git", { name: z.string() }, async ({ name }) => {
+  const spec = ALLOWED[name];
+  if (!spec) throw new Error("not allowed");
+  const [cmd, ...args] = spec;
+  return execFile(cmd, args);
+});
+```
+
+The engine is pattern-based with one level of taint tracking and no third-party
+parser, so the binary stays small and self-contained. It won't catch everything
+a full data-flow analyzer would; it targets the short, direct handler-to-sink
+paths behind most MCP server bugs. Rule details and more examples are in
+[docs/SAST.md](docs/SAST.md).
+
+<p align="center">
+  <img src="assets/sast.png" alt="mcprism source-code review findings" width="94%">
+</p>
+
 ## What it detects
 
 - Secrets in config. Recognized credential formats (AWS, Google, GitHub, Slack,
@@ -277,6 +366,9 @@ under isolation is reported as `MCP701`. See [`examples/policy.yml`](examples/po
 - Supply-chain risk: unpinned packages, typosquat look-alikes, and code run
   straight from a remote URL.
 - Policy violations: denied packages/commands/domains and broken network isolation.
+- Source-code flaws in JS/TS/Python handlers: tool arguments reaching command,
+  network and file sinks, eval/exec, unsafe deserialization and hardcoded
+  secrets. See [Source-code review](#source-code-review-sast).
 - Cross-server tool name collisions, and classified connectivity failures
   (DNS / TLS / refused / timeout / command not found).
 
@@ -330,9 +422,13 @@ CycloneDX output can be handed to an SBOM or vulnerability tracker.
 
 ```mermaid
 flowchart TD
-  A[Targets: auto-discover / files / directories / URLs] --> B[MCP handshake<br/>initialize and list tools, resources, prompts]
-  B --> C[Deterministic rules<br/>static · poisoning · capability · supply-chain · network]
-  C --> D[Policy enforcement<br/>overrides · allow/deny · network isolation]
+  A[Targets: auto-discover / files / directories / URLs / source trees] --> B[Analysis]
+  B --> B1[Config rules<br/>static · capability · supply-chain · network]
+  B --> B2[Source SAST<br/>tool args to command · SSRF · path sinks]
+  B --> B3[MCP handshake<br/>list tools, resources, prompts; poisoning checks]
+  B1 --> D[Policy enforcement<br/>overrides · allow/deny · network isolation]
+  B2 --> D
+  B3 --> D
   D --> E[Suppressions<br/>accepted risk with reason and expiry]
   E --> F[Score 0-100, grade A-F, compliance gate]
   F --> G[Report<br/>table · json · sarif · md · html · junit · cyclonedx · csv]
@@ -353,6 +449,7 @@ Based on public project descriptions (features may change):
 | Zero install / runtime deps | ✅ | ❌ | ❌ | — |
 | Static config review | ✅ | ✅ | partial | ❌ |
 | Live capability enumeration | ✅ | partial | partial | ❌ |
+| Source-code SAST (handler-to-sink taint) | ✅ | ❌ | ❌ | ❌ |
 | Tool-poisoning detection | ✅ | ✅ | partial | ❌ |
 | Capability-combination modeling | ✅ | ❌ | ❌ | ❌ |
 | Policy as code (allow/deny/isolation) | ✅ | ❌ | ❌ | ❌ |

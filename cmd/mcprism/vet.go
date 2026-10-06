@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/HUA503/mcprism/internal/config"
+	"github.com/HUA503/mcprism/internal/sast"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +29,8 @@ Targets:
   Remote URL       vet https://mcp.example.com
   Package shorthand vet npm:@scope/name
                    vet pypi:some-package
+  Source tree      vet ./path/to/server
+  Source file      vet server.py
 
 By default vet is static: it does not run the target and has no side effects.
 --probe actually launches the process or connects to the URL to enumerate
@@ -72,6 +76,20 @@ func resolveVetTargets(args []string) ([]*config.Server, error) {
 			out = append(out, commandServer(parts))
 			i++
 		default:
+			// A local source tree or source file: review the implementation.
+			if info, err := os.Stat(a); err == nil {
+				if info.IsDir() {
+					if sast.IsSourceProject(a) {
+						out = append(out, projectServer(a))
+						i++
+						continue
+					}
+				} else if isSourceFileName(a) {
+					out = append(out, fileServer(a))
+					i++
+					continue
+				}
+			}
 			// 裸 token：从 i 到下一个独立目标之前，整体视为一个命令。
 			j := i + 1
 			for j < len(args) && !isNewTarget(args[j]) {
@@ -104,6 +122,66 @@ func commandServer(parts []string) *config.Server {
 		Scope:     "ad-hoc",
 		Raw:       raw,
 	}
+}
+
+// projectServer builds a server whose review is a source-code tree on disk.
+func projectServer(dir string) *config.Server {
+	return &config.Server{
+		Name:       detectProjectName(dir),
+		Transport:  config.TransportStdio,
+		ProjectDir: dir,
+		Source:     "vet (source tree)",
+		Client:     "vet",
+		Scope:      "ad-hoc",
+	}
+}
+
+// fileServer builds a server limited to a single source file.
+func fileServer(file string) *config.Server {
+	name := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
+	return &config.Server{
+		Name:         name,
+		Transport:    config.TransportStdio,
+		ProjectDir:   filepath.Dir(file),
+		ProjectFiles: []string{file},
+		Source:       "vet (source file)",
+		Client:       "vet",
+		Scope:        "ad-hoc",
+	}
+}
+
+func isSourceFileName(a string) bool {
+	switch strings.ToLower(filepath.Ext(a)) {
+	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py":
+		return true
+	}
+	return false
+}
+
+// detectProjectName reads the project name from a JS or Python manifest and
+// falls back to the directory name.
+func detectProjectName(dir string) string {
+	if data, err := os.ReadFile(filepath.Join(dir, "package.json")); err == nil {
+		var pj struct {
+			Name string `json:"name"`
+		}
+		if json.Unmarshal(data, &pj) == nil && pj.Name != "" {
+			return filepath.Base(pj.Name)
+		}
+	}
+	if data, err := os.ReadFile(filepath.Join(dir, "pyproject.toml")); err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			l := strings.TrimSpace(line)
+			if strings.HasPrefix(l, "name") {
+				if eq := strings.Index(l, "="); eq >= 0 {
+					if v := strings.Trim(strings.TrimSpace(l[eq+1:]), `"'`); v != "" {
+						return v
+					}
+				}
+			}
+		}
+	}
+	return filepath.Base(dir)
 }
 
 func urlServer(u string) *config.Server {
