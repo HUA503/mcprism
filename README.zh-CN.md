@@ -1,6 +1,6 @@
 <div align="center">
 
-<p><a href="README.md">English</a> · 简体中文</p>
+<p><a href="README.md">English</a> · 简体中文 · <a href="README.ja-JP.md">日本語</a> · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · <a href="README.ar-SA.md">العربية</a></p>
 
 <img src="assets/logo.svg" width="128" height="128" alt="mcprism logo">
 
