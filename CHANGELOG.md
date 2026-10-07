@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.6.0] - 2026-10-07
+
+### Added
+
+- Poisoning checks now cover resources and prompts, not only tools. MCP201-MCP205
+  scan the name, description, URI and MIME type of resources and the name,
+  description and arguments of prompt templates.
+- InputSchema risk heuristics for connected servers when no source code is
+  available:
+  - MCP304 free-form command parameter (CWE-78),
+  - MCP305 free-form URL parameter, SSRF (CWE-918),
+  - MCP306 free-form path parameter (CWE-22).
+  Parameters constrained with `enum`, `const` or `pattern` are not flagged.
+- Baseline comparison. `--baseline report.json` accepts findings already present
+  in a previous `-f json` report; only new findings affect the score and the
+  compliance gate. Accepted findings stay listed under suppressed for audit.
+  The flag works with both `scan` and `vet`.
+- Go SAST. `vet` reads mcp-go servers (`server.AddTool` / `mcp.AddTool`) and
+  traces tool arguments into `exec.Command`, `http.Get`/`NewRequest` and
+  `os`/`ioutil` file calls, and checks for hardcoded secrets (MCP801/802/803/806).
+
+### Changed
+
+- Built-in rules rise from 30 to 33.
+- The demo test server now exposes resources and prompt templates, including
+  poisoned examples.
+
 ## [0.5.0] - 2026-10-06
 
 ### Added

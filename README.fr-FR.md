@@ -11,7 +11,7 @@
 mcprism est un scanner de sécurité pour les serveurs [Model Context Protocol](https://modelcontextprotocol.io/). Il examine un serveur sous trois angles :
 
 1. **Configuration** — la façon dont un client le lance ou y accède : paquets épinglés à une version, transport en clair, identifiants dans la configuration, cibles vers les métadonnées cloud et les réseaux privés.
-2. **Code source** — quand l'implémentation est sur le disque, il lit les gestionnaires d'outils JS/TS/Python et suit les arguments contrôlables par un agent jusqu'à des points de sortie dangereux : exécution de processus, requêtes sortantes (SSRF) et chemins de fichiers, ainsi qu'eval, la désérialisation dangereuse et les secrets codés en dur.
+2. **Code source** — quand l'implémentation est sur le disque, il lit les gestionnaires d'outils JS/TS/Python/Go et suit les arguments contrôlables par un agent jusqu'à des points de sortie dangereux : exécution de processus, requêtes sortantes (SSRF) et chemins de fichiers, ainsi qu'eval, la désérialisation dangereuse et les secrets codés en dur.
 3. **Exécution** — il effectue la poignée de main MCP pour lister les outils, ressources et invites, et vérifie l'empoisonnement des métadonnées d'outils. Il n'appelle jamais un outil.
 
 Chaque serveur reçoit une liste de constats, un score de 0 à 100 et une note de A à F. mcprism se présente comme un seul binaire Go sans dépendance d'exécution, fonctionne entièrement hors ligne et n'a aucun effet de bord.
@@ -91,10 +91,10 @@ mcprism vet server.py            # vérifier un fichier
 ## Fonctions
 
 - Un seul binaire. Pas d'installation Python ou Node, pas de clé d'API LLM, pas de compte.
-- Vérifications statique, source et en direct. Il lit la configuration, examine le source JS/TS/Python quand une arborescence est présente, et effectue la poignée de main MCP pour lister les outils, ressources et invites. Il n'appelle jamais un outil.
+- Vérifications statique, source et en direct. Il lit la configuration, examine le source JS/TS/Python/Go quand une arborescence est présente, et effectue la poignée de main MCP pour lister les outils, ressources et invites. Il n'appelle jamais un outil.
 - Politique sous forme de code. Activez/désactivez des règles, changez les sévérités, autorisez ou refusez des paquets, commandes et domaines, et exigez l'isolation réseau. Les profils intégrés offrent les bases `default`, `strict` et `ci`.
 - Registre des risques acceptés. Supprimez des constats avec une raison et une date d'expiration. Les éléments supprimés restent visibles dans le rapport et reviennent à expiration.
-- Déterministe et hors ligne. 30 règles mappées sur OWASP MCP01–MCP07 ; rien ne quitte votre machine.
+- Déterministe et hors ligne. 33 règles mappées sur OWASP MCP01–MCP07 ; rien ne quitte votre machine.
 - Des rapports pour les humains et les machines : table, JSON, Markdown, HTML, SARIF, JUnit XML, SBOM CycloneDX et CSV.
 - Scannez plusieurs cibles à la fois : fichiers, répertoires (récursivement) ou URL.
 
@@ -304,7 +304,7 @@ Le moteur est fondé sur des motifs avec un niveau de suivi de propagation et sa
 - Cibles réseau. Points de métadonnées cloud (`169.254.169.254`) et plages privées/boucle locale.
 - Risque de chaîne d'approvisionnement : paquets non épinglés, noms de type typosquat et code exécuté directement depuis une URL distante.
 - Violations de politique : paquets/commandes/domaines refusés et isolation réseau rompue.
-- Défauts de code source dans les gestionnaires JS/TS/Python : arguments d'outils atteignant des points de commande, réseau et fichier, eval/exec, désérialisation dangereuse et secrets codés en dur. Voir [Revue de code source](#revue-de-code-source-sast).
+- Défauts de code source dans les gestionnaires JS/TS/Python/Go : arguments d'outils atteignant des points de commande, réseau et fichier, eval/exec, désérialisation dangereuse et secrets codés en dur. Voir [Revue de code source](#revue-de-code-source-sast).
 - Collisions de noms d'outils entre serveurs et échecs de connexion classifiés (DNS / TLS / refus / délai / commande absente).
 
 La liste complète avec la correspondance OWASP est dans [docs/RULES.md](docs/RULES.md).

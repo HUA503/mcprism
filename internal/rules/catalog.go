@@ -36,6 +36,9 @@ var ruleCatalog = []CatalogEntry{
 	{"MCP301", "Dangerous capability combination", "MCP02", "high", "capability"},
 	{"MCP302", "Tool runs arbitrary commands", "MCP05", "high", "capability"},
 	{"MCP303", "Metadata/private-network target", "MCP02", "high", "capability"},
+	{"MCP304", "Free-form command parameter", "MCP05", "medium", "capability"},
+	{"MCP305", "Free-form URL parameter (SSRF)", "MCP02", "medium", "capability"},
+	{"MCP306", "Free-form path parameter", "MCP02", "medium", "capability"},
 
 	{"MCP402", "Possible typosquat package", "MCP04", "medium", "supplychain"},
 	{"MCP403", "Code run from a remote URL", "MCP04", "high", "supplychain"},

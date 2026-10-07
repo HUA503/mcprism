@@ -14,6 +14,8 @@ requests.
    your team.
 3. A suppressions file (`--suppressions`) moves accepted findings out of the
    active list without deleting them.
+4. A baseline report (`--baseline`) accepts every finding a previous scan
+   already had, so a run only reports what changed.
 
 A profile and a policy file can be used together; the file wins where they
 overlap.
@@ -112,6 +114,25 @@ suppressions:
   and expiry, so the decision is auditable.
 - An expired entry no longer suppresses, and the finding returns on the next
   run. This stops accepted risks from being forgotten.
+
+## Baselines
+
+A baseline is a snapshot of accepted findings, used to start scanning a server
+that already has problems. Save a JSON report once, then pass it on later runs:
+
+```sh
+mcprism scan mcp.json --no-dynamic -f json -o baseline.json
+mcprism scan mcp.json --baseline baseline.json
+```
+
+Findings in the baseline move to the suppressed list with reason
+`baseline: <file>` and no longer affect the score or the gate. A finding that is
+new, or that moved to another tool or file, stays active. This lets a team fix
+issues over time while the build still catches regressions.
+
+A baseline is not the same as a suppressions file. A baseline accepts whatever a
+specific past report contained and is regenerated as issues get fixed. A
+suppressions file lists individual findings with a reason and usually an expiry.
 
 ## Suggested workflow
 

@@ -11,7 +11,7 @@
 mcprism ist ein Sicherheits-Scanner für [Model Context Protocol](https://modelcontextprotocol.io/)-Server. Er betrachtet einen Server aus drei Blickwinkeln:
 
 1. **Konfiguration** — wie ein Client ihn startet oder verbindet: versionsfixierte Pakete, unverschlüsselte Übertragung, Anmeldedaten in der Konfiguration sowie Ziele auf Cloud-Metadaten und private Netzwerke.
-2. **Quellcode** — liegt die Implementierung auf der Platte, liest er JS/TS/Python-Tool-Handler und verfolgt von einem Agenten steuerbare Argumente bis zu gefährlichen Senken: Prozessausführung, ausgehende Anfragen (SSRF) und Dateisystempfade, außerdem eval, unsichere Deserialisierung und fest codierte Geheimnisse.
+2. **Quellcode** — liegt die Implementierung auf der Platte, liest er JS/TS/Python/Go-Tool-Handler und verfolgt von einem Agenten steuerbare Argumente bis zu gefährlichen Senken: Prozessausführung, ausgehende Anfragen (SSRF) und Dateisystempfade, außerdem eval, unsichere Deserialisierung und fest codierte Geheimnisse.
 3. **Laufzeit** — er führt den MCP-Handshake durch, listet Tools, Ressourcen und Prompts auf und prüft das Poisoning der Tool-Metadaten. Er ruft nie ein Tool auf.
 
 Jeder Server erhält eine Liste an Befunden, eine Punktzahl von 0 bis 100 und eine Note von A bis F. mcprism kommt als einzelne Go-Binärdatei ohne Laufzeitabhängigkeiten, läuft vollständig offline und hat keine Nebenwirkungen.
@@ -91,10 +91,10 @@ mcprism vet server.py            # eine Datei prüfen
 ## Funktionen
 
 - Eine einzelne Binärdatei. Kein Python- oder Node-Setup, kein LLM-API-Schlüssel, kein Konto.
-- Statische, Quell- und Live-Prüfung. Liest die Konfiguration, prüft JS/TS/Python-Quellcode, wenn ein Checkout vorhanden ist, und führt den MCP-Handshake durch, um Tools, Ressourcen und Prompts aufzulisten. Er ruft nie ein Tool auf.
+- Statische, Quell- und Live-Prüfung. Liest die Konfiguration, prüft JS/TS/Python/Go-Quellcode, wenn ein Checkout vorhanden ist, und führt den MCP-Handshake durch, um Tools, Ressourcen und Prompts aufzulisten. Er ruft nie ein Tool auf.
 - Policy als Code. Regeln ein-/ausschalten, Schweregrade ändern, Pakete/Befehle/Domains erlauben oder ablehnen und Netzwerkisolation verlangen. Die eingebauten Profile bieten die Baselines `default`, `strict` und `ci`.
 - Risikoakzeptanz-Register. Befunde mit Grund und Ablaufdatum unterdrücken. Unterdrückte Einträge bleiben im Bericht sichtbar und kehren nach Ablauf zurück.
-- Deterministisch und offline. 30 Regeln, abgebildet auf OWASP MCP01–MCP07; nichts verlässt Ihren Rechner.
+- Deterministisch und offline. 33 Regeln, abgebildet auf OWASP MCP01–MCP07; nichts verlässt Ihren Rechner.
 - Berichte für Menschen und Maschinen: table, JSON, Markdown, HTML, SARIF, JUnit XML, CycloneDX-SBOM und CSV.
 - Mehrere Ziele auf einmal scannen: Dateien, Verzeichnisse (rekursiv) und URLs.
 
@@ -304,7 +304,7 @@ Die Engine arbeitet musterbasiert mit einer Ebene Taint-Verfolgung und ohne Drit
 - Netzwerkziele. Cloud-Metadaten-Endpunkte (`169.254.169.254`) und private/Loopback-Bereiche.
 - Lieferkettenrisiken: nicht fixierte Pakete, typosquat-ähnliche Namen und Code, der direkt von einer Remote-URL ausgeführt wird.
 - Policy-Verstöße: abgelehnte Pakete/Befehle/Domains und verletzte Netzwerkisolation.
-- Quellcode-Fehler in JS/TS/Python-Handlern: Tool-Argumente, die Befehls-, Netzwerk- und Dateisenken erreichen, eval/exec, unsichere Deserialisierung und fest codierte Geheimnisse. Siehe [Quellcode-Prüfung](#quellcode-prüfung-sast).
+- Quellcode-Fehler in JS/TS/Python/Go-Handlern: Tool-Argumente, die Befehls-, Netzwerk- und Dateisenken erreichen, eval/exec, unsichere Deserialisierung und fest codierte Geheimnisse. Siehe [Quellcode-Prüfung](#quellcode-prüfung-sast).
 - Tool-Namenskollisionen zwischen Servern und klassifizierte Verbindungsfehler (DNS / TLS / abgelehnt / Timeout / kein Befehl).
 
 Die vollständige Liste mit OWASP-Abgleich steht in [docs/RULES.md](docs/RULES.md).

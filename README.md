@@ -110,15 +110,20 @@ file goes through the SAST engine below, with no network needed.
 ## What it does
 
 - One binary. No Python or Node setup, no LLM API key, no account.
-- Static, source and live checks. It reads the config, reviews JS/TS/Python
+- Static, source and live checks. It reads the config, reviews JS/TS/Python/Go
   source when a checkout is present, and performs the MCP handshake to list
   tools, resources and prompts. It never calls a tool.
+- Schema-aware. For a live server you have no source for, a string parameter
+  named like command, url or path that accepts any value is flagged as command,
+  SSRF or path risk. Parameters constrained with enum, const or pattern are
+  left alone.
 - Policy as code. Turn rules on/off, change severity, allow or deny packages,
   commands and domains, and require network isolation. Built-in profiles give
   you `default`, `strict` and `ci` baselines.
-- Accepted-risk register. Suppress findings with a reason and an expiry.
+- Accepted-risk register. Suppress findings with a reason and an expiry, or
+  accept a whole `--baseline` report so only new problems fail the build.
   Suppressed items stay visible in the report, and expired ones come back.
-- Deterministic and offline. 30 rules mapped to OWASP MCP01–MCP07; nothing
+- Deterministic and offline. 33 rules mapped to OWASP MCP01–MCP07; nothing
   leaves your machine.
 - Reports for people and machines: table, JSON, Markdown, HTML, SARIF, JUnit
   XML, CycloneDX SBOM and CSV.
@@ -182,9 +187,13 @@ mcprism scan a.json b.json ./configs
 # Fully offline / static-only (no process spawned, no connection)
 mcprism scan mcp.json --no-dynamic
 
-# Enforce a baseline or a custom policy
+# Enforce a profile or a custom policy
 mcprism scan --profile strict
 mcprism scan --policy policy.yml --suppressions suppressions.yml
+
+# Accept existing findings and fail only on new ones (incremental rollout)
+mcprism scan mcp.json --no-dynamic -f json -o baseline.json
+mcprism scan mcp.json --baseline baseline.json
 
 # Interactive terminal UI
 mcprism scan -i
@@ -293,6 +302,7 @@ It recognizes the common SDKs and frameworks:
   low-level `Server.setRequestHandler`, and `.tool(...)` registrations.
 - Python: the `FastMCP` `@mcp.tool()` decorator and the low-level `call_tool`
   handler.
+- Go: mcp-go `server.AddTool` / `mcp.AddTool` callbacks.
 
 For each tool it treats the handler arguments as attacker-controlled data and
 follows them one hop into a sink. Findings name the file and line, show the
@@ -316,6 +326,8 @@ keep false positives down:
   or `realpath` + `startswith` in Python.
 - A constant base URL instead of an agent-chosen host, plus `yaml.safe_load` /
   `SafeLoader`.
+- In Go, `exec.Command` with constant args and no shell, a constant URL, and
+  `filepath.Join` checked with `strings.HasPrefix`.
 
 This handler is flagged MCP801 because the agent controls the command:
 
@@ -359,6 +371,10 @@ paths behind most MCP server bugs. Rule details and more examples are in
   directory; sandbox or permission checks turned off.
 - Tool poisoning. Injection directives, zero-width/bidirectional Unicode,
   hidden HTML/Markdown and encoded blobs in tool names, descriptions and schemas.
+  The same checks cover resource and prompt-template metadata.
+- Free-form schema parameters. A live server with no source available is
+  checked by parameter name for command, URL (SSRF) and path risk when the
+  parameter accepts any string.
 - Dangerous capability combinations, such as shell plus network, file read
   plus network, or file write plus shell.
 - Network targets. Cloud metadata endpoints (`169.254.169.254`) and
@@ -366,7 +382,7 @@ paths behind most MCP server bugs. Rule details and more examples are in
 - Supply-chain risk: unpinned packages, typosquat look-alikes, and code run
   straight from a remote URL.
 - Policy violations: denied packages/commands/domains and broken network isolation.
-- Source-code flaws in JS/TS/Python handlers: tool arguments reaching command,
+- Source-code flaws in JS/TS/Python/Go handlers: tool arguments reaching command,
   network and file sinks, eval/exec, unsafe deserialization and hardcoded
   secrets. See [Source-code review](#source-code-review-sast).
 - Cross-server tool name collisions, and classified connectivity failures

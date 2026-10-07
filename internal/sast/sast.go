@@ -36,6 +36,8 @@ func AnalyzeFile(path string) []Issue {
 		return analyzeJS(path)
 	case ".py":
 		return analyzePython(path)
+	case ".go":
+		return analyzeGo(path)
 	}
 	return nil
 }
@@ -43,7 +45,8 @@ func AnalyzeFile(path string) []Issue {
 // IsSourceProject reports whether a directory looks like an MCP server source
 // tree: it contains a JS/Python manifest or at least one source file.
 func IsSourceProject(dir string) bool {
-	if hasFile(dir, "package.json") || hasFile(dir, "pyproject.toml") || hasFile(dir, "setup.py") {
+	if hasFile(dir, "package.json") || hasFile(dir, "pyproject.toml") ||
+		hasFile(dir, "setup.py") || hasFile(dir, "go.mod") {
 		return true
 	}
 	found := false
@@ -58,7 +61,7 @@ func IsSourceProject(dir string) bool {
 			return nil
 		}
 		switch strings.ToLower(filepath.Ext(d.Name())) {
-		case ".js", ".ts", ".py":
+		case ".js", ".ts", ".py", ".go":
 			found = true
 		}
 		return nil

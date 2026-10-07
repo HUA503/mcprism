@@ -39,6 +39,9 @@ disabled, reweighted or suppressed through policy; see POLICIES.md.
 | MCP301 | MCP02 | High–Critical | Dangerous capability combinations (shell+network, write+shell, read+network …) |
 | MCP302 | MCP05 | High | A tool that executes arbitrary commands |
 | MCP303 | MCP02/MCP07 | High (Low for private ranges) | Cloud metadata endpoint (`169.254.169.254`) or private/loopback target |
+| MCP304 | MCP05 | Medium | Free-form command parameter (any string) in a connected tool's InputSchema |
+| MCP305 | MCP02 | Medium | Free-form URL parameter (SSRF) in a connected tool's InputSchema |
+| MCP306 | MCP02 | Medium | Free-form path parameter in a connected tool's InputSchema |
 
 ## Supply chain
 

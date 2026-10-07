@@ -55,11 +55,16 @@ func Analyze(in Input) *Result {
 
 	r.Capabilities = inferCapabilities(in)
 	r.Findings = append(r.Findings, staticConfigRules(in)...)
-	r.Findings = append(r.Findings, toolPoisoningRules(in)...)
+	r.Findings = append(r.Findings, metadataPoisoningRules(in)...)
 	r.Findings = append(r.Findings, capabilityRules(in, r.Capabilities)...)
 	r.Findings = append(r.Findings, supplyChainRules(in)...)
 	r.Findings = append(r.Findings, networkTargetRules(in)...)
 	r.Findings = append(r.Findings, sourceCodeRules(in)...)
+	// Schema heuristics only when the server's own code is unavailable; when a
+	// source tree exists, the SAST rules (MCP801–MCP806) are more precise.
+	if in.Server.ProjectDir == "" {
+		r.Findings = append(r.Findings, schemaHeuristicRules(in)...)
+	}
 	if !r.Connected {
 		r.Findings = append(r.Findings, connectionRules(in)...)
 	}

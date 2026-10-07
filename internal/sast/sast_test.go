@@ -40,13 +40,28 @@ func TestSafePython(t *testing.T) {
 	}
 }
 
+func TestVulnerableGo(t *testing.T) {
+	ids := ruleIDSet(AnalyzeFile("testdata/vuln.go"))
+	for _, want := range []string{"MCP801", "MCP802", "MCP803", "MCP806"} {
+		if !ids[want] {
+			t.Errorf("vuln.go: expected finding %s, got %v", want, ids)
+		}
+	}
+}
+
+func TestSafeGo(t *testing.T) {
+	if iss := AnalyzeFile("testdata/safe.go"); len(iss) != 0 {
+		t.Errorf("safe.go: expected no findings, got %d: %v", len(iss), iss)
+	}
+}
+
 func TestAnalyzeTree(t *testing.T) {
 	iss, err := Analyze("testdata")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(iss) != 13 {
-		t.Errorf("expected 13 findings across the tree, got %d", len(iss))
+	if len(iss) != 17 {
+		t.Errorf("expected 17 findings across the tree, got %d", len(iss))
 	}
 }
 

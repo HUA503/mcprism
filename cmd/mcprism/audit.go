@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/HUA503/mcprism/internal/baseline"
 	"github.com/HUA503/mcprism/internal/config"
 	"github.com/HUA503/mcprism/internal/policy"
 	"github.com/HUA503/mcprism/internal/report"
@@ -22,6 +23,7 @@ type auditOpts struct {
 	policyFile string
 	profile    string
 	suppFile   string
+	baseline   string
 	timeout    time.Duration
 	interact   bool
 }
@@ -36,6 +38,7 @@ func addAuditFlags(cmd *cobra.Command, o *auditOpts) {
 	cmd.Flags().StringVarP(&o.policyFile, "policy", "p", "", "path to a policy YAML file")
 	cmd.Flags().StringVar(&o.profile, "profile", "", "built-in profile: default|strict|ci")
 	cmd.Flags().StringVar(&o.suppFile, "suppressions", "", "path to a suppressions YAML file")
+	cmd.Flags().StringVar(&o.baseline, "baseline", "", "path to a previous -f json report; findings already in it are accepted and only new findings are reported")
 }
 
 // audit 对一组已解析的 server 执行策略加载、可选动态探测、规则分析、
@@ -80,6 +83,13 @@ func audit(servers []*config.Server, files []string, dynamic bool, o auditOpts) 
 		}
 	}
 	results = policy.ApplySuppressions(results, sups, time.Now())
+	if o.baseline != "" {
+		base, berr := baseline.Load(o.baseline)
+		if berr != nil {
+			return berr
+		}
+		baseline.Apply(results, base, o.baseline)
+	}
 	for _, r := range results {
 		rules.Rescore(r)
 	}

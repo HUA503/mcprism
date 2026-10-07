@@ -91,10 +91,11 @@ mcprism vet server.py            # 审查单个文件
 ## 功能
 
 - 单个二进制。不用装 Python 或 Node，不需要 LLM API key，也不用注册账号。
-- 静态、源码和动态检查。它读取配置，在有本地代码时审查 JS/TS/Python 源码，并完成 MCP 握手来列出 tools、resources、prompts，但不会调用任何工具。
-- 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套基线。
-- 风险接受清单。可以带理由和到期时间抑制发现；被抑制项仍显示在报告里，过期后自动重新出现。
-- 结果确定、可离线复现。30 条规则映射到 OWASP MCP01–MCP07，数据不离开你的机器。
+- 静态、源码和动态检查。它读取配置，在有本地代码时审查 JS/TS/Python/Go 源码，并完成 MCP 握手来列出 tools、resources、prompts，但不会调用任何工具。
+- 看 schema。对于没有源码的在线 server，如果名为 command、url、path 之类的字符串参数接受任意值，会按命令执行、SSRF、路径风险报出；用 enum、const、pattern 约束过的参数不报。
+- 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套配置。
+- 风险接受清单。可以带理由和到期时间抑制发现，也可以用 `--baseline` 接受整份旧报告，只让新问题卡住构建；被抑制项仍显示在报告里，过期后自动重新出现。
+- 结果确定、可离线复现。33 条规则映射到 OWASP MCP01–MCP07，数据不离开你的机器。
 - 面向人和机器的报告：table、JSON、Markdown、HTML、SARIF、JUnit XML、CycloneDX SBOM、CSV。
 - 一次扫描多个目标：文件、目录（递归）、URL。
 
@@ -151,9 +152,13 @@ mcprism scan a.json b.json ./configs
 # 完全离线 / 仅静态（不启动进程、不发起连接）
 mcprism scan mcp.json --no-dynamic
 
-# 套用基线或自定义策略
+# 套用配置或自定义策略
 mcprism scan --profile strict
 mcprism scan --policy policy.yml --suppressions suppressions.yml
+
+# 接受已有问题，只对新问题报错（渐进式接入）
+mcprism scan mcp.json --no-dynamic -f json -o baseline.json
+mcprism scan mcp.json --baseline baseline.json
 
 # 交互式终端界面
 mcprism scan -i
@@ -250,6 +255,7 @@ mcprism vet ./mcp-server/src/tool.ts
 
 - JavaScript/TypeScript：`@modelcontextprotocol/sdk` 的 `McpServer`、底层的 `Server.setRequestHandler`，以及各类 `.tool(...)` 注册。
 - Python：`FastMCP` 的 `@mcp.tool()` 装饰器和底层的 `call_tool` handler。
+- Go：mcp-go 的 `server.AddTool` / `mcp.AddTool` 回调。
 
 对每个工具，它把 handler 参数当作攻击者可控的数据，向 sink 追踪一层。发现会标明文件和行号、展示代码、给出修复方式：
 
@@ -267,6 +273,7 @@ mcprism vet ./mcp-server/src/tool.ts
 - 固定命令、参数以数组形式传入（`execFile(cmd, args)`、`subprocess.run([...])`），而不是 shell 字符串。
 - 路径限定：`path.resolve(base, name)` 后用 `startsWith(base)` 校验，Python 里用 `realpath` + `startswith`。
 - 固定的 URL 前缀而不是让 agent 选 host，以及 `yaml.safe_load` / `SafeLoader`。
+- Go 里用参数全为常量、不经过 shell 的 `exec.Command`，固定 URL，以及用 `strings.HasPrefix` 校验的 `filepath.Join`。
 
 下面这个 handler 会因为 agent 能控制命令而被标记 MCP801：
 
@@ -299,11 +306,12 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - 配置中的凭据。可识别的凭据格式（AWS、Google、GitHub、Slack、Stripe、GitLab、OpenAI、JWT 等）会按类型标出；看起来像生成密钥的高熵值会作为疑似密钥标出。占位符和 `${ENV_VAR}` 引用不会被标记。
 - 明文传输和关闭 TLS（`http://`、`NODE_TLS_REJECT_UNAUTHORIZED=0`）。
 - 权限过宽。文件系统 server 挂载到 `/` 或用户主目录；sandbox 或权限检查被关闭。
-- 工具投毒。工具名称、描述和 schema 中的注入指令、零宽/双向 Unicode、隐藏 HTML/Markdown、编码块。
+- 工具投毒。工具名称、描述和 schema 中的注入指令、零宽/双向 Unicode、隐藏 HTML/Markdown、编码块。resource 和 prompt 模板的元数据也会做同样检查。
+- 自由格式 schema 参数。对于没有源码的在线 server，会按参数名把接受任意字符串的命令、URL（SSRF）、路径参数标为风险。
 - 危险能力组合，比如 shell 加联网、读文件加联网、写文件加 shell。
 - 网络目标。云元数据端点（`169.254.169.254`）和私有/回环地址段。
 - 供应链风险：未固定版本的包、近似的仿冒包名、直接从远程 URL 运行代码。
-- JS/TS/Python handler 里的源码问题：工具参数流入命令、网络、文件 sink，eval/exec、不安全反序列化和硬编码密钥。见[源码分析（SAST）](#源码分析sast)。
+- JS/TS/Python/Go handler 里的源码问题：工具参数流入命令、网络、文件 sink，eval/exec、不安全反序列化和硬编码密钥。见[源码分析（SAST）](#源码分析sast)。
 - 策略违规：被拒绝的包·命令·域名，以及违反网络隔离。
 - 跨 server 工具名冲突，以及分类后的连接失败（DNS / TLS / 拒绝连接 / 超时 / 命令不存在）。
 

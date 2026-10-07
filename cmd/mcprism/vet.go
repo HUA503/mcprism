@@ -152,7 +152,7 @@ func fileServer(file string) *config.Server {
 
 func isSourceFileName(a string) bool {
 	switch strings.ToLower(filepath.Ext(a)) {
-	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py":
+	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".go":
 		return true
 	}
 	return false
@@ -177,6 +177,16 @@ func detectProjectName(dir string) string {
 					if v := strings.Trim(strings.TrimSpace(l[eq+1:]), `"'`); v != "" {
 						return v
 					}
+				}
+			}
+		}
+	}
+	if data, err := os.ReadFile(filepath.Join(dir, "go.mod")); err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			l := strings.TrimSpace(line)
+			if strings.HasPrefix(l, "module ") {
+				if v := strings.TrimSpace(strings.TrimPrefix(l, "module ")); v != "" {
+					return filepath.Base(v)
 				}
 			}
 		}

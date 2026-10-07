@@ -11,7 +11,7 @@
 mcprism es un escáner de seguridad para servidores del [Model Context Protocol](https://modelcontextprotocol.io/). Examina un servidor desde tres ángulos:
 
 1. **Configuración** — cómo un cliente lo inicia o conecta: paquetes fijados por versión, transporte en texto plano, credenciales dentro de la configuración y destinos a metadatos de la nube y redes privadas.
-2. **Código fuente** — si la implementación está en el disco, lee los manejadores de herramientas en JS/TS/Python y rastrea los argumentos que un agente puede controlar hasta sumideros peligrosos: ejecución de procesos, solicitudes salientes (SSRF) y rutas de archivos, además de eval, deserialización insegura y secretos codificados.
+2. **Código fuente** — si la implementación está en el disco, lee los manejadores de herramientas en JS/TS/Python/Go y rastrea los argumentos que un agente puede controlar hasta sumideros peligrosos: ejecución de procesos, solicitudes salientes (SSRF) y rutas de archivos, además de eval, deserialización insegura y secretos codificados.
 3. **Ejecución** — realiza el saludo MCP para listar herramientas, recursos e indicaciones, y comprueba el envenenamiento de los metadatos de las herramientas. Nunca llama a una herramienta.
 
 Cada servidor recibe una lista de hallazgos, una puntuación de 0 a 100 y una calificación de A a F. mcprism se entrega como un único binario Go sin dependencias de ejecución, funciona completamente sin conexión y no tiene efectos secundarios.
@@ -91,10 +91,10 @@ mcprism vet server.py            # revisar un archivo
 ## Funciones
 
 - Un único binario. Sin instalación de Python o Node, sin clave de API de LLM y sin cuenta.
-- Comprobaciones estática, de código y en vivo. Lee la configuración, revisa el código JS/TS/Python cuando hay un árbol de código y hace el saludo MCP para listar herramientas, recursos e indicaciones. Nunca llama a una herramienta.
+- Comprobaciones estática, de código y en vivo. Lee la configuración, revisa el código JS/TS/Python/Go cuando hay un árbol de código y hace el saludo MCP para listar herramientas, recursos e indicaciones. Nunca llama a una herramienta.
 - Política como código. Activa o desactiva reglas, cambia severidades, permite o bloquea paquetes/comandos/dominios y exige aislamiento de red. Los perfiles integrados ofrecen las líneas base `default`, `strict` y `ci`.
 - Registro de riesgos aceptados. Suprime hallazgos con un motivo y una fecha de caducidad. Los elementos suprimidos siguen visibles en el informe y vuelven al caducar.
-- Determinista y sin conexión. 30 reglas mapeadas a OWASP MCP01–MCP07; nada sale de tu máquina.
+- Determinista y sin conexión. 33 reglas mapeadas a OWASP MCP01–MCP07; nada sale de tu máquina.
 - Informes para personas y máquinas: table, JSON, Markdown, HTML, SARIF, JUnit XML, SBOM CycloneDX y CSV.
 - Escanea varios destinos a la vez: archivos, directorios (de forma recursiva) y URL.
 
@@ -304,7 +304,7 @@ El motor se basa en patrones con un nivel de rastreo de contaminación y sin ana
 - Destinos de red. Puntos de metadatos de la nube (`169.254.169.254`) y rangos privados/de bucle local.
 - Riesgo de cadena de suministro: paquetes no fijados, nombres parecidos por typosquat y código ejecutado directo desde una URL remota.
 - Infracciones de política: paquetes/comandos/dominios bloqueados y aislamiento de red roto.
-- Fallos de código en manejadores JS/TS/Python: argumentos de herramientas que llegan a sumideros de comando, red y archivos, eval/exec, deserialización insegura y secretos codificados. Ver [Revisión de código fuente](#revisión-de-código-fuente-sast).
+- Fallos de código en manejadores JS/TS/Python/Go: argumentos de herramientas que llegan a sumideros de comando, red y archivos, eval/exec, deserialización insegura y secretos codificados. Ver [Revisión de código fuente](#revisión-de-código-fuente-sast).
 - Colisiones de nombres de herramientas entre servidores y fallos de conexión clasificados (DNS / TLS / rechazada / tiempo límite / sin comando).
 
 La lista completa con la correspondencia OWASP está en [docs/RULES.md](docs/RULES.md).

@@ -28,10 +28,16 @@ mcprism vet ./path/to/server.py   # one file
 |---|---|
 | JavaScript / TypeScript | `McpServer.tool(...)`, `Server.setRequestHandler(CallToolRequestSchema, ...)`, generic `.tool(...)` registrations |
 | Python | `FastMCP` `@mcp.tool()`, low-level `call_tool` handler |
+| Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` callbacks |
 
-Files with the extensions `.js .jsx .ts .tsx .mjs .cjs` and `.py` are reviewed.
-Dependency and build directories (`node_modules`, `dist`, `venv`, `__pycache__`,
-and similar) are skipped.
+Files with the extensions `.js .jsx .ts .tsx .mjs .cjs`, `.py` and `.go` are
+reviewed. Dependency and build directories (`node_modules`, `dist`, `venv`,
+`__pycache__`, and similar) are skipped.
+
+For Go, tool arguments are read through `req.RequireString`, `req.GetString` or
+`req.Params.Arguments[...]`. Go has no `eval` and no standard-library
+deserialization that runs code, so MCP804 and MCP805 are not emitted for Go;
+the command, SSRF, path and secret rules (MCP801/802/803/806) are.
 
 ## How taint is tracked
 
@@ -72,6 +78,19 @@ def run(command: str):
 @mcp.tool()
 def shell(cmd: str):
     subprocess.run(cmd, shell=True)
+```
+
+Vulnerable (Go), a tool argument handed to a shell:
+
+```go
+s.AddTool(mcp.NewTool("run_command",
+	mcp.String("command", mcp.Required())),
+	func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		command := req.RequireString("command")
+		c := exec.Command("sh", "-c", command)
+		out, _ := c.Output()
+		return mcp.NewToolResultText(string(out)), nil
+	})
 ```
 
 Fixed: keep a fixed set of commands and pass arguments without a shell.
@@ -123,6 +142,19 @@ def fetch_page(url: str):
     return requests.get(url).text
 ```
 
+```go
+s.AddTool(mcp.NewTool("fetch_page",
+	mcp.String("url", mcp.Required())),
+	func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		target := req.RequireString("url")
+		r, err := http.Get(target)
+		if err != nil {
+			return nil, err
+		}
+		return mcp.NewToolResultText(r.Status)
+	})
+```
+
 Fixed: pin a constant base URL or allow-list hosts, and block metadata and
 private address ranges.
 
@@ -155,6 +187,19 @@ server.tool("read_file", { path: z.string() }, async ({ path }) => {
 def read_file(path: str):
     with open(path) as fh:
         return fh.read()
+```
+
+```go
+s.AddTool(mcp.NewTool("read_file",
+	mcp.String("file", mcp.Required())),
+	func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		p := req.RequireString("file")
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return nil, err
+		}
+		return mcp.NewToolResultText(string(data)), nil
+	})
 ```
 
 Fixed: resolve the path and confirm it stays inside one base directory.
