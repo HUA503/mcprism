@@ -1,6 +1,6 @@
 <div align="center">
 
-<p><a href="README.md">English</a> · 简体中文 · <a href="README.ja-JP.md">日本語</a> · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · <a href="README.ar-SA.md">العربية</a></p>
+<p><a href="README.md">English</a> · 简体中文 · <a href="docs/i18n/README.ja-JP.md">日本語</a> · <a href="docs/i18n/README.ko-KR.md">한국어</a> · <a href="docs/i18n/README.fr-FR.md">Français</a> · <a href="docs/i18n/README.de-DE.md">Deutsch</a> · <a href="docs/i18n/README.es-ES.md">Español</a> · <a href="docs/i18n/README.ru-RU.md">Русский</a> · <a href="docs/i18n/README.ar-SA.md">العربية</a></p>
 
 <img src="assets/logo.svg" width="128" height="128" alt="mcprism logo">
 
@@ -338,6 +338,17 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Continue 等工具使用的 JSON/JSONC MCP 配置，支持 `mcpServers` 对象和数组两种形式。它支持全部三种 MCP 传输：stdio、Streamable HTTP，以及旧版 HTTP+SSE。
 
 ## CI/CD
+
+把 mcprism 配成 [pre-commit](https://pre-commit.com) 钩子，提交前自动检查改动的 MCP 配置：
+
+```yaml
+- repo: https://github.com/HUA503/mcprism
+  rev: v0.6.1
+  hooks:
+    - id: mcprism
+```
+
+钩子默认匹配文件名像 MCP 配置的 JSON（mcp.json、.mcp.json、claude_desktop_config.json、claude.json）；其他命名可在配置里覆盖 `files`。
 
 用 `ci` 基线在流水线里拦截有风险的 server：
 

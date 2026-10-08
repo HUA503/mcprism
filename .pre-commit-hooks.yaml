@@ -1,0 +1,18 @@
+# Pre-commit hooks for mcprism.
+# Usage: https://pre-commit.com
+#
+#   - repo: https://github.com/HUA503/mcprism
+#     rev: v0.6.1
+#     hooks:
+#       - id: mcprism
+#
+# pre-commit installs mcprism with Go and passes the changed MCP config files
+# to `mcprism scan`. Override `files` in your config if your MCP configs use a
+# different name.
+- id: mcprism
+  name: mcprism (audit MCP server configs)
+  description: Vet changed MCP server configs for prompt injection, overbroad permissions and supply-chain risk
+  entry: mcprism scan
+  language: golang
+  types: [json]
+  files: '(?i)(^|/)(.*mcp.*|claude_desktop_config|claude)\.json$'

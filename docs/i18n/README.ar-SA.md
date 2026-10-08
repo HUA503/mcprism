@@ -1,8 +1,8 @@
 <div align="center">
 
-<p><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja-JP.md">日本語</a> · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · العربية</p>
+<p><a href="../../README.md">English</a> · <a href="../../README.zh-CN.md">简体中文</a> · <a href="README.ja-JP.md">日本語</a> · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · العربية</p>
 
-<img src="assets/logo.svg" width="128" height="128" alt="mcprism logo">
+<img src="../../assets/logo.svg" width="128" height="128" alt="mcprism logo">
 
 # mcprism
 
@@ -28,18 +28,18 @@ mcprism هو ماسح أمني لخوادم <a href="https://modelcontextprotoco
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/HUA503/mcprism)](https://goreportcard.com/report/github.com/HUA503/mcprism)
 [![Go version](https://img.shields.io/badge/go-1.24-89b4fa?logo=go&logoColor=white)](https://go.dev)
-[![License](https://img.shields.io/github/license/HUA503/mcprism?color=cba6f7)](LICENSE)
+[![License](https://img.shields.io/github/license/HUA503/mcprism?color=cba6f7)](../../LICENSE)
 
 </div>
 
 ---
 
 <p align="center">
-  <img src="assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
+  <img src="../../assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
 </p>
 
 <p align="center">
-  <img src="assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
+  <img src="../../assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
 </p>
 
 <div dir="rtl">
@@ -49,7 +49,7 @@ mcprism هو ماسح أمني لخوادم <a href="https://modelcontextprotoco
 </div>
 
 <p align="center">
-  <img src="assets/comparison.png" alt="Before and after using mcprism" width="100%">
+  <img src="../../assets/comparison.png" alt="Before and after using mcprism" width="100%">
 </p>
 
 <div dir="rtl">
@@ -86,16 +86,16 @@ mcprism vet server.py            # فحص ملف واحد
 </div>
 
 <p align="center">
-  <img src="assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
+  <img src="../../assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
 </p>
 
 <div dir="rtl">
 
 ## المحتويات
 
-- [سجل التغييرات](CHANGELOG.md)
-- [شرح سطح الهجوم](docs/MCP-ATTACK-SURFACE.md)
-- [عدة الإطلاق](docs/LAUNCH-KIT.md)
+- [سجل التغييرات](../../CHANGELOG.md)
+- [شرح سطح الهجوم](../MCP-ATTACK-SURFACE.md)
+- [عدة الإطلاق](../LAUNCH-KIT.md)
 - [الميزات](#الميزات)
 - [متى يُستخدم](#متى-يُستخدم)
 - [التقرير](#التقرير)
@@ -135,7 +135,7 @@ mcprism vet server.py            # فحص ملف واحد
 </div>
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png" alt="mcprism HTML report for a live server" width="86%">
+  <img src="../../assets/screenshot-dynamic.png" alt="mcprism HTML report for a live server" width="86%">
 </p>
 
 <div dir="rtl">
@@ -145,7 +145,7 @@ mcprism vet server.py            # فحص ملف واحد
 </div>
 
 <p align="center">
-  <img src="assets/screenshot-static.png" alt="mcprism HTML report across many servers" width="70%">
+  <img src="../../assets/screenshot-static.png" alt="mcprism HTML report across many servers" width="70%">
 </p>
 
 <div dir="rtl">
@@ -291,7 +291,7 @@ capabilities:
 
 <div dir="rtl">
 
-أي تطابق مع قاعدة رفض يُبلَّغ عنه بوصفه `MCP700`؛ أما الخادم الذي يصل إلى الملفات/الطرفية ويملك وصولاً شبكيًا مع تفعيل شرط العزل فيُبلَّغ عنه بوصفه `MCP701`. راجع <a href="examples/policy.yml">examples/policy.yml</a> و<a href="examples/suppressions.yml">examples/suppressions.yml</a> و<a href="docs/POLICIES.md">دليل السياسات</a>. للاطلاع على بوابات الامتثال والمخرجات المقروءة آليًا، راجع docs/COMPLIANCE.md.
+أي تطابق مع قاعدة رفض يُبلَّغ عنه بوصفه `MCP700`؛ أما الخادم الذي يصل إلى الملفات/الطرفية ويملك وصولاً شبكيًا مع تفعيل شرط العزل فيُبلَّغ عنه بوصفه `MCP701`. راجع <a href="../../examples/policy.yml">examples/policy.yml</a> و<a href="../../examples/suppressions.yml">examples/suppressions.yml</a> و<a href="../POLICIES.md">دليل السياسات</a>. للاطلاع على بوابات الامتثال والمخرجات المقروءة آليًا، راجع docs/COMPLIANCE.md.
 
 ## مراجعة الكود المصدري (SAST)
 
@@ -367,7 +367,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 </div>
 
 <p align="center">
-  <img src="assets/sast.png" alt="mcprism source-code review findings" width="94%">
+  <img src="../../assets/sast.png" alt="mcprism source-code review findings" width="94%">
 </p>
 
 <div dir="rtl">
@@ -512,7 +512,7 @@ flowchart TD
 
 ## الترخيص
 
-<a href="LICENSE">MIT</a> © mcprism contributors.
+<a href="../../LICENSE">MIT</a> © mcprism contributors.
 
 mcprism أداة دفاعية. يبلغ عن المخاطر؛ ولا يثبت أن خادمًا آمن، والتقرير النظيف ليس سببًا للثقة بخادم لا تفهمه.
 

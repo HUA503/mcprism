@@ -1,8 +1,8 @@
 <div align="center">
 
-<p><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja-JP.md">日本語</a> · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · Deutsch · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · <a href="README.ar-SA.md">العربية</a></p>
+<p><a href="../../README.md">English</a> · <a href="../../README.zh-CN.md">简体中文</a> · <a href="README.ja-JP.md">日本語</a> · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · Deutsch · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · <a href="README.ar-SA.md">العربية</a></p>
 
-<img src="assets/logo.svg" width="128" height="128" alt="mcprism logo">
+<img src="../../assets/logo.svg" width="128" height="128" alt="mcprism logo">
 
 # mcprism
 
@@ -20,24 +20,24 @@ Jeder Server erhält eine Liste an Befunden, eine Punktzahl von 0 bis 100 und ei
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/HUA503/mcprism)](https://goreportcard.com/report/github.com/HUA503/mcprism)
 [![Go version](https://img.shields.io/badge/go-1.24-89b4fa?logo=go&logoColor=white)](https://go.dev)
-[![License](https://img.shields.io/github/license/HUA503/mcprism?color=cba6f7)](LICENSE)
+[![License](https://img.shields.io/github/license/HUA503/mcprism?color=cba6f7)](../../LICENSE)
 
 </div>
 
 ---
 
 <p align="center">
-  <img src="assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
+  <img src="../../assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
 </p>
 
 <p align="center">
-  <img src="assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
+  <img src="../../assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
 </p>
 
 MCP verbindet Ihren KI-Agenten mit externen Servern für Tools, Dateien und Daten. Das Protokoll ist in Claude Desktop und Claude Code, Cursor, VS Code, Windsurf und weiteren integriert, sodass eine typische Einrichtung schnell mehrere Server anspricht. Diese Server führen Befehle aus, lesen das Dateisystem und sehen Ihre Prompts. Ein bösartiger oder überprivilegierter Server kann Anmeldedaten stehlen, Befehle ausführen oder den Agenten über zurückgegebenen Text lenken. mcprism liefert Ihnen pro Server einen Bericht und eine Punktzahl, bevor ein Agent ihn nutzt — ähnlich wie `trivy` für ein Image.
 
 <p align="center">
-  <img src="assets/comparison.png" alt="Before and after using mcprism" width="100%">
+  <img src="../../assets/comparison.png" alt="Before and after using mcprism" width="100%">
 </p>
 
 ## Schnellstart in zwei Zeilen
@@ -62,14 +62,14 @@ mcprism vet server.py            # eine Datei prüfen
 `vet` ist standardmäßig statisch und führt das Ziel nicht aus. Mit `--probe` wird es gestartet und es werden Tools, Ressourcen und Prompts aufgelistet. Ein Quellbaum oder eine Datei läuft durch die unten beschriebene SAST-Engine, ganz ohne Netzwerk.
 
 <p align="center">
-  <img src="assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
+  <img src="../../assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
 </p>
 
 ## Inhaltsverzeichnis
 
-- [Änderungsprotokoll](CHANGELOG.md)
-- [Angriffsfläche](docs/MCP-ATTACK-SURFACE.md)
-- [Launch-Kit](docs/LAUNCH-KIT.md)
+- [Änderungsprotokoll](../../CHANGELOG.md)
+- [Angriffsfläche](../MCP-ATTACK-SURFACE.md)
+- [Launch-Kit](../LAUNCH-KIT.md)
 - [Funktionen](#funktionen)
 - [Wann einsetzen](#wann-einsetzen)
 - [Bericht](#bericht)
@@ -107,13 +107,13 @@ mcprism vet server.py            # eine Datei prüfen
 ## Bericht
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png" alt="mcprism HTML report for a live server" width="86%">
+  <img src="../../assets/screenshot-dynamic.png" alt="mcprism HTML report for a live server" width="86%">
 </p>
 
 Stapelprüfung vieler Server (statischer Modus):
 
 <p align="center">
-  <img src="assets/screenshot-static.png" alt="mcprism HTML report across many servers" width="70%">
+  <img src="../../assets/screenshot-static.png" alt="mcprism HTML report across many servers" width="70%">
 </p>
 
 ## Installation
@@ -233,7 +233,7 @@ capabilities:
   requireNetworkIsolation: true
 ```
 
-Ein Treffer auf eine Ableitung wird als `MCP700` gemeldet; ein Datei/Shell-Server mit Netzwerkzugriff unter Isolationspflicht wird als `MCP701` gemeldet. Siehe [`examples/policy.yml`](examples/policy.yml), [`examples/suppressions.yml`](examples/suppressions.yml) und den [Policy-Leitfaden](docs/POLICIES.md). Zu Compliance-Gates und maschinenlesbaren Ausgaben siehe [docs/COMPLIANCE.md](docs/COMPLIANCE.md).
+Ein Treffer auf eine Ableitung wird als `MCP700` gemeldet; ein Datei/Shell-Server mit Netzwerkzugriff unter Isolationspflicht wird als `MCP701` gemeldet. Siehe [`examples/policy.yml`](../../examples/policy.yml), [`examples/suppressions.yml`](../../examples/suppressions.yml) und den [Policy-Leitfaden](../POLICIES.md). Zu Compliance-Gates und maschinenlesbaren Ausgaben siehe [docs/COMPLIANCE.md](../COMPLIANCE.md).
 
 ## Quellcode-Prüfung (SAST)
 
@@ -288,10 +288,10 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-Die Engine arbeitet musterbasiert mit einer Ebene Taint-Verfolgung und ohne Drittparser, damit die Binärdatei klein und in sich geschlossen bleibt. Sie erkennt nicht alles, was ein vollwertiger Datenfluss-Analysator sieht; sie zielt auf die kurzen, direkten Handler-bis-Senke-Wege, in denen die meisten MCP-Server-Fehler liegen. Regel-Details und weitere Beispiele finden sich in [docs/SAST.md](docs/SAST.md).
+Die Engine arbeitet musterbasiert mit einer Ebene Taint-Verfolgung und ohne Drittparser, damit die Binärdatei klein und in sich geschlossen bleibt. Sie erkennt nicht alles, was ein vollwertiger Datenfluss-Analysator sieht; sie zielt auf die kurzen, direkten Handler-bis-Senke-Wege, in denen die meisten MCP-Server-Fehler liegen. Regel-Details und weitere Beispiele finden sich in [docs/SAST.md](../SAST.md).
 
 <p align="center">
-  <img src="assets/sast.png" alt="mcprism source-code review findings" width="94%">
+  <img src="../../assets/sast.png" alt="mcprism source-code review findings" width="94%">
 </p>
 
 ## Was erkannt wird
@@ -307,7 +307,7 @@ Die Engine arbeitet musterbasiert mit einer Ebene Taint-Verfolgung und ohne Drit
 - Quellcode-Fehler in JS/TS/Python/Go-Handlern: Tool-Argumente, die Befehls-, Netzwerk- und Dateisenken erreichen, eval/exec, unsichere Deserialisierung und fest codierte Geheimnisse. Siehe [Quellcode-Prüfung](#quellcode-prüfung-sast).
 - Tool-Namenskollisionen zwischen Servern und klassifizierte Verbindungsfehler (DNS / TLS / abgelehnt / Timeout / kein Befehl).
 
-Die vollständige Liste mit OWASP-Abgleich steht in [docs/RULES.md](docs/RULES.md).
+Die vollständige Liste mit OWASP-Abgleich steht in [docs/RULES.md](../RULES.md).
 
 ## Ausgabeformate
 
@@ -365,7 +365,7 @@ flowchart TD
   F --> G[Report<br/>table · json · sarif · md · html · junit · cyclonedx · csv]
 ```
 
-mcprism listet Fähigkeiten nur auf, die Prüfung hat also keine Nebenwirkungen. Der mitgelieferte Demo-Server (`examples/testserver`) simuliert riskantes Verhalten, ohne es auszuführen. Die Paketstruktur und Datenflüsse sind in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) beschrieben.
+mcprism listet Fähigkeiten nur auf, die Prüfung hat also keine Nebenwirkungen. Der mitgelieferte Demo-Server (`examples/testserver`) simuliert riskantes Verhalten, ohne es auszuführen. Die Paketstruktur und Datenflüsse sind in [docs/ARCHITECTURE.md](../ARCHITECTURE.md) beschrieben.
 
 ## Vergleich
 
@@ -399,7 +399,7 @@ Nein. Die Regeln laufen lokal, es gibt keine Telemetrie. Ein Live-Scan spricht n
 Jene laufen auf Python oder Node und konzentrieren sich auf Konfiguration oder Poisoning. mcprism ist eine einzelne Go-Binärdatei, modelliert Fähigkeitskombinationen, erzwingt eine Policy als Code und gibt neben SARIF auch JUnit, CycloneDX und CSV aus. Siehe die [Vergleichstabelle](#vergleich).
 
 **Bei mir ist ein Befund ein Fehlalarm. Was tun?**
-Beheben Sie nach Möglichkeit das zugrunde liegende Problem, sonst unterdrücken Sie ihn mit Grund und Ablaufdatum. Unterdrückte Einträge bleiben sichtbar und laufen von allein ab. Siehe [docs/POLICIES.md](docs/POLICIES.md).
+Beheben Sie nach Möglichkeit das zugrunde liegende Problem, sonst unterdrücken Sie ihn mit Grund und Ablaufdatum. Unterdrückte Einträge bleiben sichtbar und laufen von allein ab. Siehe [docs/POLICIES.md](../POLICIES.md).
 
 **Heißt ein sauberer Bericht, der Server ist sicher?**
 Nein. mcprism meldet bekannte, beobachtbare Risiken. Es kann nicht beweisen, dass ein Server sicher ist; führen Sie nur Server aus, denen Sie vertrauen.
@@ -414,10 +414,10 @@ Nein. mcprism meldet bekannte, beobachtbare Risiken. Es kann nicht beweisen, das
 
 ## Mitwirken
 
-Issues und PRs sind willkommen. Ein guter Regelbeitrag ist eine Prüfung mit klarer Signatur, deterministisch und mit niedriger Fehlalarmrate: unter `internal/rules` ergänzen, auf ein OWASP-MCP-Risiko abbilden und einen Test beifügen. Die Codestruktur steht in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Führen Sie vor dem Öffnen einer PR `go vet ./... && go test ./...` aus.
+Issues und PRs sind willkommen. Ein guter Regelbeitrag ist eine Prüfung mit klarer Signatur, deterministisch und mit niedriger Fehlalarmrate: unter `internal/rules` ergänzen, auf ein OWASP-MCP-Risiko abbilden und einen Test beifügen. Die Codestruktur steht in [docs/ARCHITECTURE.md](../ARCHITECTURE.md). Führen Sie vor dem Öffnen einer PR `go vet ./... && go test ./...` aus.
 
 ## Lizenz
 
-[MIT](LICENSE) © mcprism contributors.
+[MIT](../../LICENSE) © mcprism contributors.
 
 mcprism ist ein Abwehrwerkzeug. Es meldet Risiken; es beweist nicht, dass ein Server sicher ist, und ein sauberer Bericht ist kein Grund, einem Server zu vertrauen, den Sie nicht verstehen.

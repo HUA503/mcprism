@@ -1,8 +1,8 @@
 <div align="center">
 
-<p><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja-JP.md">日本語</a> · 한국어 · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · <a href="README.ar-SA.md">العربية</a></p>
+<p><a href="../../README.md">English</a> · <a href="../../README.zh-CN.md">简体中文</a> · <a href="README.ja-JP.md">日本語</a> · 한국어 · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · <a href="README.ar-SA.md">العربية</a></p>
 
-<img src="assets/logo.svg" width="128" height="128" alt="mcprism logo">
+<img src="../../assets/logo.svg" width="128" height="128" alt="mcprism logo">
 
 # mcprism
 
@@ -20,24 +20,24 @@ mcprism은 [Model Context Protocol](https://modelcontextprotocol.io/) 서버를 
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/HUA503/mcprism)](https://goreportcard.com/report/github.com/HUA503/mcprism)
 [![Go version](https://img.shields.io/badge/go-1.24-89b4fa?logo=go&logoColor=white)](https://go.dev)
-[![License](https://img.shields.io/github/license/HUA503/mcprism?color=cba6f7)](LICENSE)
+[![License](https://img.shields.io/github/license/HUA503/mcprism?color=cba6f7)](../../LICENSE)
 
 </div>
 
 ---
 
 <p align="center">
-  <img src="assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
+  <img src="../../assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
 </p>
 
 <p align="center">
-  <img src="assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
+  <img src="../../assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
 </p>
 
 MCP는 AI 에이전트를 외부 서버에 연결해 도구, 파일, 데이터를 사용하게 합니다. 이 프로토콜은 Claude Desktop과 Claude Code, Cursor, VS Code, Windsurf 등에 내장되어 있어 일반적인 환경은 얼마 지나지 않아 여러 서버에 연결됩니다. 이 서버들은 명령을 실행하고 파일 시스템을 읽으며 여러분의 프롬프트를 볼 수 있습니다. 악의적이거나 과도한 권한을 가진 서버는 자격 증명을 훔치고 명령을 실행하며 반환하는 텍스트로 에이전트를 조종할 수 있습니다. mcprism은 에이전트가 서버를 사용하기 전에 서버별 보고서와 점수를 제공합니다. 이미지에 `trivy`를 돌리는 것과 같은 방식입니다.
 
 <p align="center">
-  <img src="assets/comparison.png" alt="Before and after using mcprism" width="100%">
+  <img src="../../assets/comparison.png" alt="Before and after using mcprism" width="100%">
 </p>
 
 ## 두 줄로 빠르게 시작
@@ -62,14 +62,14 @@ mcprism vet server.py            # 파일 하나 검사
 `vet`은 기본적으로 정적 분석만 수행하고 대상을 실행하지 않습니다. `--probe`를 추가하면 시작해서 도구, 리소스, 프롬프트를 나열합니다. 소스 트리나 파일은 아래 SAST 엔진을 거치며 네트워크가 필요 없습니다.
 
 <p align="center">
-  <img src="assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
+  <img src="../../assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
 </p>
 
 ## 목차
 
-- [변경 기록](CHANGELOG.md)
-- [공격 표면 설명](docs/MCP-ATTACK-SURFACE.md)
-- [론치 키트](docs/LAUNCH-KIT.md)
+- [변경 기록](../../CHANGELOG.md)
+- [공격 표면 설명](../MCP-ATTACK-SURFACE.md)
+- [론치 키트](../LAUNCH-KIT.md)
 - [기능](#기능)
 - [사용 시점](#사용-시점)
 - [보고서](#보고서)
@@ -107,13 +107,13 @@ mcprism vet server.py            # 파일 하나 검사
 ## 보고서
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png" alt="mcprism HTML report for a live server" width="86%">
+  <img src="../../assets/screenshot-dynamic.png" alt="mcprism HTML report for a live server" width="86%">
 </p>
 
 여러 서버를 일괄 검토(정적 모드):
 
 <p align="center">
-  <img src="assets/screenshot-static.png" alt="mcprism HTML report across many servers" width="70%">
+  <img src="../../assets/screenshot-static.png" alt="mcprism HTML report across many servers" width="70%">
 </p>
 
 ## 설치
@@ -233,7 +233,7 @@ capabilities:
   requireNetworkIsolation: true
 ```
 
-deny에 일치하면 `MCP700`으로 보고되고, 격리 조건에서 네트워크 접근을 가진 파일/셸 서버는 `MCP701`로 보고됩니다. [`examples/policy.yml`](examples/policy.yml), [`examples/suppressions.yml`](examples/suppressions.yml), [정책 가이드](docs/POLICIES.md)를 참조하세요. 컴플라이언스 게이트와 기계 판독 출력은 [docs/COMPLIANCE.md](docs/COMPLIANCE.md)를 보세요.
+deny에 일치하면 `MCP700`으로 보고되고, 격리 조건에서 네트워크 접근을 가진 파일/셸 서버는 `MCP701`로 보고됩니다. [`examples/policy.yml`](../../examples/policy.yml), [`examples/suppressions.yml`](../../examples/suppressions.yml), [정책 가이드](../POLICIES.md)를 참조하세요. 컴플라이언스 게이트와 기계 판독 출력은 [docs/COMPLIANCE.md](../COMPLIANCE.md)를 보세요.
 
 ## 소스 코드 검사(SAST)
 
@@ -288,10 +288,10 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-엔진은 패턴 기반에 한 단계 테인트 추적을 쓰고 서드파티 파서를 쓰지 않아 바이너리가 작고 자기완결적입니다. 완전한 데이터 흐름 분석기가 잡을 모든 것을 잡지는 못하며, 대부분 MCP 서버 결함에 있는 짧고 직접적인 핸들러-싱크 경로를 겨냥합니다. 규칙 세부 사항과 더 많은 예시는 [docs/SAST.md](docs/SAST.md)에 있습니다.
+엔진은 패턴 기반에 한 단계 테인트 추적을 쓰고 서드파티 파서를 쓰지 않아 바이너리가 작고 자기완결적입니다. 완전한 데이터 흐름 분석기가 잡을 모든 것을 잡지는 못하며, 대부분 MCP 서버 결함에 있는 짧고 직접적인 핸들러-싱크 경로를 겨냥합니다. 규칙 세부 사항과 더 많은 예시는 [docs/SAST.md](../SAST.md)에 있습니다.
 
 <p align="center">
-  <img src="assets/sast.png" alt="mcprism source-code review findings" width="94%">
+  <img src="../../assets/sast.png" alt="mcprism source-code review findings" width="94%">
 </p>
 
 ## 탐지 내용
@@ -307,7 +307,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - JS/TS/Python/Go 핸들러의 소스 코드 결함: 명령, 네트워크, 파일 싱크에 닿는 도구 인수, eval/exec, 안전하지 않은 역직렬화, 하드코딩된 비밀. [소스 코드 검사](#소스-코드-검사sast) 참조.
 - 서버 간 도구 이름 충돌, 분류된 연결 실패(DNS / TLS / 거부됨 / 시간 초과 / 명령 없음).
 
-전체 목록과 OWASP 대조는 [docs/RULES.md](docs/RULES.md)에 있습니다.
+전체 목록과 OWASP 대조는 [docs/RULES.md](../RULES.md)에 있습니다.
 
 ## 출력 형식
 
@@ -365,7 +365,7 @@ flowchart TD
   F --> G[Report<br/>table · json · sarif · md · html · junit · cyclonedx · csv]
 ```
 
-mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. 포함된 데모 서버(`examples/testserver`)는 위험한 동작을 시뮬레이션만 하고 실제로 수행하지 않습니다. 패키지 구성과 데이터 흐름은 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)에 설명되어 있습니다.
+mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. 포함된 데모 서버(`examples/testserver`)는 위험한 동작을 시뮬레이션만 하고 실제로 수행하지 않습니다. 패키지 구성과 데이터 흐름은 [docs/ARCHITECTURE.md](../ARCHITECTURE.md)에 설명되어 있습니다.
 
 ## 비교
 
@@ -399,7 +399,7 @@ mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. �
 그것들은 Python이나 Node로 돌고 구성이나 포이즈닝에 집중합니다. mcprism은 Go 단일 바이너리이고 기능 조합을 모델링하며 정책 as 코드를 실행하고 SARIF 외에 JUnit, CycloneDX, CSV를 내보냅니다. [비교 표](#비교)를 보세요.
 
 **내 환경에서 거짓 양성입니다. 어떻게 하나요?**
-가능하면 근본 문제를 고치고, 아니면 이유와 만료일로 억제하세요. 억제된 항목은 계속 보이고 만료되면 저절로 돌아옵니다. [docs/POLICIES.md](docs/POLICIES.md) 참조.
+가능하면 근본 문제를 고치고, 아니면 이유와 만료일로 억제하세요. 억제된 항목은 계속 보이고 만료되면 저절로 돌아옵니다. [docs/POLICIES.md](../POLICIES.md) 참조.
 
 **보고서가 깨끗하면 서버가 안전한가요?**
 아니요. mcprism은 알려지고 관측 가능한 위험을 보고할 뿐 서버가 안전함을 증명할 수 없으므로 신뢰할 수 있는 서버만 실행하세요.
@@ -414,10 +414,10 @@ mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. �
 
 ## 기여하기
 
-이슈와 PR을 환영합니다. 좋은 규칙 기여는 신호가 분명하고 결정론적이며 거짓 양성률이 낮은 검사입니다. `internal/rules` 아래에 추가하고 OWASP MCP 위험에 매핑한 뒤 테스트를 포함하세요. 코드 구성은 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)에 있습니다. PR을 열기 전에 `go vet ./... && go test ./...`을 실행하세요.
+이슈와 PR을 환영합니다. 좋은 규칙 기여는 신호가 분명하고 결정론적이며 거짓 양성률이 낮은 검사입니다. `internal/rules` 아래에 추가하고 OWASP MCP 위험에 매핑한 뒤 테스트를 포함하세요. 코드 구성은 [docs/ARCHITECTURE.md](../ARCHITECTURE.md)에 있습니다. PR을 열기 전에 `go vet ./... && go test ./...`을 실행하세요.
 
 ## 라이선스
 
-[MIT](LICENSE) © mcprism contributors.
+[MIT](../../LICENSE) © mcprism contributors.
 
 mcprism은 방어 도구입니다. 위험을 보고할 뿐 서버가 안전함을 증명하지 못하며, 보고서가 깨끗하다고 해서 이해하지 못하는 서버를 신뢰할 이유는 되지 않습니다.

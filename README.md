@@ -1,6 +1,6 @@
 <div align="center">
 
-<p>English · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja-JP.md">日本語</a> · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · <a href="README.ar-SA.md">العربية</a></p>
+<p>English · <a href="README.zh-CN.md">简体中文</a> · <a href="docs/i18n/README.ja-JP.md">日本語</a> · <a href="docs/i18n/README.ko-KR.md">한국어</a> · <a href="docs/i18n/README.fr-FR.md">Français</a> · <a href="docs/i18n/README.de-DE.md">Deutsch</a> · <a href="docs/i18n/README.es-ES.md">Español</a> · <a href="docs/i18n/README.ru-RU.md">Русский</a> · <a href="docs/i18n/README.ar-SA.md">العربية</a></p>
 
 <img src="assets/logo.svg" width="128" height="128" alt="mcprism logo">
 
@@ -417,6 +417,20 @@ transports: stdio, Streamable HTTP, and the legacy HTTP+SSE.
 
 ## CI/CD
 
+Run mcprism as a [pre-commit](https://pre-commit.com) hook so changed MCP
+configs are checked before they are committed:
+
+```yaml
+- repo: https://github.com/HUA503/mcprism
+  rev: v0.6.1
+  hooks:
+    - id: mcprism
+```
+
+The hook matches JSON files named like an MCP config (mcp.json, .mcp.json,
+claude_desktop_config.json, claude.json). Override `files` in your config for
+other names.
+
 Block risky servers in a pipeline with the `ci` profile:
 
 ```yaml
@@ -512,8 +526,12 @@ so only run servers you trust.
 - [ ] More rules and fewer false positives as the MCP spec evolves
 - [ ] MCP registry / marketplace scanning
 - [ ] User-defined rules beyond policy overrides
-- [ ] Pre-commit hook and editor integrations
+- [x] Pre-commit hook
+- [ ] Editor integrations (VS Code, JetBrains)
 - [ ] Homebrew, Scoop and Nix packages
+- [ ] More SAST languages (Rust, Java, C#)
+- [ ] Opt-in multi-hop / inter-procedural taint tracking
+- [ ] Built-in sandbox wrapper for live probes
 
 ## Contributing
 

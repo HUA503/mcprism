@@ -1,8 +1,8 @@
 <div align="center">
 
-<p><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · 日本語 · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · <a href="README.ar-SA.md">العربية</a></p>
+<p><a href="../../README.md">English</a> · <a href="../../README.zh-CN.md">简体中文</a> · 日本語 · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · <a href="README.ru-RU.md">Русский</a> · <a href="README.ar-SA.md">العربية</a></p>
 
-<img src="assets/logo.svg" width="128" height="128" alt="mcprism logo">
+<img src="../../assets/logo.svg" width="128" height="128" alt="mcprism logo">
 
 # mcprism
 
@@ -20,24 +20,24 @@ mcprism は [Model Context Protocol](https://modelcontextprotocol.io/) サーバ
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/HUA503/mcprism)](https://goreportcard.com/report/github.com/HUA503/mcprism)
 [![Go version](https://img.shields.io/badge/go-1.24-89b4fa?logo=go&logoColor=white)](https://go.dev)
-[![License](https://img.shields.io/github/license/HUA503/mcprism?color=cba6f7)](LICENSE)
+[![License](https://img.shields.io/github/license/HUA503/mcprism?color=cba6f7)](../../LICENSE)
 
 </div>
 
 ---
 
 <p align="center">
-  <img src="assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
+  <img src="../../assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
 </p>
 
 <p align="center">
-  <img src="assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
+  <img src="../../assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
 </p>
 
 MCP は AI エージェントを外部サーバーに接続し、ツール、ファイル、データを利用できるようにします。このプロトコルは Claude Desktop と Claude Code、Cursor、VS Code、Windsurf などに組み込まれているため、通常の環境ではすぐに複数のサーバーに接続します。これらのサーバーはコマンドを実行し、ファイルシステムを読み、あなたのプロンプトを見ることができます。悪意のある、または過剰な権限を持つサーバーは、認証情報を盗み、コマンドを実行し、返すテキストを通じてエージェントを誘導する可能性があります。mcprism は、エージェントに使わせる前にサーバーごとのレポートとスコアを提供します。イメージに対して `trivy` を実行するようなものです。
 
 <p align="center">
-  <img src="assets/comparison.png" alt="Before and after using mcprism" width="100%">
+  <img src="../../assets/comparison.png" alt="Before and after using mcprism" width="100%">
 </p>
 
 ## 2 行でクイックスタート
@@ -62,14 +62,14 @@ mcprism vet server.py            # 1 ファイルを審査
 `vet` はデフォルトで静的解析のみを行い、対象を実行しません。`--probe` を付けると起動してツール、リソース、プロンプトを列挙します。ソースツリーやファイルは以下の SAST エンジンで処理され、ネットワークは不要です。
 
 <p align="center">
-  <img src="assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
+  <img src="../../assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
 </p>
 
 ## 目次
 
-- [変更履歴](CHANGELOG.md)
-- [攻撃面の解説](docs/MCP-ATTACK-SURFACE.md)
-- [ローンチキット](docs/LAUNCH-KIT.md)
+- [変更履歴](../../CHANGELOG.md)
+- [攻撃面の解説](../MCP-ATTACK-SURFACE.md)
+- [ローンチキット](../LAUNCH-KIT.md)
 - [できること](#できること)
 - [利用シーン](#利用シーン)
 - [レポート](#レポート)
@@ -107,13 +107,13 @@ mcprism vet server.py            # 1 ファイルを審査
 ## レポート
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png" alt="mcprism HTML report for a live server" width="86%">
+  <img src="../../assets/screenshot-dynamic.png" alt="mcprism HTML report for a live server" width="86%">
 </p>
 
 多数のサーバーを一括レビュー（静的モード）：
 
 <p align="center">
-  <img src="assets/screenshot-static.png" alt="mcprism HTML report across many servers" width="70%">
+  <img src="../../assets/screenshot-static.png" alt="mcprism HTML report across many servers" width="70%">
 </p>
 
 ## インストール
@@ -233,7 +233,7 @@ capabilities:
   requireNetworkIsolation: true
 ```
 
-deny に一致すると `MCP700` として報告され、分離下でネットワークアクセスを持つファイル/シェルサーバーは `MCP701` として報告されます。[`examples/policy.yml`](examples/policy.yml)、[`examples/suppressions.yml`](examples/suppressions.yml)、[ポリシーガイド](docs/POLICIES.md)を参照してください。コンプライアンスゲートと機械可読出力については [docs/COMPLIANCE.md](docs/COMPLIANCE.md) をご覧ください。
+deny に一致すると `MCP700` として報告され、分離下でネットワークアクセスを持つファイル/シェルサーバーは `MCP701` として報告されます。[`examples/policy.yml`](../../examples/policy.yml)、[`examples/suppressions.yml`](../../examples/suppressions.yml)、[ポリシーガイド](../POLICIES.md)を参照してください。コンプライアンスゲートと機械可読出力については [docs/COMPLIANCE.md](../COMPLIANCE.md) をご覧ください。
 
 ## ソースコードレビュー（SAST）
 
@@ -288,10 +288,10 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-エンジンはパターンベースで 1 レベルの taint 追跡を行い、サードパーティのパーサーを使わないため、バイナリは小さく自己完結しています。完全なデータフロー解析ツールが捉えるすべてを検出できるわけではなく、ほとんどの MCP サーバーの不具合にある短く直接的なハンドラーからシンクへのパスを対象としています。ルールの詳細とその他の例は [docs/SAST.md](docs/SAST.md) にあります。
+エンジンはパターンベースで 1 レベルの taint 追跡を行い、サードパーティのパーサーを使わないため、バイナリは小さく自己完結しています。完全なデータフロー解析ツールが捉えるすべてを検出できるわけではなく、ほとんどの MCP サーバーの不具合にある短く直接的なハンドラーからシンクへのパスを対象としています。ルールの詳細とその他の例は [docs/SAST.md](../SAST.md) にあります。
 
 <p align="center">
-  <img src="assets/sast.png" alt="mcprism source-code review findings" width="94%">
+  <img src="../../assets/sast.png" alt="mcprism source-code review findings" width="94%">
 </p>
 
 ## 検出内容
@@ -307,7 +307,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - JS/TS/Python/Go ハンドラーのソースコード上の欠陥：コマンド、ネットワーク、ファイルシンクに到達するツール引数、eval/exec、安全でないデシリアライズ、ハードコードされたシークレット。[ソースコードレビュー](#ソースコードレビューsast)を参照。
 - サーバー間のツール名の衝突、分類された接続失敗（DNS / TLS / 接続拒否 / タイムアウト / コマンドなし）。
 
-完全な一覧と OWASP 対照は [docs/RULES.md](docs/RULES.md) にあります。
+完全な一覧と OWASP 対照は [docs/RULES.md](../RULES.md) にあります。
 
 ## 出力フォーマット
 
@@ -365,7 +365,7 @@ flowchart TD
   F --> G[Report<br/>table · json · sarif · md · html · junit · cyclonedx · csv]
 ```
 
-mcprism は能力を列挙するだけなので、解析に副作用はありません。同梱のデモサーバー（`examples/testserver`）は危険な動作をシミュレートするだけで実際には実行しません。パッケージ構成とデータフローは [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) に記載しています。
+mcprism は能力を列挙するだけなので、解析に副作用はありません。同梱のデモサーバー（`examples/testserver`）は危険な動作をシミュレートするだけで実際には実行しません。パッケージ構成とデータフローは [docs/ARCHITECTURE.md](../ARCHITECTURE.md) に記載しています。
 
 ## 比較
 
@@ -399,7 +399,7 @@ mcprism は能力を列挙するだけなので、解析に副作用はありま
 後者は Python や Node で動き、設定やポイズニングに焦点を当てています。mcprism は Go の単一バイナリで、能力の組み合わせをモデル化し、ポリシー・アズ・コードを実行し、SARIF に加え JUnit、CycloneDX、CSV を出力します。[比較表](#比較)を参照してください。
 
 **自分の環境では誤検出です。どうすれば？**
-可能なら根本原因を修正し、それが難しければ理由と期限を付けて抑制してください。抑制された項目は表示され続け、期限が切れると再び報告されます。[docs/POLICIES.md](docs/POLICIES.md) を参照。
+可能なら根本原因を修正し、それが難しければ理由と期限を付けて抑制してください。抑制された項目は表示され続け、期限が切れると再び報告されます。[docs/POLICIES.md](../POLICIES.md) を参照。
 
 **レポートがきれいならサーバーは安全ですか？**
 いいえ。mcprism は既知で観測可能なリスクを報告するもので、サーバーが安全であることを証明できません。信頼できるサーバーだけを実行してください。
@@ -414,10 +414,10 @@ mcprism は能力を列挙するだけなので、解析に副作用はありま
 
 ## コントリビュート
 
-Issue と PR を歓迎します。良いルール貢献は、信号が明確で決定論的、誤検出率の低いチェックです。`internal/rules` の下に追加し、OWASP MCP リスクにマップしてテストを含めてください。コード構成は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) にあります。PR を開く前に `go vet ./... && go test ./...` を実行してください。
+Issue と PR を歓迎します。良いルール貢献は、信号が明確で決定論的、誤検出率の低いチェックです。`internal/rules` の下に追加し、OWASP MCP リスクにマップしてテストを含めてください。コード構成は [docs/ARCHITECTURE.md](../ARCHITECTURE.md) にあります。PR を開く前に `go vet ./... && go test ./...` を実行してください。
 
 ## ライセンス
 
-[MIT](LICENSE) © mcprism contributors.
+[MIT](../../LICENSE) © mcprism contributors.
 
 mcprism は防御ツールです。リスクを報告するもので、サーバーが安全であることを証明できず、レポートがきれいでも、よく分からないサーバーを信頼する理由にはなりません。

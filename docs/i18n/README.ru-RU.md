@@ -1,8 +1,8 @@
 <div align="center">
 
-<p><a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a> · <a href="README.ja-JP.md">日本語</a> · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · Русский · <a href="README.ar-SA.md">العربية</a></p>
+<p><a href="../../README.md">English</a> · <a href="../../README.zh-CN.md">简体中文</a> · <a href="README.ja-JP.md">日本語</a> · <a href="README.ko-KR.md">한국어</a> · <a href="README.fr-FR.md">Français</a> · <a href="README.de-DE.md">Deutsch</a> · <a href="README.es-ES.md">Español</a> · Русский · <a href="README.ar-SA.md">العربية</a></p>
 
-<img src="assets/logo.svg" width="128" height="128" alt="mcprism logo">
+<img src="../../assets/logo.svg" width="128" height="128" alt="mcprism logo">
 
 # mcprism
 
@@ -20,24 +20,24 @@ mcprism — сканер безопасности для серверов [Model
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
 [![Go Report Card](https://goreportcard.com/badge/github.com/HUA503/mcprism)](https://goreportcard.com/report/github.com/HUA503/mcprism)
 [![Go version](https://img.shields.io/badge/go-1.24-89b4fa?logo=go&logoColor=white)](https://go.dev)
-[![License](https://img.shields.io/github/license/HUA503/mcprism?color=cba6f7)](LICENSE)
+[![License](https://img.shields.io/github/license/HUA503/mcprism?color=cba6f7)](../../LICENSE)
 
 </div>
 
 ---
 
 <p align="center">
-  <img src="assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
+  <img src="../../assets/demo.gif" alt="mcprism scanning MCP servers in a terminal" width="78%">
 </p>
 
 <p align="center">
-  <img src="assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
+  <img src="../../assets/tui.png" alt="mcprism interactive terminal UI" width="86%">
 </p>
 
 MCP подключает вашего ИИ-агента к внешним серверам ради инструментов, файлов и данных. Протокол встроен в Claude Desktop и Claude Code, Cursor, VS Code, Windsurf и другие, поэтому типичная установка довольно быстро обрастает несколькими серверами. Эти серверы выполняют команды, читают файловую систему и видят ваши подсказки. Вредоносный или слишком привилегированный сервер может украсть учётные данные, выполнять команды или управлять агентом через возвращаемый текст. mcprism даёт по каждому серверу отчёт и балл до того, как агент начнёт им пользоваться — как `trivy`, запущенный по образу.
 
 <p align="center">
-  <img src="assets/comparison.png" alt="Before and after using mcprism" width="100%">
+  <img src="../../assets/comparison.png" alt="Before and after using mcprism" width="100%">
 </p>
 
 ## Быстрый старт в две строки
@@ -62,14 +62,14 @@ mcprism vet server.py            # проверить один файл
 `vet` по умолчанию статичен и не запускает цель. Добавьте `--probe`, чтобы запустить её и перечислить инструменты, ресурсы и подсказки. Дерево исходников или файл проходят через описанный ниже движок SAST, сеть не нужна.
 
 <p align="center">
-  <img src="assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
+  <img src="../../assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
 </p>
 
 ## Содержание
 
-- [История изменений](CHANGELOG.md)
-- [Поверхность атаки](docs/MCP-ATTACK-SURFACE.md)
-- [Набор для запуска](docs/LAUNCH-KIT.md)
+- [История изменений](../../CHANGELOG.md)
+- [Поверхность атаки](../MCP-ATTACK-SURFACE.md)
+- [Набор для запуска](../LAUNCH-KIT.md)
 - [Возможности](#возможности)
 - [Когда использовать](#когда-использовать)
 - [Отчёт](#отчёт)
@@ -107,13 +107,13 @@ mcprism vet server.py            # проверить один файл
 ## Отчёт
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png" alt="mcprism HTML report for a live server" width="86%">
+  <img src="../../assets/screenshot-dynamic.png" alt="mcprism HTML report for a live server" width="86%">
 </p>
 
 Пакетная проверка множества серверов (статический режим):
 
 <p align="center">
-  <img src="assets/screenshot-static.png" alt="mcprism HTML report across many servers" width="70%">
+  <img src="../../assets/screenshot-static.png" alt="mcprism HTML report across many servers" width="70%">
 </p>
 
 ## Установка
@@ -233,7 +233,7 @@ capabilities:
   requireNetworkIsolation: true
 ```
 
-Совпадение с запретом сообщается как `MCP700`; файловый/оболочечный сервер с сетевым доступом при требовании изоляции сообщается как `MCP701`. См. [`examples/policy.yml`](examples/policy.yml), [`examples/suppressions.yml`](examples/suppressions.yml) и [руководство по политикам](docs/POLICIES.md). О шлюзах соответствия и машиночитаемых выводах — [docs/COMPLIANCE.md](docs/COMPLIANCE.md).
+Совпадение с запретом сообщается как `MCP700`; файловый/оболочечный сервер с сетевым доступом при требовании изоляции сообщается как `MCP701`. См. [`examples/policy.yml`](../../examples/policy.yml), [`examples/suppressions.yml`](../../examples/suppressions.yml) и [руководство по политикам](../POLICIES.md). О шлюзах соответствия и машиночитаемых выводах — [docs/COMPLIANCE.md](../COMPLIANCE.md).
 
 ## Проверка исходного кода (SAST)
 
@@ -288,10 +288,10 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-Движок работает на шаблонах с одноуровневым отслеживанием помеченных данных и без сторонних анализаторов, поэтому бинарный файл остаётся маленьким и самодостаточным. Он ловит не всё, что увидел бы полноценный анализ потоков данных; он нацелен на короткие прямые пути от обработчика к приёмнику, где лежит большинство дефектов MCP-серверов. Подробности правил и другие примеры — в [docs/SAST.md](docs/SAST.md).
+Движок работает на шаблонах с одноуровневым отслеживанием помеченных данных и без сторонних анализаторов, поэтому бинарный файл остаётся маленьким и самодостаточным. Он ловит не всё, что увидел бы полноценный анализ потоков данных; он нацелен на короткие прямые пути от обработчика к приёмнику, где лежит большинство дефектов MCP-серверов. Подробности правил и другие примеры — в [docs/SAST.md](../SAST.md).
 
 <p align="center">
-  <img src="assets/sast.png" alt="mcprism source-code review findings" width="94%">
+  <img src="../../assets/sast.png" alt="mcprism source-code review findings" width="94%">
 </p>
 
 ## Что обнаруживается
@@ -307,7 +307,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - Дефекты исходного кода в обработчиках JS/TS/Python/Go: аргументы инструментов, доходящие до командных, сетевых и файловых приёмников, eval/exec, небезопасная десериализация и жёстко прописанные секреты. См. [Проверка исходного кода](#проверка-исходного-кода-sast).
 - Конфликты имён инструментов между серверами и классифицированные ошибки подключения (DNS / TLS / отказ / тайм-аут / нет команды).
 
-Полный список с сопоставлением OWASP — в [docs/RULES.md](docs/RULES.md).
+Полный список с сопоставлением OWASP — в [docs/RULES.md](../RULES.md).
 
 ## Форматы вывода
 
@@ -365,7 +365,7 @@ flowchart TD
   F --> G[Report<br/>table · json · sarif · md · html · junit · cyclonedx · csv]
 ```
 
-mcprism только перечисляет возможности, поэтому у анализа нет побочных эффектов. Входящий в комплект демо-сервер (`examples/testserver`) лишь имитирует рискованное поведение, не выполняя его. Структура пакетов и потоки данных описаны в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+mcprism только перечисляет возможности, поэтому у анализа нет побочных эффектов. Входящий в комплект демо-сервер (`examples/testserver`) лишь имитирует рискованное поведение, не выполняя его. Структура пакетов и потоки данных описаны в [docs/ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ## Сравнение
 
@@ -399,7 +399,7 @@ mcprism только перечисляет возможности, поэтом
 Те работают на Python или Node и сосредоточены на конфигурации или отравлении. mcprism — один бинарник Go, моделирует сочетания возможностей, применяет политику как код и выдаёт JUnit, CycloneDX и CSV вдобавок к SARIF. См. [таблицу сравнения](#сравнение).
 
 **У меня ложное срабатывание. Что делать?**
-По возможности исправьте первопричину, иначе подавите находку с причиной и сроком. Подавлённые пункты остаются видимыми и сами истекают. См. [docs/POLICIES.md](docs/POLICIES.md).
+По возможности исправьте первопричину, иначе подавите находку с причиной и сроком. Подавлённые пункты остаются видимыми и сами истекают. См. [docs/POLICIES.md](../POLICIES.md).
 
 **Чистый отчёт означает, что сервер безопасен?**
 Нет. mcprism сообщает об известных наблюдаемых рисках. Он не может доказать, что сервер безопасен, поэтому запускайте только те серверы, которым доверяете.
@@ -414,10 +414,10 @@ mcprism только перечисляет возможности, поэтом
 
 ## Участие
 
-Issue и PR приветствуются. Хорошее правило — проверка с чётким сигналом, детерминированная и с низким уровнем ложных срабатываний: добавьте её в `internal/rules`, сопоставьте с риском OWASP MCP и приложите тест. Структура кода — в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Перед открытием PR выполните `go vet ./... && go test ./...`.
+Issue и PR приветствуются. Хорошее правило — проверка с чётким сигналом, детерминированная и с низким уровнем ложных срабатываний: добавьте её в `internal/rules`, сопоставьте с риском OWASP MCP и приложите тест. Структура кода — в [docs/ARCHITECTURE.md](../ARCHITECTURE.md). Перед открытием PR выполните `go vet ./... && go test ./...`.
 
 ## Лицензия
 
-[MIT](LICENSE) © mcprism contributors.
+[MIT](../../LICENSE) © mcprism contributors.
 
 mcprism — инструмент защиты. Он сообщает о рисках; он не доказывает, что сервер безопасен, и чистый отчёт — не повод доверять серверу, который вы не понимаете.
