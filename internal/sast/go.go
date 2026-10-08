@@ -82,7 +82,7 @@ func scanGoBlock(path string, b handlerBlock) []Issue {
 		if close < 0 {
 			continue
 		}
-		arg := text[open+1:close]
+		arg := text[open+1 : close]
 		first, rest := splitTopComma(arg)
 		line := off2line(open)
 		code := lineText(b, line)
@@ -134,7 +134,11 @@ func scanGoBlock(path string, b handlerBlock) []Issue {
 	}
 
 	// 3. filesystem paths (MCP803)
-	hasGuard := strings.Contains(text, "HasPrefix(") || strings.Contains(text, ".Clean(")
+	// A path is confined only when the exact variable that reaches a file sink
+	// is guarded by HasPrefix. A bare filepath.Clean is not a boundary check: it
+	// normalizes the path but does not stop ../ traversal, so it must not silence
+	// the finding. The guard is bound to the sink argument, not to the handler.
+	guarded := goGuardedVars(b.lines)
 	fileRe := regexp.MustCompile(`\b(?:os|ioutil)\.(Open|OpenFile|ReadFile|Create|WriteFile)\s*\(`)
 	for _, m := range fileRe.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
@@ -145,14 +149,13 @@ func scanGoBlock(path string, b handlerBlock) []Issue {
 		first, _ := splitTopComma(text[open+1 : close])
 		line := off2line(open)
 		code := lineText(b, line)
-		pathJoined := strings.Contains(first, "filepath.Join(") || strings.Contains(first, ".Clean(")
+		pathJoined := strings.Contains(first, "filepath.Join(")
 		switch {
-		case hasGuard:
-			// Confined with a prefix/clean check; this is the documented safe pattern.
+		case isGoPathConfined(first, guarded):
 			continue
 		case goExprControllable(first, ctrl) && !pathJoined:
 			out = append(out, issue(path, "MCP803", "Tool argument used as a file path", SeverityHigh, line, code,
-				"Clean the path, confirm it stays inside one base directory with HasPrefix, and reject traversal sequences."))
+				"Resolve the path, confirm it stays inside one base directory with HasPrefix, and reject traversal sequences. filepath.Clean alone is not a boundary check."))
 		case goExprControllable(first, ctrl):
 			out = append(out, issue(path, "MCP803", "Joined path without a base-directory check", SeverityMedium, line, code,
 				"filepath.Join does not stop ../ traversal. Add a HasPrefix check against the resolved base directory."))
@@ -221,6 +224,33 @@ func isGoIdent(s string) bool {
 		}
 	}
 	return true
+}
+
+// goGuardedVars collects the variables that are tested with strings.HasPrefix
+// anywhere in the handler. Only those exact variables are treated as confined.
+func goGuardedVars(ls []srcLine) map[string]bool {
+	set := map[string]bool{}
+	for _, l := range ls {
+		t := l.text
+		i := strings.Index(t, "HasPrefix(")
+		if i < 0 {
+			continue
+		}
+		arg, _ := splitTopComma(t[i+len("HasPrefix("):])
+		arg = strings.TrimSpace(arg)
+		if isGoIdent(arg) {
+			set[arg] = true
+		}
+	}
+	return set
+}
+
+// isGoPathConfined reports whether the sink argument is the exact variable that
+// a HasPrefix guard protects. An unrelated guard on another variable does not
+// silence the finding.
+func isGoPathConfined(first string, guarded map[string]bool) bool {
+	first = strings.TrimSpace(first)
+	return isGoIdent(first) && guarded[first]
 }
 
 // ---------- hardcoded secrets (MCP806) ----------

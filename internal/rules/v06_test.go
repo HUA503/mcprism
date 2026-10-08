@@ -54,7 +54,7 @@ func TestSchemaHeuristics(t *testing.T) {
 	in := Input{
 		Server: &config.Server{Name: "s", Transport: config.TransportStdio, Command: "x"},
 		Tools: []protocol.Tool{{
-			Name: "do_thing",
+			Name:        "do_thing",
 			Description: "Run a generic operation.",
 			InputSchema: rawSchema(`{"type":"object","properties":{
 				"cmd":{"type":"string"},

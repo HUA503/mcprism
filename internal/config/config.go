@@ -113,15 +113,18 @@ func ParseBytes(data []byte) ([]*Server, error) {
 			candidates[key] = raw
 		}
 	}
-	// Claude Code：projects.<path>.mcpServers
+	// Claude Code：projects.<path>.mcpServers。每个项目用独立键，避免后一个
+	// 项目覆盖前一个，否则前面的 server 会被静默丢弃。
 	if projectsRaw, ok := root["projects"]; ok {
 		var projects map[string]json.RawMessage
 		if err := json.Unmarshal(projectsRaw, &projects); err == nil {
+			i := 0
 			for _, p := range projects {
 				var pobj map[string]json.RawMessage
 				if err := json.Unmarshal(p, &pobj); err == nil {
 					if mcp, ok := pobj["mcpServers"]; ok {
-						candidates["projects.mcpServers"] = mcp
+						candidates[fmt.Sprintf("projects.%d.mcpServers", i)] = mcp
+						i++
 					}
 				}
 			}
@@ -156,6 +159,9 @@ func ParseBytes(data []byte) ([]*Server, error) {
 			}
 		}
 	}
+	// 多项目 / 多根键来自 map，遍历顺序不确定；按名称排序保证结果确定性，
+	// 否则同一配置在不同机器上可能得到不同顺序的 server，影响 CI 判定。
+	sort.SliceStable(out, func(a, b int) bool { return out[a].Name < out[b].Name })
 	return out, nil
 }
 

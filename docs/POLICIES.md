@@ -121,7 +121,7 @@ A baseline is a snapshot of accepted findings, used to start scanning a server
 that already has problems. Save a JSON report once, then pass it on later runs:
 
 ```sh
-mcprism scan mcp.json --no-dynamic -f json -o baseline.json
+mcprism scan mcp.json -f json -o baseline.json
 mcprism scan mcp.json --baseline baseline.json
 ```
 

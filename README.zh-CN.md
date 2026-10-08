@@ -91,11 +91,11 @@ mcprism vet server.py            # 审查单个文件
 ## 功能
 
 - 单个二进制。不用装 Python 或 Node，不需要 LLM API key，也不用注册账号。
-- 静态、源码和动态检查。它读取配置，在有本地代码时审查 JS/TS/Python/Go 源码，并完成 MCP 握手来列出 tools、resources、prompts，但不会调用任何工具。
+- 默认静态。它读取配置，在有本地代码时审查 JS/TS/Python/Go 源码；加 `--dynamic` 才完成 MCP 握手、列出 tools/resources/prompts，但不会调用任何工具。
 - 看 schema。对于没有源码的在线 server，如果名为 command、url、path 之类的字符串参数接受任意值，会按命令执行、SSRF、路径风险报出；用 enum、const、pattern 约束过的参数不报。
 - 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套配置。
 - 风险接受清单。可以带理由和到期时间抑制发现，也可以用 `--baseline` 接受整份旧报告，只让新问题卡住构建；被抑制项仍显示在报告里，过期后自动重新出现。
-- 结果确定、可离线复现。33 条规则映射到 OWASP MCP01–MCP07，数据不离开你的机器。
+- 结果确定。34 条规则映射到 OWASP MCP01–MCP07。静态分析不联网；动态探测是可选的，会启动 server 进程，请在沙箱里运行。
 - 面向人和机器的报告：table、JSON、Markdown、HTML、SARIF、JUnit XML、CycloneDX SBOM、CSV。
 - 一次扫描多个目标：文件、目录（递归）、URL。
 
@@ -149,15 +149,18 @@ mcprism scan https://mcp.example.com/v1
 # 一次扫描多个目标
 mcprism scan a.json b.json ./configs
 
-# 完全离线 / 仅静态（不启动进程、不发起连接）
-mcprism scan mcp.json --no-dynamic
+# 默认静态：不启动进程、不发起连接
+mcprism scan mcp.json
+
+# 动态探测在线 server（会启动进程；请在沙箱里运行）
+mcprism scan mcp.json --dynamic
 
 # 套用配置或自定义策略
 mcprism scan --profile strict
 mcprism scan --policy policy.yml --suppressions suppressions.yml
 
 # 接受已有问题，只对新问题报错（渐进式接入）
-mcprism scan mcp.json --no-dynamic -f json -o baseline.json
+mcprism scan mcp.json -f json -o baseline.json
 mcprism scan mcp.json --baseline baseline.json
 
 # 交互式终端界面
@@ -185,11 +188,11 @@ mcprism profiles             # 列出内置基线
 | `-p, --policy` | 策略 YAML 文件路径 |
 | `--profile` | 内置基线：`default` · `strict` · `ci` |
 | `--suppressions` | 抑制清单 YAML 文件路径 |
-| `--no-dynamic` | 仅静态分析；不启动进程、不发起连接 |
 | `--fail-on` | 出现 `critical` / `high` / `medium` / `low` 级别发现时以非零码退出 |
 | `--timeout` | 单个 server 的握手超时（默认 `10s`） |
 | `-i, --interactive` | 在 TUI 中浏览发现 |
 | `--transport` | 对 URL 强制使用 `http`（Streamable HTTP）或 `sse`（旧版） |
+| `--dynamic`（`scan`） | 动态探测在线 server：启动/连接并列出 tools/resources/prompts。会启动目标进程，可能执行代码或联网，请在沙箱里运行 |
 | `--probe`（`vet`） | 真正启动/连接并枚举工具；会运行目标，建议在沙箱内进行 |
 
 ## 示例输出
@@ -342,7 +345,7 @@ mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copil
 - name: 审计 MCP server
   run: |
     curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-    mcprism scan mcp.json --no-dynamic --profile ci
+    mcprism scan mcp.json --profile ci
 ```
 
 通过 SARIF 把结果发布到 GitHub code scanning：
@@ -401,7 +404,7 @@ mcprism 只枚举能力，因此分析没有副作用。自带的演示 server�
 不会。它只做 MCP 的 initialize 和列出请求，不会调用工具、不会通过 server 打开文件、也不会发送提示词。
 
 **它会把数据发到别处吗？**
-不会。规则在本地运行，也没有任何遥测。动态扫描只会和你指定的 server 通信来完成握手；加上 `--no-dynamic` 连这一步都省了。
+不会。规则在本地运行，也没有任何遥测。静态分析不连接任何地方；动态扫描（`scan --dynamic` / `vet --probe`）会启动你指定的 server 并连接它，该进程可能执行代码或联网，请在沙箱里运行。
 
 **它和 mcp-scan、mcp-audit 有什么区别？**
 后两者基于 Python 或 Node，主要关注配置或投毒。mcprism 是 Go 单二进制，会对能力组合建模、执行策略即代码，除 SARIF 外还输出 JUnit、CycloneDX 和 CSV。详见[对比表](#对比)。

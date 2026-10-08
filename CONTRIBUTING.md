@@ -12,7 +12,7 @@ git clone https://github.com/HUA503/mcprism.git
 cd mcprism
 
 go build ./...                 # build all packages
-go run ./cmd/mcprism scan examples/vulnerable.mcp.json --no-dynamic
+go run ./cmd/mcprism scan examples/vulnerable.mcp.json
 go vet ./...                   # static checks
 gofmt -l .                     # formatting (should print nothing)
 go test ./...                  # unit tests

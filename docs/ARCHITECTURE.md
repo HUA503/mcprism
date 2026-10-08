@@ -89,9 +89,9 @@ A bubbletea program for browsing results in a terminal.
 1. The CLI collects targets and turns them into `[]config.Server`. With no
    targets it runs discovery; a directory target is walked; a URL target is a
    single remote server.
-2. For each server the CLI either builds a static `Input` (`--no-dynamic`) or
-   dials the server and records the initialize response and the listed tools,
-   resources and prompts.
+2. For each server the CLI either builds a static `Input` (the default: no
+   process is spawned) or, with `--dynamic`/`--probe`, dials the server and
+   records the initialize response and the listed tools, resources and prompts.
 3. `rules.AnalyzeAll` produces results: capabilities are inferred from the
    package and live metadata, then every check contributes findings.
 4. `policy.Enforce` applies overrides, deny matches (`MCP700`) and network

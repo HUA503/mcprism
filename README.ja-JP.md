@@ -94,7 +94,7 @@ mcprism vet server.py            # 1 ファイルを審査
 - 静的・ソース・ライブ解析。設定を読み、コードがある場合は JS/TS/Python/Go ソースをレビューし、MCP ハンドシェイクを行ってツール、リソース、プロンプトを列挙します。ツールを呼び出すことはありません。
 - ポリシー・アズ・コード。ルールのオン/オフ、重要度の変更、パッケージ・コマンド・ドメインの許可/拒否、ネットワーク分離の要求ができます。組み込みプロファイルには `default`、`strict`、`ci` のベースラインがあります。
 - リスク許容レジスタ。理由と期限を付けて検出項目を抑制できます。抑制された項目はレポートに表示され続け、期限が切れると再び報告されます。
-- 決定論的でオフライン。33 のルールが OWASP MCP01〜MCP07 にマップされ、データがマシンの外に出ることはありません。
+- 決定論的でオフライン。34 のルールが OWASP MCP01〜MCP07 にマップされ、データがマシンの外に出ることはありません。
 - 人とマシン向けのレポート：table、JSON、Markdown、HTML、SARIF、JUnit XML、CycloneDX SBOM、CSV。
 - 複数の対象を一度にスキャン：ファイル、ディレクトリ（再帰）、URL。
 
@@ -149,7 +149,7 @@ mcprism scan https://mcp.example.com/v1
 mcprism scan a.json b.json ./configs
 
 # 完全オフライン / 静的のみ（プロセスを起動せず、接続もしない）
-mcprism scan mcp.json --no-dynamic
+mcprism scan mcp.json
 
 # ベースラインやカスタムポリシーを適用
 mcprism scan --profile strict
@@ -334,7 +334,7 @@ mcprism は Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Cha
 - name: Audit MCP servers
   run: |
     curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-    mcprism scan mcp.json --no-dynamic --profile ci
+    mcprism scan mcp.json --profile ci
 ```
 
 SARIF で GitHub コードスキャンに公開：

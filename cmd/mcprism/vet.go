@@ -63,7 +63,7 @@ func resolveVetTargets(args []string) ([]*config.Server, error) {
 			out = append(out, urlServer(a))
 			i++
 		case strings.HasPrefix(a, "npm:"):
-			out =append(out, commandServer([]string{"npx", "-y", strings.TrimPrefix(a, "npm:")}))
+			out = append(out, commandServer([]string{"npx", "-y", strings.TrimPrefix(a, "npm:")}))
 			i++
 		case strings.HasPrefix(a, "pypi:"):
 			out = append(out, commandServer([]string{"uvx", strings.TrimPrefix(a, "pypi:")}))

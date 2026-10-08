@@ -94,7 +94,7 @@ mcprism vet server.py            # 파일 하나 검사
 - 정적·소스·라이브 검사. 구성을 읽고 체크아웃이 있으면 JS/TS/Python/Go 소스를 검토하며 MCP 핸드셰이크로 도구, 리소스, 프롬프트를 나열합니다. 도구를 호출하지 않습니다.
 - 정책 as 코드. 규칙 켜기/끄기, 심각도 변경, 패키지·명령·도메인 허용/거부, 네트워크 격리를 요구할 수 있습니다. 내장 프로필에는 `default`, `strict`, `ci` 기준선이 있습니다.
 - 위험 수용 대장. 이유와 만료일을 적어 발견 항목을 억제할 수 있습니다. 억제된 항목은 보고서에 계속 표시되고 만료되면 다시 나타납니다.
-- 결정론적이고 오프라인. 33개 규칙이 OWASP MCP01~MCP07에 매핑되고 데이터가 머신 밖으로 나가지 않습니다.
+- 결정론적이고 오프라인. 34개 규칙이 OWASP MCP01~MCP07에 매핑되고 데이터가 머신 밖으로 나가지 않습니다.
 - 사람과 기계를 위한 보고서: table, JSON, Markdown, HTML, SARIF, JUnit XML, CycloneDX SBOM, CSV.
 - 여러 대상을 한 번에 스캔: 파일, 디렉터리(재귀), URL.
 
@@ -149,7 +149,7 @@ mcprism scan https://mcp.example.com/v1
 mcprism scan a.json b.json ./configs
 
 # 완전 오프라인 / 정적 전용(프로세스를 시작하지 않고 연결도 안 함)
-mcprism scan mcp.json --no-dynamic
+mcprism scan mcp.json
 
 # 기준선이나 사용자 정의 정책 적용
 mcprism scan --profile strict
@@ -334,7 +334,7 @@ mcprism은 Claude Desktop, Claude Code, Cursor, VS Code(GitHub Copilot Chat), Wi
 - name: Audit MCP servers
   run: |
     curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-    mcprism scan mcp.json --no-dynamic --profile ci
+    mcprism scan mcp.json --profile ci
 ```
 
 SARIF로 GitHub 코드 스캐닝에 게시:

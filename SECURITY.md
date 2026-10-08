@@ -24,11 +24,13 @@ disclosure.
 
 ## Security posture of mcprism itself
 
-- mcprism performs **read-only** analysis. It enumerates a server's tools,
-  resources and prompts but **never calls them**, so scanning has no side
-  effects.
-- Static mode (`--no-dynamic`) never spawns a subprocess or opens a network
-  connection.
+- mcprism never **calls** a tool: it enumerates a server's tools, resources and
+  prompts but does not invoke them.
+- In static mode (the default) it never spawns a subprocess or opens a network
+  connection. It reads configuration and, for source targets, code.
+- Live probing (`scan --dynamic` / `vet --probe`) starts the server process and
+  performs the MCP initialize and listing calls. The server's own startup code
+  may run or reach the network, so run probes in a sandbox.
 - The bundled `examples/testserver` simulates malicious behavior without
   performing any dangerous action.
 - mcprism does not phone home, collect telemetry, or require an account.

@@ -52,6 +52,7 @@ var ruleCatalog = []CatalogEntry{
 	{"MCP806", "Hardcoded secret in server source", "MCP01", "high", "source"},
 
 	{"MCP501", "MCP handshake failure", "MCP07", "medium", "connection"},
+	{"MCP502", "Capability enumeration failed or incomplete", "MCP07", "medium", "connection"},
 	{"MCP601", "Cross-server tool name collision", "MCP03", "medium", "cross-server"},
 
 	{"MCP700", "Blocked by policy", "MCP07", "high", "policy"},

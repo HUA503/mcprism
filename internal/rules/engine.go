@@ -16,6 +16,9 @@ type Input struct {
 	Resources  []protocol.Resource        `json:"resources"`
 	Prompts    []protocol.Prompt          `json:"prompts"`
 	ConnectErr error                      `json:"-"`
+	// EnumErr 记录枚举 tools/resources/prompts 时发生的错误。空列表不等于安全：
+	// 如果枚举没有成功完成，不能把"没有危险工具"当作结论。
+	EnumErr []string `json:"-"`
 }
 
 // Result 是单个 server 的审查结果。
@@ -67,6 +70,9 @@ func Analyze(in Input) *Result {
 	}
 	if !r.Connected {
 		r.Findings = append(r.Findings, connectionRules(in)...)
+	}
+	if len(in.EnumErr) > 0 {
+		r.Findings = append(r.Findings, enumerationRules(in)...)
 	}
 
 	r.Score, r.Grade = score(r)

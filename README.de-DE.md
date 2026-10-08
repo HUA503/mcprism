@@ -94,7 +94,7 @@ mcprism vet server.py            # eine Datei prüfen
 - Statische, Quell- und Live-Prüfung. Liest die Konfiguration, prüft JS/TS/Python/Go-Quellcode, wenn ein Checkout vorhanden ist, und führt den MCP-Handshake durch, um Tools, Ressourcen und Prompts aufzulisten. Er ruft nie ein Tool auf.
 - Policy als Code. Regeln ein-/ausschalten, Schweregrade ändern, Pakete/Befehle/Domains erlauben oder ablehnen und Netzwerkisolation verlangen. Die eingebauten Profile bieten die Baselines `default`, `strict` und `ci`.
 - Risikoakzeptanz-Register. Befunde mit Grund und Ablaufdatum unterdrücken. Unterdrückte Einträge bleiben im Bericht sichtbar und kehren nach Ablauf zurück.
-- Deterministisch und offline. 33 Regeln, abgebildet auf OWASP MCP01–MCP07; nichts verlässt Ihren Rechner.
+- Deterministisch und offline. 34 Regeln, abgebildet auf OWASP MCP01–MCP07; nichts verlässt Ihren Rechner.
 - Berichte für Menschen und Maschinen: table, JSON, Markdown, HTML, SARIF, JUnit XML, CycloneDX-SBOM und CSV.
 - Mehrere Ziele auf einmal scannen: Dateien, Verzeichnisse (rekursiv) und URLs.
 
@@ -149,7 +149,7 @@ mcprism scan https://mcp.example.com/v1
 mcprism scan a.json b.json ./configs
 
 # Ganz offline / nur statisch (kein Prozess gestartet, keine Verbindung)
-mcprism scan mcp.json --no-dynamic
+mcprism scan mcp.json
 
 # Eine Baseline oder eigene Policy anwenden
 mcprism scan --profile strict
@@ -334,7 +334,7 @@ Mit dem Profil `ci` riskante Server in einer Pipeline blockieren:
 - name: Audit MCP servers
   run: |
     curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-    mcprism scan mcp.json --no-dynamic --profile ci
+    mcprism scan mcp.json --profile ci
 ```
 
 Per SARIF im GitHub-Code-Scanning veröffentlichen:

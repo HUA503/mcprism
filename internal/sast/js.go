@@ -3,6 +3,7 @@ package sast
 import (
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 func analyzeJS(path string) []Issue {
@@ -180,9 +181,11 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 	}
 
 	// 4. filesystem paths
+	// A path is confined only when the exact variable that reaches a file sink
+	// is tested with .startsWith. An unrelated resolve/startsWith elsewhere in
+	// the handler does not silence the finding.
+	guarded := jsGuardedVars(text)
 	fileRe := regexp.MustCompile(`\b(readFile|readFileSync|writeFile|writeFileSync|unlink|unlinkSync|createReadStream|createWriteStream)\s*\(`)
-	safePath := strings.Contains(text, "startsWith(") &&
-		(strings.Contains(text, ".resolve(") || strings.Contains(text, ".normalize("))
 	for _, m := range fileRe.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
@@ -190,11 +193,11 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 		firstArg, _ := splitTopComma(arg)
 		line := off2line(open)
 		code := lineText(b, line)
-		if safePath || !jsControllable(firstArg, b.params) {
+		if isJSPathConfined(firstArg, guarded) || !jsControllable(firstArg, b.params) {
 			continue
 		}
 		out = append(out, issue(path, "MCP803", "Tool argument used as a file path", SeverityHigh, line, code,
-			"Resolve the path, confirm it stays inside one base directory with startsWith, and reject traversal sequences."))
+			"Resolve the path, confirm it stays inside one base directory with startsWith, and reject traversal sequences. resolve/normalize alone is not a boundary check."))
 	}
 
 	// 5. dynamic require
@@ -229,6 +232,43 @@ func jsControllable(expr string, params []string) bool {
 
 func hasConstURLPrefix(expr string) bool {
 	return regexp.MustCompile("['\"`]https?://").MatchString(expr)
+}
+
+// jsGuardedVars collects variables tested with .startsWith(...) anywhere in the
+// handler. Only those exact variables are treated as confined.
+func jsGuardedVars(text string) map[string]bool {
+	set := map[string]bool{}
+	re := regexp.MustCompile(`([A-Za-z_$][\w$]*)\.startsWith\s*\(`)
+	for _, m := range re.FindAllStringSubmatch(text, -1) {
+		set[m[1]] = true
+	}
+	return set
+}
+
+// isJSPathConfined reports whether the sink argument is the exact variable that
+// a .startsWith guard protects.
+func isJSPathConfined(first string, guarded map[string]bool) bool {
+	first = strings.TrimSpace(first)
+	if !isJSIdent(first) {
+		return false
+	}
+	return guarded[first]
+}
+
+func isJSIdent(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if i == 0 {
+			if r != '_' && r != '$' && !unicode.IsLetter(r) {
+				return false
+			}
+		} else if r != '_' && r != '$' && !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
 }
 
 // ---------- shared block/lexer helpers ----------

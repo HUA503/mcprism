@@ -120,7 +120,7 @@ mcprism vet server.py            # فحص ملف واحد
 - فحص ثابت ومصدري ومباشر. يقرأ التكوين، ويراجع كود JS/TS/Python/Go عند وجود شجرة كود، ويجري مصافحة MCP ليسرّد الأدوات والموارد والأوامر النصية. لا يستدعي أي أداة.
 - السياسة ككود. فعّل القواعد أو عطّلها، وعدّل درجات الخطورة، واسمح أو ارفض الحزم/الأوامر/النطاقات، واطلب عزل الشبكة. توفّر الملفات الشخصية المدمجة خطوط الأساس `default` و`strict` و`ci`.
 - سجل المخاطر المقبولة. اكتمش نتائج محددة مع ذكر السبب وتاريخ انتهاء. تبقى العناصر المكتومة ظاهرة في التقرير وتعود تلقائيًا عند انتهاء مدتها.
-- حتمي ويعمل دون اتصال. 33 قاعدة مرتبطة بـ OWASP MCP01–MCP07، ولا شيء يغادر جهازك.
+- حتمي ويعمل دون اتصال. 34 قاعدة مرتبطة بـ OWASP MCP01–MCP07، ولا شيء يغادر جهازك.
 - تقارير للبشر والآلات: table وJSON وMarkdown وHTML وSARIF وJUnit XML وCycloneDX SBOM وCSV.
 - امسح عدة أهداف دفعة واحدة: ملفات، أو أدلة (بشكل متكرر)، أو روابط.
 
@@ -189,7 +189,7 @@ mcprism scan https://mcp.example.com/v1
 mcprism scan a.json b.json ./configs
 
 # دون اتصال بالكامل / ثابت فقط (لا يطلق عمليات ولا يتصل)
-mcprism scan mcp.json --no-dynamic
+mcprism scan mcp.json
 
 # تطبيق خط أساس أو سياسة مخصصة
 mcprism scan --profile strict
@@ -414,7 +414,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - name: Audit MCP servers
   run: |
     curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-    mcprism scan mcp.json --no-dynamic --profile ci
+    mcprism scan mcp.json --profile ci
 ```
 
 <div dir="rtl">

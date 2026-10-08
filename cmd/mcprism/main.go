@@ -23,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.6.0"
+const version = "0.6.1"
 
 func main() {
 	root := &cobra.Command{
@@ -51,7 +51,8 @@ func scanCmd() *cobra.Command {
 		o         auditOpts
 		project   string
 		transport string
-		noDynamic bool
+		dynamic   bool
+		noDynamic bool // deprecated: probing is now opt-in by default
 	)
 	cmd := &cobra.Command{
 		Use:   "scan [target ...]",
@@ -59,9 +60,17 @@ func scanCmd() *cobra.Command {
 		Long: `Targets can be config files, directories (searched recursively) or http(s)
 server URLs. With no targets, mcprism auto-discovers configs across the
 installed AI clients. To check a launch command or package without writing
-a config, use 'vet'.`,
+a config, use 'vet'.
+
+By default scan is static: it inspects configuration, metadata and (for source
+targets) code, and never spawns a process or connects to a server. Pass
+--dynamic to probe live servers; probing starts the server process, so run it
+in a sandbox and treat it as executing untrusted code.`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(_ *cobra.Command, args []string) error {
+			if noDynamic {
+				dynamic = false
+			}
 			servers, files, err := collectMany(args, project, transport)
 			if err != nil {
 				return err
@@ -69,12 +78,14 @@ a config, use 'vet'.`,
 			if len(servers) == 0 {
 				return fmt.Errorf("no MCP servers found (point at a config file, a directory, a server URL, or use 'vet' for a launch command)")
 			}
-			return audit(servers, files, !noDynamic, o)
+			return audit(servers, files, dynamic, o)
 		},
 	}
 
 	addAuditFlags(cmd, &o)
-	cmd.Flags().BoolVar(&noDynamic, "no-dynamic", false, "only statically analyze; do not spawn processes or connect")
+	cmd.Flags().BoolVar(&dynamic, "dynamic", false, "probe live servers (spawns processes / connects to enumerate tools; run in a sandbox)")
+	cmd.Flags().BoolVar(&noDynamic, "no-dynamic", false, "deprecated: probing is opt-in by default, this flag is a no-op")
+	_ = cmd.Flags().MarkHidden("no-dynamic")
 	cmd.Flags().StringVar(&project, "project", "", "project directory for project-level config discovery")
 	cmd.Flags().StringVar(&transport, "transport", "", "force transport for URL targets: http|sse")
 	return cmd
@@ -267,13 +278,19 @@ func probeServer(parent context.Context, srv *config.Server, timeout time.Durati
 		return in
 	}
 	in.Init = init
-	if tools, err := cli.ListTools(cctx); err == nil {
+	if tools, err := cli.ListTools(cctx); err != nil {
+		in.EnumErr = append(in.EnumErr, "tools/list: "+err.Error())
+	} else {
 		in.Tools = tools
 	}
-	if resources, err := cli.ListResources(cctx); err == nil {
+	if resources, err := cli.ListResources(cctx); err != nil {
+		in.EnumErr = append(in.EnumErr, "resources/list: "+err.Error())
+	} else {
 		in.Resources = resources
 	}
-	if prompts, err := cli.ListPrompts(cctx); err == nil {
+	if prompts, err := cli.ListPrompts(cctx); err != nil {
+		in.EnumErr = append(in.EnumErr, "prompts/list: "+err.Error())
+	} else {
 		in.Prompts = prompts
 	}
 	return in

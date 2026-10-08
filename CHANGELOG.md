@@ -4,6 +4,35 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.6.1] - 2026-10-08
+
+### Fixed
+
+- SAST no longer treats a bare `filepath.Clean` (Go) or an unrelated
+  `resolve`/`startsWith` (JS) as a boundary check. A path is only considered
+  confined when the exact variable that reaches a file sink is guarded by
+  `HasPrefix` / `.startsWith`. Previously such code was reported clean with a
+  100 score even when the tool argument still reached a file read.
+- Claude Code `projects` configs no longer overwrite earlier projects: every
+  project's `mcpServers` is parsed and results are sorted by server name, so
+  repeated runs scan the same servers in a stable order instead of a random
+  subset.
+- Dynamic enumeration now follows `nextCursor` pagination, so a dangerous tool
+  on a later page is no longer missed.
+- Enumeration failures are reported instead of hidden: if `tools/list`,
+  `resources/list` or `prompts/list` errors, a new MCP502 finding marks the
+  review incomplete, and an empty tool list is not read as "no dangerous tools".
+- `scan` is static by default: it no longer spawns the target process or
+  connects. Live probing is opt-in via `--dynamic` (vet keeps `--probe`), and
+  the README, docs and SECURITY notes now say the probe starts the server and
+  should be run in a sandbox. `--no-dynamic` is deprecated (no-op).
+
+### Added
+
+- Built-in rules rise from 33 to 34 (MCP502 capability enumeration failed).
+- Pagination tests for the protocol client and CLI tests asserting static-by-
+  default behavior.
+
 ## [0.6.0] - 2026-10-07
 
 ### Added

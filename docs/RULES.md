@@ -70,6 +70,7 @@ arguments into sinks. [SAST.md](SAST.md) has vulnerable and fixed code for each.
 | Rule | OWASP | Default | What it detects |
 |---|---|---|---|
 | MCP501 | MCP07 | Medium–High | Handshake failures, classified (DNS/TLS/refused/timeout/command missing) |
+| MCP502 | MCP07 | Medium | Capability enumeration failed or incomplete: a partial/empty tool list is not read as safe |
 | MCP601 | MCP03 | Medium | Cross-server tool name collision / shadowing |
 
 ## Policy

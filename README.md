@@ -76,9 +76,10 @@ mcprism vet ./path/to/server     # review a source tree
 mcprism vet server.py            # review one file
 ```
 
-`vet` is static by default and does not run the target. Add `--probe` to
-launch it and enumerate its tools, resources and prompts. A source tree or
-file goes through the SAST engine below, with no network needed.
+`vet` and `scan` are static by default and do not run the target. Add
+`--probe` (vet) or `--dynamic` (scan) to launch it and enumerate its tools,
+resources and prompts. A source tree or file goes through the SAST engine
+below, with no network needed.
 
 <p align="center">
   <img src="assets/vet.png" alt="mcprism vet catching a curl|sh launch command" width="94%">
@@ -110,9 +111,9 @@ file goes through the SAST engine below, with no network needed.
 ## What it does
 
 - One binary. No Python or Node setup, no LLM API key, no account.
-- Static, source and live checks. It reads the config, reviews JS/TS/Python/Go
-  source when a checkout is present, and performs the MCP handshake to list
-  tools, resources and prompts. It never calls a tool.
+- Static by default. It reads the config and reviews JS/TS/Python/Go source.
+  Pass `--dynamic` to perform the MCP handshake and list tools, resources and
+  prompts. It never calls a tool.
 - Schema-aware. For a live server you have no source for, a string parameter
   named like command, url or path that accepts any value is flagged as command,
   SSRF or path risk. Parameters constrained with enum, const or pattern are
@@ -123,8 +124,9 @@ file goes through the SAST engine below, with no network needed.
 - Accepted-risk register. Suppress findings with a reason and an expiry, or
   accept a whole `--baseline` report so only new problems fail the build.
   Suppressed items stay visible in the report, and expired ones come back.
-- Deterministic and offline. 33 rules mapped to OWASP MCP01–MCP07; nothing
-  leaves your machine.
+- Deterministic. 34 rules mapped to OWASP MCP01–MCP07. Static analysis never
+  touches the network; live probing is opt-in and starts the server, so run it
+  in a sandbox.
 - Reports for people and machines: table, JSON, Markdown, HTML, SARIF, JUnit
   XML, CycloneDX SBOM and CSV.
 - Scan several targets at once: files, directories (recursively), or URLs.
@@ -184,15 +186,18 @@ mcprism scan https://mcp.example.com/v1
 # Several targets together
 mcprism scan a.json b.json ./configs
 
-# Fully offline / static-only (no process spawned, no connection)
-mcprism scan mcp.json --no-dynamic
+# Static by default: no process is spawned, no connection is made
+mcprism scan mcp.json
+
+# Probe live servers (starts the process; run in a sandbox)
+mcprism scan mcp.json --dynamic
 
 # Enforce a profile or a custom policy
 mcprism scan --profile strict
 mcprism scan --policy policy.yml --suppressions suppressions.yml
 
 # Accept existing findings and fail only on new ones (incremental rollout)
-mcprism scan mcp.json --no-dynamic -f json -o baseline.json
+mcprism scan mcp.json -f json -o baseline.json
 mcprism scan mcp.json --baseline baseline.json
 
 # Interactive terminal UI
@@ -220,12 +225,12 @@ mcprism profiles             # list built-in profiles
 | `-p, --policy` | Path to a policy YAML file |
 | `--profile` | Built-in profile: `default` · `strict` · `ci` |
 | `--suppressions` | Path to a suppressions YAML file |
-| `--no-dynamic` | Static analysis only; never spawn a process or connect |
 | `--fail-on` | Exit non-zero on `critical` / `high` / `medium` / `low` |
 | `--timeout` | Per-server handshake timeout (default `10s`) |
 | `-i, --interactive` | Browse findings in a TUI |
 | `--transport` | Force `http` (Streamable HTTP) or `sse` (legacy) for URLs |
-| `--probe` (`vet`) | Actually launch/connect and enumerate tools; runs the target, prefer a sandbox |
+| `--dynamic` (`scan`) | Probe live servers: launch/connect and enumerate tools, resources and prompts. Starts the target process, which may run code or reach the network; run it in a sandbox |
+| `--probe` (`vet`) | Launch/connect and enumerate tools; runs the target, prefer a sandbox |
 
 ## Example output
 
@@ -418,7 +423,7 @@ Block risky servers in a pipeline with the `ci` profile:
 - name: Audit MCP servers
   run: |
     curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-    mcprism scan mcp.json --no-dynamic --profile ci
+    mcprism scan mcp.json --profile ci
 ```
 
 Publish to GitHub code scanning via SARIF:
@@ -482,8 +487,10 @@ No. It performs the MCP initialization and listing calls only. Tools are not
 invoked, files are not opened through a server, and prompts are not sent.
 
 **Does it send data anywhere?**
-No. The rules run locally and there is no telemetry. A live scan talks to the
-server you point it at for the handshake; `--no-dynamic` removes even that.
+No. The rules run locally and there is no telemetry. Static analysis never
+connects anywhere. A live scan (`--dynamic` for scan, `--probe` for vet)
+connects to the server you point it at and starts its process, which may run
+code or reach the network, so run live probes in a sandbox.
 
 **How is this different from mcp-scan or mcp-audit?**
 Those run on Python or Node and focus on config or poisoning. mcprism is a Go

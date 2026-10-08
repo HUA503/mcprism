@@ -90,12 +90,13 @@ GRC tools.
 - name: Audit MCP servers
   run: |
     curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-    mcprism scan mcp.json --no-dynamic --profile ci
+    mcprism scan mcp.json --profile ci
 ```
 
-`--no-dynamic` keeps the run from spawning processes, and the `ci` profile
-fails on high and above. For an inventory of live servers, drop `--no-dynamic`
-so mcprism performs the handshake and records the actual tool surface.
+`scan` is static by default, so a run spawns no processes. The `ci` profile
+fails on high and above. To also inventory live servers, pass `--dynamic` (run
+it in a sandbox) so mcprism performs the handshake and records the actual tool
+surface.
 
 ## Notes for auditors
 

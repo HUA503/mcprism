@@ -25,4 +25,4 @@ jobs:
       - name: Smoke test (static scan)
         run: |
           go build -o mcprism ./cmd/mcprism
-          ./mcprism scan examples/vulnerable.mcp.json --no-dynamic
+          ./mcprism scan examples/vulnerable.mcp.json

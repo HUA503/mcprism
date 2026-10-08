@@ -134,19 +134,61 @@ type Tool struct {
 	Annotations  json.RawMessage `json:"annotations,omitempty"`
 }
 
-// ListTools 返回 server 暴露的全部工具。
+// listAll 循环调用一个分页的列表方法，直到服务端不再返回 nextCursor。
+// 不处理分页会漏掉后续页里的工具，而"看到空列表"可能只是枚举不完整。
+func (c *Client) listAll(ctx context.Context, method, itemsField string, appendFn func(json.RawMessage) error) error {
+	cursor := ""
+	for page := 0; ; page++ {
+		if page > 10000 {
+			return fmt.Errorf("%s: pagination exceeded 10000 pages", method)
+		}
+		params := map[string]any{}
+		if cursor != "" {
+			params["cursor"] = cursor
+		}
+		raw, err := c.tr.call(ctx, c.nextID(), method, params)
+		if err != nil {
+			return err
+		}
+		var body map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &body); err != nil {
+			return fmt.Errorf("decode %s: %w", method, err)
+		}
+		if items, ok := body[itemsField]; ok {
+			var list []json.RawMessage
+			if err := json.Unmarshal(items, &list); err != nil {
+				return fmt.Errorf("decode %s.%s: %w", method, itemsField, err)
+			}
+			for _, it := range list {
+				if err := appendFn(it); err != nil {
+					return err
+				}
+			}
+		}
+		next := ""
+		if raw, ok := body["nextCursor"]; ok {
+			_ = json.Unmarshal(raw, &next)
+		}
+		if next == "" {
+			break
+		}
+		cursor = next
+	}
+	return nil
+}
+
+// ListTools 返回 server 暴露的全部工具（跨分页）。
 func (c *Client) ListTools(ctx context.Context) ([]Tool, error) {
-	raw, err := c.tr.call(ctx, c.nextID(), "tools/list", map[string]any{})
-	if err != nil {
-		return nil, err
-	}
-	var out struct {
-		Tools []Tool `json:"tools"`
-	}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, fmt.Errorf("decode tools/list: %w", err)
-	}
-	return out.Tools, nil
+	var out []Tool
+	err := c.listAll(ctx, "tools/list", "tools", func(raw json.RawMessage) error {
+		var t Tool
+		if err := json.Unmarshal(raw, &t); err != nil {
+			return err
+		}
+		out = append(out, t)
+		return nil
+	})
+	return out, err
 }
 
 // Resource 是一个 MCP 资源。
@@ -157,19 +199,18 @@ type Resource struct {
 	MIMEType    string `json:"mimeType,omitempty"`
 }
 
-// ListResources 返回 server 暴露的全部资源。
+// ListResources 返回 server 暴露的全部资源（跨分页）。
 func (c *Client) ListResources(ctx context.Context) ([]Resource, error) {
-	raw, err := c.tr.call(ctx, c.nextID(), "resources/list", map[string]any{})
-	if err != nil {
-		return nil, err
-	}
-	var out struct {
-		Resources []Resource `json:"resources"`
-	}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, fmt.Errorf("decode resources/list: %w", err)
-	}
-	return out.Resources, nil
+	var out []Resource
+	err := c.listAll(ctx, "resources/list", "resources", func(raw json.RawMessage) error {
+		var r Resource
+		if err := json.Unmarshal(raw, &r); err != nil {
+			return err
+		}
+		out = append(out, r)
+		return nil
+	})
+	return out, err
 }
 
 // PromptArgument 是 prompt 的参数声明。
@@ -186,19 +227,18 @@ type Prompt struct {
 	Arguments   []PromptArgument `json:"arguments,omitempty"`
 }
 
-// ListPrompts 返回 server 暴露的全部提示模板。
+// ListPrompts 返回 server 暴露的全部提示模板（跨分页）。
 func (c *Client) ListPrompts(ctx context.Context) ([]Prompt, error) {
-	raw, err := c.tr.call(ctx, c.nextID(), "prompts/list", map[string]any{})
-	if err != nil {
-		return nil, err
-	}
-	var out struct {
-		Prompts []Prompt `json:"prompts"`
-	}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, fmt.Errorf("decode prompts/list: %w", err)
-	}
-	return out.Prompts, nil
+	var out []Prompt
+	err := c.listAll(ctx, "prompts/list", "prompts", func(raw json.RawMessage) error {
+		var p Prompt
+		if err := json.Unmarshal(raw, &p); err != nil {
+			return err
+		}
+		out = append(out, p)
+		return nil
+	})
+	return out, err
 }
 
 // Ping 发送 ping 心跳。
