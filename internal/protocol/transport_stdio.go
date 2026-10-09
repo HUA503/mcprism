@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,6 +38,7 @@ func (c *cappedBuffer) String() string { return string(c.buf) }
 
 type stdioTransport struct {
 	cmd     *exec.Cmd
+	cancel  context.CancelFunc
 	stdin   io.WriteCloser
 	stderr  cappedBuffer
 	writeMu sync.Mutex
@@ -45,28 +47,80 @@ type stdioTransport struct {
 	closed  chan struct{}
 }
 
-func newStdioTransport(_ context.Context, srv *config.Server) (*stdioTransport, error) {
+// InheritChildEnv controls whether a dynamically launched stdio server inherits
+// the full parent environment. It defaults to false so that probing an
+// untrusted server does not hand it every host credential (API tokens, cloud
+// keys). When false, only a minimal runtime allowlist plus the server's own
+// env block is passed. Set it from a CLI flag when a server genuinely needs
+// extra variables.
+var InheritChildEnv = false
+
+// probeEnvAllowlist lists non-secret variables a launched toolchain typically
+// needs (resolving node/python, temp dirs, locale). Secret-bearing names are
+// intentionally absent.
+var probeEnvAllowlist = []string{
+	"PATH", "PATHEXT", "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH",
+	"SYSTEMROOT", "WINDIR", "TEMP", "TMP", "TMPDIR",
+	"LANG", "LC_ALL", "LC_CTYPE", "TERM", "COLORTERM", "SHELL",
+	"APPDATA", "LOCALAPPDATA", "XDG_CACHE_HOME", "XDG_CONFIG_HOME",
+}
+
+func childEnv(srv *config.Server) []string {
+	if InheritChildEnv {
+		env := os.Environ()
+		for k, v := range srv.Env {
+			env = append(env, k+"="+v)
+		}
+		return env
+	}
+	allowed := make(map[string]bool, len(probeEnvAllowlist))
+	for _, k := range probeEnvAllowlist {
+		allowed[k] = true
+	}
+	env := make([]string, 0, len(probeEnvAllowlist)+len(srv.Env))
+	for _, kv := range os.Environ() {
+		k := kv
+		if i := strings.IndexByte(kv, '='); i >= 0 {
+			k = kv[:i]
+		}
+		if allowed[k] {
+			env = append(env, kv)
+		}
+	}
+	for k, v := range srv.Env {
+		env = append(env, k+"="+v)
+	}
+	return env
+}
+
+func newStdioTransport(parent context.Context, srv *config.Server) (*stdioTransport, error) {
 	if srv.Command == "" {
 		return nil, fmt.Errorf("stdio server %q has no command", srv.Name)
 	}
+	ctx, cancel := context.WithCancel(parent)
 	t := &stdioTransport{
+		cancel:  cancel,
 		pending: map[int64]chan callResult{},
 		closed:  make(chan struct{}),
 	}
-	cmd := exec.Command(srv.Command, srv.Args...)
-	cmd.Env = os.Environ()
-	for k, v := range srv.Env {
-		cmd.Env = append(cmd.Env, k+"="+v)
-	}
+	cmd := exec.CommandContext(ctx, srv.Command, srv.Args...)
+	cmd.Env = childEnv(srv)
 	if srv.Cwd != "" {
 		cmd.Dir = srv.Cwd
 	}
+	// Put the child in its own process group/job so cleanup kills the whole
+	// tree (npx -> node, uvx -> python), not just the wrapper process.
+	setNewProcessGroup(cmd)
+	cmd.Cancel = func() error { return killProcessTree(cmd) }
+	cmd.WaitDelay = 3 * time.Second
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	cmd.Stderr = &t.stderr
@@ -75,6 +129,7 @@ func newStdioTransport(_ context.Context, srv *config.Server) (*stdioTransport, 
 	t.stdin = stdin
 
 	if err := cmd.Start(); err != nil {
+		cancel()
 		return nil, fmt.Errorf("start %q: %w", srv.Command, err)
 	}
 
@@ -192,12 +247,15 @@ func (t *stdioTransport) failAll(err error) {
 
 func (t *stdioTransport) close() error {
 	_ = t.stdin.Close()
+	// Canceling the context fires cmd.Cancel (kill the whole process tree);
+	// WaitDelay then reaps anything that ignores the first signal.
+	if t.cancel != nil {
+		t.cancel()
+	}
 	select {
 	case <-t.closed:
-	case <-time.After(2 * time.Second):
-		if t.cmd.Process != nil {
-			_ = t.cmd.Process.Kill()
-		}
+	case <-time.After(4 * time.Second):
+		_ = killProcessTree(t.cmd)
 	}
 	return nil
 }

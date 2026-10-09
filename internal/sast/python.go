@@ -179,15 +179,16 @@ func scanPythonBlock(path string, b handlerBlock) []Issue {
 		firstArg, _ := splitTopComma(arg)
 		line := off2line(m[0])
 		code := lineText(b, line)
-		if pyControllable(firstArg, b.params) && !hasConstURLPrefix(firstArg) {
+		if pyControllable(firstArg, b.params) && !isConstURLArg(firstArg) {
 			out = append(out, issue(path, "MCP802", "Tool argument controls a request URL (SSRF)", SeverityHigh, line, code,
 				"Pin a constant base URL or allow-list hosts, and block metadata endpoints and private ranges."))
 		}
 	}
 
-	// 4. filesystem paths
-	safePath := strings.Contains(text, ".startswith(") &&
-		(strings.Contains(text, "realpath") || strings.Contains(text, "abspath") || strings.Contains(text, "commonpath"))
+	// 4. filesystem paths. A path is confined only when the exact variable that
+	// reaches open()/Path() is guarded by .startswith. A startswith check on a
+	// different variable must not silence the finding for an unguarded sink.
+	guarded := pyGuardedVars(text)
 	openRe := regexp.MustCompile(`\bopen\s*\(`)
 	for _, m := range openRe.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
@@ -196,7 +197,10 @@ func scanPythonBlock(path string, b handlerBlock) []Issue {
 		firstArg, _ := splitTopComma(arg)
 		line := off2line(m[0])
 		code := lineText(b, line)
-		if !safePath && pyControllable(firstArg, b.params) {
+		if isPyPathConfined(firstArg, guarded) {
+			continue
+		}
+		if pyControllable(firstArg, b.params) {
 			out = append(out, issue(path, "MCP803", "Tool argument used as a file path", SeverityHigh, line, code,
 				"Resolve the real path, confirm it stays inside one base directory with startswith, and reject traversal input."))
 		}
@@ -209,7 +213,10 @@ func scanPythonBlock(path string, b handlerBlock) []Issue {
 		arg := text[open+1 : close]
 		line := off2line(m[0])
 		code := lineText(b, line)
-		if !safePath && pyControllable(arg, b.params) &&
+		if isPyPathConfined(arg, guarded) {
+			continue
+		}
+		if pyControllable(arg, b.params) &&
 			(regexp.MustCompile(`read_text|write_text`).MatchString(text)) {
 			out = append(out, issue(path, "MCP803", "Tool input builds a path used for file access", SeverityHigh, line, code,
 				"Resolve the real path and confirm it stays inside one base directory before reading or writing."))
@@ -246,4 +253,41 @@ func pyControllable(expr string, params []string) bool {
 		}
 	}
 	return strings.Contains(expr, "arguments")
+}
+
+var pyStartGuardRe = regexp.MustCompile(`([A-Za-z_]\w*)\.startswith\s*\(`)
+
+// pyGuardedVars collects variables checked with "<var>.startswith(...)", i.e.
+// a prefix/boundary check is applied to that specific variable.
+func pyGuardedVars(text string) map[string]bool {
+	set := map[string]bool{}
+	for _, m := range pyStartGuardRe.FindAllStringSubmatch(text, -1) {
+		set[m[1]] = true
+	}
+	return set
+}
+
+// isPyPathConfined reports whether the expression reaching a file sink is a
+// single variable that carries a startswith boundary guard.
+func isPyPathConfined(expr string, guarded map[string]bool) bool {
+	e := strings.TrimSpace(expr)
+	if !isPyIdent(e) {
+		return false
+	}
+	return guarded[e]
+}
+
+func isPyIdent(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		switch {
+		case r == '_', r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z':
+		case i > 0 && r >= '0' && r <= '9':
+		default:
+			return false
+		}
+	}
+	return true
 }

@@ -121,3 +121,45 @@ func TestLegacySSEType(t *testing.T) {
 		t.Fatalf("want sse transport, got %+v", servers)
 	}
 }
+
+// A UTF-8 BOM (common from Notepad/PowerShell) must not break parsing.
+func TestParseBOM(t *testing.T) {
+	data := append([]byte{0xEF, 0xBB, 0xBF}, []byte(`{"mcpServers":{"x":{"command":"echo"}}}`)...)
+	servers, err := ParseBytes(data)
+	if err != nil {
+		t.Fatalf("BOM should be stripped: %v", err)
+	}
+	if len(servers) != 1 || servers[0].Command != "echo" {
+		t.Fatalf("want 1 echo server, got %+v", servers)
+	}
+}
+
+// Trailing commas (VS Code .vscode/mcp.json style) must parse.
+func TestParseTrailingCommas(t *testing.T) {
+	data := []byte(`{"mcpServers":{"x":{"command":"echo","args":["a",],},}}`)
+	servers, err := ParseBytes(data)
+	if err != nil {
+		t.Fatalf("trailing commas should be tolerated: %v", err)
+	}
+	if len(servers) != 1 || len(servers[0].Args) != 1 || servers[0].Args[0] != "a" {
+		t.Fatalf("want 1 server with 1 arg, got %+v", servers)
+	}
+}
+
+// projectDir in a config file must survive decoding so `scan` can run SAST.
+func TestParseProjectDir(t *testing.T) {
+	data := []byte(`{"mcpServers":{"src":{"command":"node","projectDir":"/repos/mcp","projectFiles":["/repos/mcp/index.js"]}}}`)
+	servers, err := ParseBytes(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(servers) != 1 {
+		t.Fatalf("want 1 server, got %d", len(servers))
+	}
+	if servers[0].ProjectDir != "/repos/mcp" {
+		t.Fatalf("projectDir not decoded: %+v", servers[0])
+	}
+	if len(servers[0].ProjectFiles) != 1 || servers[0].ProjectFiles[0] != "/repos/mcp/index.js" {
+		t.Fatalf("projectFiles not decoded: %+v", servers[0].ProjectFiles)
+	}
+}

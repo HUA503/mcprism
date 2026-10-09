@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -34,7 +35,10 @@ func Discover(projectDir string) ([]*ClientFile, error) {
 		seen[p.path] = true
 		cf, err := ParseFile(p.path, p.client, p.scope)
 		if err != nil {
-			continue // 跳过无法解析的文件
+			// A file that exists but cannot be parsed may be a real MCP config the
+			// user expects to be checked. Say so instead of silently skipping it.
+			fmt.Fprintf(os.Stderr, "mcprism: warning: cannot parse MCP config %s: %v\n", p.path, err)
+			continue
 		}
 		if len(cf.Servers) > 0 {
 			files = append(files, cf)

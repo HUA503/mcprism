@@ -9,19 +9,47 @@ import (
 	"strings"
 )
 
+// Limits keep a hostile or huge source tree (a single giant bundle, a deeply
+// nested checkout, node_modules that escaped filtering) from exhausting
+// memory during a scan.
+const (
+	maxSourceFileSize   = 2 << 20  // skip a source file larger than 2 MiB
+	maxTotalSourceBytes = 64 << 20 // stop after 64 MiB of source read
+	maxWalkDepth        = 12       // do not descend more than 12 directories deep
+)
+
 // Analyze walks a source tree and returns issues found in supported files.
-// Dependency and build directories are skipped.
+// Dependency and build directories are skipped, and oversized files / trees
+// are bounded to avoid denial-of-service via disk or memory.
 func Analyze(root string) ([]Issue, error) {
 	var issues []Issue
+	var totalBytes int64
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
 		if d.IsDir() {
-			if p != root && skipDir(d.Name()) {
-				return filepath.SkipDir
+			if p != root {
+				if skipDir(d.Name()) {
+					return filepath.SkipDir
+				}
+				if rel, e := filepath.Rel(root, p); e == nil && depthOf(rel) > maxWalkDepth {
+					return filepath.SkipDir
+				}
 			}
 			return nil
+		}
+		if !sourceExtSupported(d.Name()) {
+			return nil
+		}
+		if info, e := d.Info(); e == nil {
+			if info.Size() > maxSourceFileSize {
+				return nil
+			}
+			totalBytes += info.Size()
+			if totalBytes > maxTotalSourceBytes {
+				return filepath.SkipAll
+			}
 		}
 		issues = append(issues, AnalyzeFile(p)...)
 		return nil
@@ -29,8 +57,31 @@ func Analyze(root string) ([]Issue, error) {
 	return issues, err
 }
 
-// AnalyzeFile reviews a single source file. Unsupported files return nothing.
+func depthOf(rel string) int {
+	rel = strings.TrimSpace(rel)
+	if rel == "" || rel == "." {
+		return 0
+	}
+	return strings.Count(filepath.ToSlash(rel), "/") + 1
+}
+
+func sourceExtSupported(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".go":
+		return true
+	}
+	return false
+}
+
+// AnalyzeFile reviews a single source file. Unsupported or oversized files
+// return nothing.
 func AnalyzeFile(path string) []Issue {
+	if !sourceExtSupported(path) {
+		return nil
+	}
+	if info, err := os.Stat(path); err != nil || info.Size() > maxSourceFileSize {
+		return nil
+	}
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs":
 		return analyzeJS(path)
@@ -84,6 +135,11 @@ func skipDir(n string) bool {
 }
 
 func readLines(path string) ([]srcLine, string) {
+	// Defense in depth: AnalyzeFile already gates on size, but direct callers
+	// and future code paths must not be able to slurp an unbounded file.
+	if info, err := os.Stat(path); err == nil && info.Size() > maxSourceFileSize {
+		return nil, ""
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, ""

@@ -11,20 +11,20 @@ import (
 func sevHex(s rules.Severity) string {
 	switch s {
 	case rules.SeverityCritical:
-		return "#f38ba8"
+		return "var(--sev-crit)"
 	case rules.SeverityHigh:
-		return "#fab387"
+		return "var(--sev-high)"
 	case rules.SeverityMedium:
-		return "#f9e2af"
+		return "var(--sev-med)"
 	case rules.SeverityLow:
-		return "#89b4fa"
+		return "var(--sev-low)"
 	}
-	return "#a6adc8"
+	return "var(--sev-info)"
 }
 
 func gradeHex(g string) string {
 	return map[string]string{
-		"A": "#a6e3a1", "B": "#94e2d5", "C": "#f9e2af", "D": "#fab387", "F": "#f38ba8",
+		"A": "var(--g-A)", "B": "var(--g-B)", "C": "var(--g-C)", "D": "var(--g-D)", "F": "var(--g-F)",
 	}[g]
 }
 
@@ -40,57 +40,87 @@ func RenderHTML(r *Report) string {
 	b.WriteString(`<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; script-src 'none'; base-uri 'none'; form-action 'none'">
 <title>mcprism security report</title>
 <style>
-:root{color-scheme:dark}
+:root{color-scheme:dark;
+--bg:#1e1e2e;--panel:#28283a;--card:#313244;--ink:#11111b;--text:#cdd6f4;--muted:#a6adc8;--subtle:#6c7086;--border:#45475a;--line:#313244;
+--sev-crit:#f38ba8;--sev-high:#fab387;--sev-med:#f9e2af;--sev-low:#89b4fa;--sev-info:#a6adc8;
+--g-A:#a6e3a1;--g-B:#94e2d5;--g-C:#f9e2af;--g-D:#fab387;--g-F:#f38ba8;
+--ok:#a6e3a1;--advice:#a6e3a1;--evidence:#f9e2af;--reason:#cba6f7}
+@media (prefers-color-scheme:light){:root{
+color-scheme:light;
+--bg:#f4f5fa;--panel:#ffffff;--card:#eceef5;--ink:#e3e6f0;--text:#1e1e2e;--muted:#555a6b;--subtle:#7b8094;--border:#d3d7e3;--line:#e4e7f0;
+--sev-crit:#d20f39;--sev-high:#c25700;--sev-med:#9a6b00;--sev-low:#1e66f5;--sev-info:#5c5f77;
+--g-A:#2f8a25;--g-B:#0f8fa8;--g-C:#9a6b00;--g-D:#c25700;--g-F:#d20f39;
+--ok:#2f8a25;--advice:#2f7a4d;--evidence:#8a5a00;--reason:#8844b0}}
+:root:has(#lightmode:checked){
+color-scheme:light;
+--bg:#f4f5fa;--panel:#ffffff;--card:#eceef5;--ink:#e3e6f0;--text:#1e1e2e;--muted:#555a6b;--subtle:#7b8094;--border:#d3d7e3;--line:#e4e7f0;
+--sev-crit:#d20f39;--sev-high:#c25700;--sev-med:#9a6b00;--sev-low:#1e66f5;--sev-info:#5c5f77;
+--g-A:#2f8a25;--g-B:#0f8fa8;--g-C:#9a6b00;--g-D:#c25700;--g-F:#d20f39;
+--ok:#2f8a25;--advice:#2f7a4d;--evidence:#8a5a00;--reason:#8844b0}
 *{box-sizing:border-box}
-body{margin:0;background:#1e1e2e;color:#cdd6f4;font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 .prism-bar{height:5px;background:linear-gradient(90deg,#f38ba8,#fab387,#f9e2af,#a6e3a1,#94e2d5,#89b4fa,#cba6f7)}
+.theme{position:absolute;top:14px;right:22px;font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
 main{max-width:1080px;margin:0 auto;padding:28px 24px 60px}
 h1{font-size:26px;margin:0 0 2px}
-h1 .dim,.dim{color:#6c7086;font-weight:400}
+h1 .dim,.dim{color:var(--subtle);font-weight:400}
 .cards{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0 30px}
-.card{background:#313244;border-radius:12px;padding:14px 18px;min-width:110px}
+.card{background:var(--card);border-radius:12px;padding:14px 18px;min-width:110px}
 .card .num{font-size:26px;font-weight:700}
-.card .label{color:#a6adc8;font-size:13px}
-.card.crit .num{color:#f38ba8}.card.high .num{color:#fab387}
-.card.med .num{color:#f9e2af}.card.low .num{color:#89b4fa}
-.server{background:#28283a;border:1px solid #313244;border-radius:14px;padding:18px 20px;margin:0 0 18px}
+.card .label{color:var(--muted);font-size:13px}
+.card.crit .num{color:var(--sev-crit)}.card.high .num{color:var(--sev-high)}
+.card.med .num{color:var(--sev-med)}.card.low .num{color:var(--sev-low)}
+.server{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:0 0 18px}
 .server-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
-.grade{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;font-weight:800;font-size:20px;background:#11111b}
+.grade{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;font-weight:800;font-size:20px;background:var(--ink)}
 .sname{font-size:18px;font-weight:700}
-.conn-ok{color:#a6e3a1;font-size:13px}.conn-bad{color:#f38ba8;font-size:13px}
+.conn-ok{color:var(--ok);font-size:13px}.conn-bad{color:var(--sev-crit);font-size:13px}
 .meta{font-size:13px;margin:2px 0;word-break:break-all}
 .meta .dim{display:inline-block;min-width:64px}
 .chips{margin:10px 0 4px}
-.chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;margin:0 6px 6px 0;background:#11111b}
+.chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;margin:0 6px 6px 0;background:var(--ink)}
 table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}
-th{text-align:left;color:#a6adc8;font-weight:600;padding:8px 10px;border-bottom:1px solid #45475a}
-td{padding:8px 10px;border-bottom:1px solid #313244;vertical-align:top}
+th{text-align:left;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border)}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
 tr.sev td:first-child{font-weight:700}
-.rule{color:#6c7086;white-space:nowrap}
-.advice{color:#a6e3a1}
-.evidence{color:#f9e2af;font-size:12.5px}
-.ok{color:#a6e3a1}
-.gate-pass{color:#a6e3a1}.gate-fail{color:#f38ba8}
+.rule{color:var(--subtle);white-space:nowrap}
+.advice{color:var(--advice)}
+.evidence{color:var(--evidence);font-size:12.5px}
+.ok{color:var(--ok)}
+.gate-pass{color:var(--ok)}.gate-fail{color:var(--sev-crit)}
 .card.gate .num{font-size:20px;padding-top:3px}
-.sup{margin-top:12px;border-top:1px dashed #45475a;padding-top:10px}
-.sup summary{cursor:pointer;color:#a6adc8;font-size:13px}
+.loc-line{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:6px;background:var(--ink);color:var(--muted);font-variant-numeric:tabular-nums;text-align:center}
+.sup{margin-top:12px;border-top:1px dashed var(--border);padding-top:10px}
+.sup summary{cursor:pointer;color:var(--muted);font-size:13px}
 .sup table{font-size:12.5px}
-.sup .reason{color:#cba6f7}
-.overview{display:flex;align-items:center;gap:26px;background:#28283a;border:1px solid #313244;border-radius:16px;padding:20px 24px;margin:20px 0 16px;flex-wrap:wrap}
-.ring{--pct:100;--ring:#a6e3a1;flex:0 0 auto;width:128px;height:128px;border-radius:50%;background:conic-gradient(var(--ring) calc(var(--pct)*1%),#313244 0);display:flex;align-items:center;justify-content:center}
-.ring-hole{width:94px;height:94px;border-radius:50%;background:#1e1e2e;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.sup .reason{color:var(--reason)}
+.overview{display:flex;align-items:center;gap:26px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 24px;margin:20px 0 16px;flex-wrap:wrap}
+.ring{--pct:100;--ring:var(--ok);flex:0 0 auto;width:128px;height:128px;border-radius:50%;background:conic-gradient(var(--ring) calc(var(--pct)*1%),var(--card) 0);display:flex;align-items:center;justify-content:center}
+.ring-hole{width:94px;height:94px;border-radius:50%;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ring-grade{font-size:36px;font-weight:800;line-height:1}
-.ring-score{font-size:12px;color:#a6adc8;margin-top:3px}
+.ring-score{font-size:12px;color:var(--muted);margin-top:3px}
 .ov-body{flex:1;min-width:230px}
-.ov-label{color:#6c7086;font-size:12px;letter-spacing:.6px;margin-bottom:7px}
-.ov-line{font-size:14px;margin:3px 0;color:#cdd6f4}
-.ov-gate{text-align:center;padding:12px 22px;border-radius:12px;background:#11111b;min-width:108px}
+.ov-label{color:var(--subtle);font-size:12px;letter-spacing:.6px;margin-bottom:7px}
+.ov-line{font-size:14px;margin:3px 0;color:var(--text)}
+.ov-gate{text-align:center;padding:12px 22px;border-radius:12px;background:var(--ink);min-width:108px}
 .gate-word{font-size:26px;font-weight:800;line-height:1}
-.gate-profile{font-size:12px;color:#a6adc8;margin-top:4px}
-.ov-gate.pass .gate-word{color:#a6e3a1}.ov-gate.fail .gate-word{color:#f38ba8}
-</style></head><body><div class="prism-bar"></div><main>`)
+.gate-profile{font-size:12px;color:var(--muted);margin-top:4px}
+.ov-gate.pass .gate-word{color:var(--ok)}.ov-gate.fail .gate-word{color:var(--sev-crit)}
+@media print{
+.prism-bar,.theme{display:none}
+body{background:#fff;color:#000;font-size:12px}
+.server,.card,.overview,.ov-gate,.ring-hole{background:#fff;border-color:#999;break-inside:avoid}
+.server,.overview{border:1px solid #999}
+.grade,.chip,.card,.loc-line{background:#eee}
+a{color:#000;text-decoration:none}
+main{max-width:none;padding:0}
+}
+</style></head><body><div class="prism-bar"></div>
+<label class="theme" for="lightmode"><input type="checkbox" id="lightmode"> Light mode</label>
+<main>`)
 
 	b.WriteString(`<h1>◆ mcprism <span class="dim">security report</span></h1>`)
 	b.WriteString(fmt.Sprintf(`<p class="dim">v%s · %s</p>`, esc(r.Version), esc(r.GeneratedAt)))
@@ -139,7 +169,7 @@ tr.sev td:first-child{font-weight:700}
 	}
 	b.WriteString(`</section>`)
 
-	for _, res := range r.Results {
+	for si, res := range r.Results {
 		srv := res.Server
 		b.WriteString(`<section class="server">`)
 		var conn string
@@ -163,25 +193,25 @@ tr.sev td:first-child{font-weight:700}
 			b.WriteString(fmt.Sprintf(`<span class="chip" style="color:%s">%s</span>`, c, t))
 		}
 		if res.Capabilities.CanShell {
-			addChip("SHELL", "#f38ba8")
+			addChip("SHELL", "var(--sev-crit)")
 		}
 		if res.Capabilities.CanWriteFiles {
-			addChip("WRITE", "#fab387")
+			addChip("WRITE", "var(--sev-high)")
 		}
 		if res.Capabilities.CanReadFiles {
-			addChip("READ", "#89b4fa")
+			addChip("READ", "var(--sev-low)")
 		}
 		if res.Capabilities.CanNetwork {
-			addChip("NETWORK", "#cba6f7")
+			addChip("NETWORK", "var(--reason)")
 		}
 		if res.Capabilities.CanAccessDB {
-			addChip("DATABASE", "#f9e2af")
+			addChip("DATABASE", "var(--sev-med)")
 		}
 		if res.Capabilities.CanBrowser {
-			addChip("BROWSER", "#94e2d5")
+			addChip("BROWSER", "var(--g-B)")
 		}
 		if res.Capabilities.CanSendEmail {
-			addChip("EMAIL", "#fab387")
+			addChip("EMAIL", "var(--sev-high)")
 		}
 		b.WriteString(`</div>`)
 
@@ -189,11 +219,11 @@ tr.sev td:first-child{font-weight:700}
 			b.WriteString(`<p class="ok">✓ No issues detected</p>`)
 		} else {
 			b.WriteString(`<table><thead><tr><th>Severity</th><th>Rule</th><th>Title</th><th>Location</th><th>Evidence</th><th>Advice</th></tr></thead><tbody>`)
-			for _, f := range res.Findings {
-				b.WriteString(fmt.Sprintf(`<tr class="sev" style="box-shadow:inset 3px 0 0 %s"><td style="color:%s">%s</td>
+			for i, f := range res.Findings {
+				b.WriteString(fmt.Sprintf(`<tr class="sev" id="finding-%d-%d" style="box-shadow:inset 3px 0 0 %s"><td style="color:%s">%s</td>
 <td class="rule">%s</td><td>%s</td><td>%s</td><td class="evidence">%s</td><td class="advice">%s</td></tr>`,
-					sevHex(f.Severity), sevHex(f.Severity), f.Severity, f.RuleID,
-					esc(f.Title), esc(f.Location), esc(f.Evidence), esc(f.Advice)))
+					si, i, sevHex(f.Severity), sevHex(f.Severity), f.Severity,
+					f.RuleID, esc(f.Title), htmlLocation(f.Location), esc(f.Evidence), esc(f.Advice)))
 			}
 			b.WriteString(`</tbody></table>`)
 		}
@@ -203,6 +233,19 @@ tr.sev td:first-child{font-weight:700}
 
 	b.WriteString(`</main></body></html>`)
 	return b.String()
+}
+
+// htmlLocation renders a "path:line" source location as the file path plus a
+// monospaced line-number badge. Locations without a parseable line fall back
+// to the escaped raw text.
+func htmlLocation(loc string) string {
+	if strings.TrimSpace(loc) == "" {
+		return ""
+	}
+	if file, line, ok := parseFileLine(loc); ok {
+		return fmt.Sprintf(`%s<span class="loc-line">L%d</span>`, html.EscapeString(file), line)
+	}
+	return html.EscapeString(loc)
 }
 
 func renderSuppressedHTML(res *rules.Result) string {

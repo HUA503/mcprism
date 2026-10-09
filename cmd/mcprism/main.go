@@ -20,15 +20,27 @@ import (
 	"github.com/HUA503/mcprism/internal/protocol"
 	"github.com/HUA503/mcprism/internal/report"
 	"github.com/HUA503/mcprism/internal/rules"
+	"github.com/HUA503/mcprism/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-const version = "0.6.1"
+const version = "0.7.0"
+
+func init() {
+	// Keep the protocol clientInfo version in lockstep with the CLI version.
+	protocol.ClientVersion = version
+}
 
 func main() {
 	root := &cobra.Command{
 		Use:   "mcprism",
 		Short: "Vet MCP servers before your AI trusts them",
+	}
+	var noColor, ascii bool
+	root.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable colored output (also honors NO_COLOR)")
+	root.PersistentFlags().BoolVar(&ascii, "ascii", false, "use ASCII glyphs instead of Unicode (legacy Windows consoles)")
+	root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		ui.Init(noColor, ascii)
 	}
 	root.AddCommand(scanCmd(), vetCmd(), inspectCmd(), rulesCmd(), profilesCmd(), versionCmd())
 	if err := root.Execute(); err != nil {

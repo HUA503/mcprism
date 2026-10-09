@@ -3,11 +3,24 @@ package policy
 import (
 	"fmt"
 	"net/url"
-	"path"
 	"strings"
 
 	"github.com/HUA503/mcprism/internal/rules"
 )
+
+// commandBase returns the lowercased base command name treating / and \ as
+// separators and stripping Windows extensions, so deny.commands matches on
+// Windows paths even when the scan runs on Linux/macOS.
+func commandBase(cmd string) string {
+	p := strings.ToLower(strings.ReplaceAll(cmd, "\\", "/"))
+	if i := strings.LastIndex(p, "/"); i >= 0 {
+		p = p[i+1:]
+	}
+	for _, ext := range []string{".exe", ".cmd", ".bat", ".com"} {
+		p = strings.TrimSuffix(p, ext)
+	}
+	return p
+}
 
 // Enforce 对引擎结果应用策略：规则开关/严重级覆盖、deny 清单命中、
 // 网络隔离约束，然后重算分数。建议顺序：Analyze → Enforce →
@@ -73,9 +86,9 @@ func matchDeny(r *rules.Result, p *Policy) (bool, string) {
 			return true, "deny package: " + d
 		}
 	}
-	base := strings.ToLower(path.Base(srv.Command))
+	base := commandBase(srv.Command)
 	for _, d := range p.Deny.Commands {
-		if wildcardMatch(d, base) && !anyMatch(p.Allow.Commands, base) {
+		if wildcardMatch(commandBase(d), base) && !anyCommandMatch(p.Allow.Commands, base) {
 			return true, "deny command: " + d
 		}
 	}
@@ -136,6 +149,17 @@ func Evaluate(results []*rules.Result, p *Policy, profile, policyPath string) ru
 func anyMatch(patterns []string, s string) bool {
 	for _, p := range patterns {
 		if wildcardMatch(p, s) {
+			return true
+		}
+	}
+	return false
+}
+
+// anyCommandMatch normalizes allow command patterns the same way as the
+// scanned command (cross-platform base, extensions stripped) before matching.
+func anyCommandMatch(patterns []string, base string) bool {
+	for _, p := range patterns {
+		if wildcardMatch(commandBase(p), base) {
 			return true
 		}
 	}

@@ -4,17 +4,34 @@
 package baseline
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 
 	"github.com/HUA503/mcprism/internal/rules"
 )
 
-// Key uniquely identifies a finding. Location is included so the same rule
-// firing on two different tools or files is counted separately.
-func Key(server, ruleID, location string) string {
-	return server + "\x00" + ruleID + "\x00" + location
+var wsRe = regexp.MustCompile(`\s+`)
+
+// fingerprint normalizes free-form evidence (case-insensitive, whitespace
+// collapsed) and hashes it, so two instances of the same rule with different
+// evidence are not collapsed into one accepted finding.
+func fingerprint(evidence string) string {
+	s := wsRe.ReplaceAllString(strings.ToLower(strings.TrimSpace(evidence)), " ")
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])[:16]
+}
+
+// Key uniquely identifies a finding. Besides server/rule/location it includes
+// the severity (so a finding whose severity was upgraded is reported again
+// rather than staying accepted) and a normalized evidence fingerprint (so
+// distinct instances with an empty location are not over-suppressed).
+func Key(server, ruleID, location, severity, evidence string) string {
+	return strings.Join([]string{server, ruleID, location, severity, fingerprint(evidence)}, "\x00")
 }
 
 type jsonReport struct {
@@ -23,6 +40,8 @@ type jsonReport struct {
 			RuleID   string `json:"ruleId"`
 			Server   string `json:"server"`
 			Location string `json:"location"`
+			Severity string `json:"severity"`
+			Evidence string `json:"evidence"`
 		} `json:"findings"`
 	} `json:"results"`
 }
@@ -41,7 +60,7 @@ func Load(path string) (map[string]bool, error) {
 	set := make(map[string]bool)
 	for _, res := range rep.Results {
 		for _, fnd := range res.Findings {
-			set[Key(fnd.Server, fnd.RuleID, fnd.Location)] = true
+			set[Key(fnd.Server, fnd.RuleID, fnd.Location, fnd.Severity, fnd.Evidence)] = true
 		}
 	}
 	return set, nil
@@ -54,7 +73,7 @@ func Apply(results []*rules.Result, base map[string]bool, source string) {
 	for _, r := range results {
 		active := make([]rules.Finding, 0, len(r.Findings))
 		for _, fnd := range r.Findings {
-			if base[Key(fnd.Server, fnd.RuleID, fnd.Location)] {
+			if base[Key(fnd.Server, fnd.RuleID, fnd.Location, string(fnd.Severity), fnd.Evidence)] {
 				r.Suppressed = append(r.Suppressed, rules.SuppressedFinding{
 					Finding: fnd,
 					Reason:  "baseline: " + source,

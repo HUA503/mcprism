@@ -17,7 +17,9 @@ import (
 const PreferredVersion = "2025-06-18"
 
 // ClientVersion 是 mcprism 自身版本，会在 clientInfo 中上报。
-const ClientVersion = "0.1.0"
+// ClientVersion is reported to servers in clientInfo. The main package sets it
+// to the build version at startup, so the scanner never advertises a stale one.
+var ClientVersion = "dev"
 
 // RPCRequest 是一条 JSON-RPC 2.0 请求。
 type RPCRequest struct {

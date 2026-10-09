@@ -16,6 +16,25 @@ import (
 	"github.com/HUA503/mcprism/internal/config"
 )
 
+// streamingHTTPClient bounds the connection and header phases but leaves the
+// response body open, so a long-lived SSE stream is not cut off.
+func streamingHTTPClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			Proxy:                 http.ProxyFromEnvironment,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ResponseHeaderTimeout: 15 * time.Second,
+		},
+	}
+}
+
+// defaultHTTPClient adds an overall timeout for request/response calls.
+func defaultHTTPClient() *http.Client {
+	c := streamingHTTPClient()
+	c.Timeout = 30 * time.Second
+	return c
+}
+
 // newHTTPTransport 创建基于 HTTP 的传输；legacy 为 true 时使用旧版 SSE 模式。
 func newHTTPTransport(srv *config.Server, legacy bool) (transport, error) {
 	if srv.URL == "" {
@@ -25,7 +44,7 @@ func newHTTPTransport(srv *config.Server, legacy bool) (transport, error) {
 		t := &legacySSETransport{
 			url:         srv.URL,
 			headers:     srv.Headers,
-			client:      &http.Client{},
+			client:      streamingHTTPClient(),
 			pending:     map[int64]chan callResult{},
 			closed:      make(chan struct{}),
 			gotEndpoint: make(chan struct{}),
@@ -40,7 +59,7 @@ func newHTTPTransport(srv *config.Server, legacy bool) (transport, error) {
 	return &httpTransport{
 		url:     srv.URL,
 		headers: srv.Headers,
-		client:  &http.Client{},
+		client:  defaultHTTPClient(),
 	}, nil
 }
 
@@ -100,7 +119,8 @@ func (t *httpTransport) roundTrip(ctx context.Context, req RPCRequest) (*RPCResp
 	}
 
 	if strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream") {
-		return parseSSEResponse(resp.Body)
+		wantID, _ := req.ID.(int64)
+		return parseSSEResponse(resp.Body, wantID)
 	}
 	if resp.StatusCode == http.StatusAccepted || resp.StatusCode == http.StatusNoContent {
 		return &RPCResponse{}, nil // 通知被接受
@@ -114,19 +134,29 @@ func (t *httpTransport) roundTrip(ctx context.Context, req RPCRequest) (*RPCResp
 
 func (t *httpTransport) close() error { return nil }
 
-// parseSSEResponse 从 SSE 流中提取 JSON-RPC 消息。
-func parseSSEResponse(r io.Reader) (*RPCResponse, error) {
+// parseSSEResponse extracts the JSON-RPC response for wantID from an SSE
+// stream. Streamable HTTP servers may interleave notifications and progress
+// events, so the last message is not necessarily ours: messages are matched by
+// request id. wantID 0 is a notification, which carries no result.
+func parseSSEResponse(r io.Reader, wantID int64) (*RPCResponse, error) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
 	var dataBuf bytes.Buffer
-	var last *RPCResponse
+	var matched, otherID *RPCResponse
 	flush := func() {
 		if dataBuf.Len() == 0 {
 			return
 		}
 		var rpcResp RPCResponse
-		if err := json.Unmarshal(dataBuf.Bytes(), &rpcResp); err == nil {
-			last = &rpcResp
+		if err := json.Unmarshal(dataBuf.Bytes(), &rpcResp); err == nil && len(rpcResp.ID) > 0 {
+			var id int64
+			if json.Unmarshal(rpcResp.ID, &id) == nil {
+				if wantID != 0 && id == wantID {
+					matched = &rpcResp
+				} else {
+					otherID = &rpcResp
+				}
+			}
 		}
 		dataBuf.Reset()
 	}
@@ -145,10 +175,16 @@ func parseSSEResponse(r io.Reader) (*RPCResponse, error) {
 		}
 	}
 	flush()
-	if last == nil {
-		return nil, fmt.Errorf("no JSON-RPC message in SSE stream")
+	if wantID == 0 {
+		return &RPCResponse{}, nil // notification: no result is expected
 	}
-	return last, nil
+	if matched != nil {
+		return matched, nil
+	}
+	if otherID != nil {
+		return nil, fmt.Errorf("SSE stream had no response for request id %d", wantID)
+	}
+	return nil, fmt.Errorf("no JSON-RPC response for id %d in SSE stream", wantID)
 }
 
 // ---------- Legacy HTTP+SSE ----------

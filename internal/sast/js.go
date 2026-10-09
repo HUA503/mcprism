@@ -174,7 +174,7 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 		firstArg, _ := splitTopComma(arg)
 		line := off2line(open)
 		code := lineText(b, line)
-		if jsControllable(firstArg, b.params) && !hasConstURLPrefix(firstArg) {
+		if jsControllable(firstArg, b.params) && !isConstURLArg(firstArg) {
 			out = append(out, issue(path, "MCP802", "Tool argument controls a request URL (SSRF)", SeverityHigh, line, code,
 				"Do not let agent input choose the host. Allow-list hosts or pin a constant base URL, and block metadata and private ranges."))
 		}
@@ -230,8 +230,29 @@ func jsControllable(expr string, params []string) bool {
 	return false
 }
 
-func hasConstURLPrefix(expr string) bool {
-	return regexp.MustCompile("['\"`]https?://").MatchString(expr)
+// isConstURLArg reports whether expr is a single quoted string literal holding
+// an http(s) URL. A literal used in concatenation ("https://" + host), a
+// template literal with interpolation, or any variable is not constant.
+func isConstURLArg(expr string) bool {
+	e := strings.TrimSpace(expr)
+	if len(e) < 2 {
+		return false
+	}
+	q := e[0]
+	if q != '\'' && q != '"' && q != '`' {
+		return false
+	}
+	if e[len(e)-1] != q {
+		return false // something follows the literal, e.g. "https://" + host
+	}
+	body := e[1 : len(e)-1]
+	if q == '`' && strings.Contains(body, "${") {
+		return false // template interpolation
+	}
+	if strings.Contains(body, string(q)) {
+		return false // not one contiguous literal
+	}
+	return strings.HasPrefix(body, "http://") || strings.HasPrefix(body, "https://")
 }
 
 // jsGuardedVars collects variables tested with .startsWith(...) anywhere in the

@@ -110,7 +110,7 @@ func scanGoBlock(path string, b handlerBlock) []Issue {
 		first, _ := splitTopComma(text[open+1 : close])
 		line := off2line(open)
 		code := lineText(b, line)
-		if goExprControllable(first, ctrl) && !hasConstURLPrefix(first) {
+		if goExprControllable(first, ctrl) && !isConstURLArg(first) {
 			out = append(out, issue(path, "MCP802", "Tool argument controls a request URL (SSRF)", SeverityHigh, line, code,
 				"Do not let agent input choose the host. Pin a constant base URL or allow-list hosts, and block metadata and private ranges."))
 		}
@@ -127,7 +127,7 @@ func scanGoBlock(path string, b handlerBlock) []Issue {
 		urlArg, _ := splitTopComma(afterMethod)
 		line := off2line(open)
 		code := lineText(b, line)
-		if goExprControllable(urlArg, ctrl) && !hasConstURLPrefix(urlArg) {
+		if goExprControllable(urlArg, ctrl) && !isConstURLArg(urlArg) {
 			out = append(out, issue(path, "MCP802", "Tool argument controls a request URL (SSRF)", SeverityHigh, line, code,
 				"NewRequest takes the URL as its second argument. Pin a constant base URL or allow-list hosts, and block metadata and private ranges."))
 		}

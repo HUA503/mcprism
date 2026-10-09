@@ -101,7 +101,10 @@ func ParseFile(path, client, scope string) (*ClientFile, error) {
 // ParseBytes 从 JSON/JSONC 字节中提取所有 server。
 // 支持 mcpServers / servers 根键，以及 Claude Code 的 projects.<path>.mcpServers。
 func ParseBytes(data []byte) ([]*Server, error) {
-	cleaned := stripJSONC(data)
+	// Editors on Windows (Notepad, PowerShell redirection) often save a UTF-8 BOM.
+	data = bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF})
+	// Remove comments first, then trailing commas (common in .vscode/mcp.json).
+	cleaned := stripTrailingCommas(stripJSONC(data))
 	var root map[string]json.RawMessage
 	if err := json.Unmarshal(cleaned, &root); err != nil {
 		return nil, err
@@ -167,14 +170,16 @@ func ParseBytes(data []byte) ([]*Server, error) {
 
 // serverDTO 用于解码单个 server 定义。
 type serverDTO struct {
-	Command string            `json:"command"`
-	Args    []string          `json:"args"`
-	Env     map[string]string `json:"env"`
-	URL     string            `json:"url"`
-	Type    string            `json:"type"`
-	Headers map[string]string `json:"headers"`
-	Cwd     string            `json:"cwd"`
-	Name    string            `json:"name"`
+	Command      string            `json:"command"`
+	Args         []string          `json:"args"`
+	Env          map[string]string `json:"env"`
+	URL          string            `json:"url"`
+	Type         string            `json:"type"`
+	Headers      map[string]string `json:"headers"`
+	Cwd          string            `json:"cwd"`
+	Name         string            `json:"name"`
+	ProjectDir   string            `json:"projectDir"`
+	ProjectFiles []string          `json:"projectFiles"`
 }
 
 func decodeServer(name string, raw json.RawMessage) (*Server, error) {
@@ -195,13 +200,15 @@ func decodeServer(name string, raw json.RawMessage) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		Name:    name,
-		Args:    dto.Args,
-		Env:     dto.Env,
-		URL:     dto.URL,
-		Headers: dto.Headers,
-		Cwd:     dto.Cwd,
-		Raw:     append(json.RawMessage(nil), raw...),
+		Name:         name,
+		Args:         dto.Args,
+		Env:          dto.Env,
+		URL:          dto.URL,
+		Headers:      dto.Headers,
+		Cwd:          dto.Cwd,
+		ProjectDir:   dto.ProjectDir,
+		ProjectFiles: dto.ProjectFiles,
+		Raw:          append(json.RawMessage(nil), raw...),
 	}
 	if dto.Name != "" {
 		s.Name = dto.Name
@@ -263,6 +270,52 @@ func stripJSONC(data []byte) []byte {
 				i++
 			}
 			i += 2
+		default:
+			out.WriteByte(c)
+			i++
+		}
+	}
+	return out.Bytes()
+}
+
+// stripTrailingCommas removes a comma that directly precedes a closing brace or
+// bracket (ignoring whitespace), so VS Code-style JSONC with trailing commas
+// parses. Commas inside strings are left untouched.
+func stripTrailingCommas(data []byte) []byte {
+	var out bytes.Buffer
+	i, n := 0, len(data)
+	inString := false
+	for i < n {
+		c := data[i]
+		if inString {
+			out.WriteByte(c)
+			if c == '\\' && i+1 < n {
+				out.WriteByte(data[i+1])
+				i += 2
+				continue
+			}
+			if c == '"' {
+				inString = false
+			}
+			i++
+			continue
+		}
+		switch {
+		case c == '"':
+			inString = true
+			out.WriteByte(c)
+			i++
+		case c == ',':
+			j := i + 1
+			for j < n && (data[j] == ' ' || data[j] == '\t' || data[j] == '\n' || data[j] == '\r') {
+				j++
+			}
+			if j < n && (data[j] == '}' || data[j] == ']') {
+				i++ // trailing comma: drop it
+				continue
+			}
+			out.WriteByte(c)
+			i++
 		default:
 			out.WriteByte(c)
 			i++

@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -104,15 +103,15 @@ func staticConfigRules(in Input) []Finding {
 		}
 	}
 
-	// 4. shell 下载并执行远程代码
+	// 4. shell 下载并执行远程代码（含 PowerShell iwr|iex 与编码命令）
 	if isShell(s.Command) {
 		script := shellScript(s.Args)
-		if downloadsAndExecutes(script) {
+		if downloadsAndExecutes(script) || hasEncodedShellCommand(s.Args) {
 			f = append(f, Finding{
 				RuleID: "MCP104", Title: "Remote code fetched and executed by shell",
 				Severity: SeverityCritical, OWASP: "MCP05", Server: s.Name, Evidence: script,
-				Description: "The configuration runs a shell that downloads content from a remote URL and pipes it to an interpreter (curl|sh style) — arbitrary remote code execution with no integrity verification.",
-				Advice:      "Avoid curl|sh; vendor the script, verify a checksum or signature, and pin the exact version over HTTPS.",
+				Description: "The configuration runs a shell that downloads content from a remote URL and pipes it to an interpreter (curl|sh or PowerShell iwr|iex style), or runs a base64-encoded command — arbitrary code execution with no integrity verification.",
+				Advice:      "Avoid curl|sh and iwr|iex; vendor the script, verify a checksum or signature, and pin the exact version over HTTPS. Never run opaque -EncodedCommand payloads.",
 			})
 		}
 	}
@@ -196,42 +195,94 @@ func hasAuthHeader(s *configServer) bool {
 }
 
 func isOverbroadPath(a string) bool {
-	switch a {
-	case "/", "/home", "/root", "/Users", "/etc", "/usr", "/var", "~", "$HOME", "/home/user", "/Users/Shared":
+	// Normalize Windows separators and case so a Linux CI can still flag a
+	// Windows-shaped config (C:\, C:\Users, %USERPROFILE%).
+	n := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(a), "\\", "/"))
+	switch n {
+	case "/", "/home", "/root", "/users", "/etc", "/usr", "/var",
+		"~", "$home", "$homepath", "/home/user", "/users/shared",
+		"%userprofile%", "%homepath%", "c:/users":
+		return true
+	}
+	// A drive root such as C:\ or C:/ grants the whole volume.
+	if winDriveRootRe.MatchString(n) {
 		return true
 	}
 	return false
 }
 
+var winDriveRootRe = regexp.MustCompile(`^[a-z]:/?$`)
+
+// baseNameCross returns the lowercased executable base name treating both /
+// and \ as separators, so Windows commands are recognized when the scan runs
+// on Linux/macOS and vice versa. Extensions used on Windows are stripped.
+func baseNameCross(cmd string) string {
+	p := strings.ToLower(strings.ReplaceAll(cmd, "\\", "/"))
+	if i := strings.LastIndex(p, "/"); i >= 0 {
+		p = p[i+1:]
+	}
+	for _, ext := range []string{".exe", ".cmd", ".bat", ".com"} {
+		p = strings.TrimSuffix(p, ext)
+	}
+	return p
+}
+
 func isShell(cmd string) bool {
-	switch filepath.Base(cmd) {
-	case "bash", "sh", "zsh", "ash", "dash", "ksh":
+	switch baseNameCross(cmd) {
+	case "bash", "sh", "zsh", "ash", "dash", "ksh", "fish", "tcsh", "csh",
+		"powershell", "pwsh", "windows-powershell", "cmd":
 		return true
 	}
 	return false
+}
+
+// shellFlags are the argument forms that introduce an inline command across
+// POSIX shells and PowerShell.
+var shellCommandFlags = map[string]bool{
+	"-c": true, "-command": true, "--command": true, "/c": true, "/k": true,
+}
+
+// encodedShellFlags mark an obfuscated, base64-encoded command that cannot be
+// inspected as text.
+var encodedShellFlags = map[string]bool{
+	"-enc": true, "-encodedcommand": true, "/e": true, "/encodedcommand": true,
 }
 
 func shellScript(args []string) string {
 	for i, a := range args {
-		if a == "-c" && i+1 < len(args) {
+		la := strings.ToLower(a)
+		if shellCommandFlags[la] && i+1 < len(args) {
 			return strings.Join(args[i+1:], " ")
 		}
 	}
 	return strings.Join(args, " ")
 }
 
+func hasEncodedShellCommand(args []string) bool {
+	for _, a := range args {
+		if encodedShellFlags[strings.ToLower(a)] {
+			return true
+		}
+	}
+	return false
+}
+
 func downloadsAndExecutes(script string) bool {
 	l := strings.ToLower(script)
-	fetches := strings.Contains(l, "curl") || strings.Contains(l, "wget")
+	fetches := strings.Contains(l, "curl") || strings.Contains(l, "wget") ||
+		strings.Contains(l, "iwr ") || strings.Contains(l, "invoke-webrequest") ||
+		strings.Contains(l, "irm ") || strings.Contains(l, "invoke-restmethod")
 	executes := strings.Contains(l, "| sh") || strings.Contains(l, "|sh") ||
 		strings.Contains(l, "| bash") || strings.Contains(l, "|bash") ||
 		strings.Contains(l, "| zsh") || strings.Contains(l, "eval ") ||
-		strings.Contains(l, "|$sh") || strings.Contains(l, "| $")
+		strings.Contains(l, "|$sh") || strings.Contains(l, "| $") ||
+		strings.Contains(l, "| iex") || strings.Contains(l, "|iex") ||
+		strings.Contains(l, "iex(") || strings.Contains(l, "invoke-expression")
 	return fetches && executes
 }
 
 func isFetcher(cmd string) bool {
-	switch filepath.Base(cmd) {
+	switch baseNameCross(cmd) {
 	case "npx", "npm", "bunx", "uvx", "pipx", "pnpm", "yarn", "deno":
 		return true
 	}
@@ -252,17 +303,30 @@ func extractPackage(args []string) (string, bool) {
 	return "", false
 }
 
-func isPinned(pkg string) bool {
-	if strings.Contains(pkg, "==") {
-		return true
+// exactVersionRe matches an exact x.y.z (optionally v-prefixed, with a
+// prerelease/build suffix). Ranges (^, ~, *), partial versions (1.2) and
+// floating tags (latest, next, main) do not match.
+var exactVersionRe = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$`)
+
+// versionPart extracts the version specifier after the last npm "@" or a
+// Python "==". A leading scoped "@" (e.g. @scope/pkg with no version) is not
+// treated as a separator.
+func versionPart(pkg string) string {
+	if i := strings.Index(pkg, "=="); i >= 0 {
+		return strings.TrimPrefix(pkg[i+2:], "=")
 	}
-	if strings.HasPrefix(pkg, "@") {
-		if i := strings.Index(pkg, "/"); i >= 0 {
-			return strings.Contains(pkg[i+1:], "@")
-		}
+	if i := strings.LastIndex(pkg, "@"); i > 0 {
+		return pkg[i+1:]
+	}
+	return ""
+}
+
+func isPinned(pkg string) bool {
+	ver := strings.TrimSpace(versionPart(pkg))
+	if ver == "" {
 		return false
 	}
-	return strings.Contains(pkg, "@")
+	return exactVersionRe.MatchString(ver)
 }
 
 func isRemote(s *configServer) bool {

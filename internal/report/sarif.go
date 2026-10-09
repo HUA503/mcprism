@@ -2,6 +2,9 @@ package report
 
 import (
 	"encoding/json"
+	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/HUA503/mcprism/internal/rules"
 )
@@ -45,6 +48,10 @@ type sarifLocation struct {
 }
 type sarifPhysical struct {
 	ArtifactLocation sarifArtifact `json:"artifactLocation"`
+	Region           *sarifRegion  `json:"region,omitempty"`
+}
+type sarifRegion struct {
+	StartLine int `json:"startLine"`
 }
 type sarifArtifact struct {
 	URI string `json:"uri"`
@@ -69,10 +76,6 @@ func RenderSARIF(r *Report) ([]byte, error) {
 	var results []sarifResult
 
 	for _, res := range r.Results {
-		uri := res.Server.Source
-		if uri == "" {
-			uri = res.Server.Name
-		}
 		for _, f := range res.Findings {
 			if _, ok := ruleDefs[f.RuleID]; !ok {
 				help := ""
@@ -91,12 +94,10 @@ func RenderSARIF(r *Report) ([]byte, error) {
 				msg = f.Title + " — " + f.Evidence + ". " + f.Advice
 			}
 			results = append(results, sarifResult{
-				RuleID:  f.RuleID,
-				Level:   sarifLevel(f.Severity),
-				Message: sarifMessage{Text: msg},
-				Locations: []sarifLocation{{
-					PhysicalLocation: sarifPhysical{ArtifactLocation: sarifArtifact{URI: uri}},
-				}},
+				RuleID:    f.RuleID,
+				Level:     sarifLevel(f.Severity),
+				Message:   sarifMessage{Text: msg},
+				Locations: []sarifLocation{sarifLocationFor(res, f)},
 			})
 		}
 	}
@@ -120,4 +121,49 @@ func RenderSARIF(r *Report) ([]byte, error) {
 		}},
 	}
 	return json.MarshalIndent(out, "", "  ")
+}
+
+// parseFileLine splits a source-code location "path/to/file.ext:42" into the
+// file and a 1-based line. Config-level locations (env.KEY, flag: ...) do not
+// match and return ok=false.
+func parseFileLine(loc string) (string, int, bool) {
+	i := strings.LastIndex(loc, ":")
+	if i <= 0 {
+		return "", 0, false
+	}
+	line, err := strconv.Atoi(strings.TrimSpace(loc[i+1:]))
+	if err != nil || line <= 0 {
+		return "", 0, false
+	}
+	return loc[:i], line, true
+}
+
+// sarifLocationFor maps a finding to a SARIF physical location. Source-code
+// findings get a relative artifact URI plus a startLine region so GitHub code
+// scanning can place the annotation on the exact line; config findings fall
+// back to the config file name, then a sanitized server name.
+func sarifLocationFor(res *rules.Result, f rules.Finding) sarifLocation {
+	if file, line, ok := parseFileLine(f.Location); ok {
+		uri := strings.ReplaceAll(file, "\\", "/")
+		return sarifLocation{PhysicalLocation: sarifPhysical{
+			ArtifactLocation: sarifArtifact{URI: uri},
+			Region:           &sarifRegion{StartLine: line},
+		}}
+	}
+	uri := sanitizeArtifactURI(res.Server.Name)
+	if res.Server.Source != "" {
+		uri = filepath.Base(res.Server.Source)
+	}
+	return sarifLocation{PhysicalLocation: sarifPhysical{
+		ArtifactLocation: sarifArtifact{URI: uri},
+	}}
+}
+
+func sanitizeArtifactURI(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "unknown"
+	}
+	r := strings.NewReplacer(" ", "-", "(", "", ")", "", ":", "-", "\\", "/")
+	return r.Replace(s)
 }
