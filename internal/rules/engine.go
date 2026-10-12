@@ -19,14 +19,40 @@ func redactTextURLs(s string) string {
 	return urlCredsRe.ReplaceAllString(s, "${1}${2}:***@")
 }
 
-// reportTarget returns a human-readable target for reports. Command lines are
-// kept as-is (secrets belong in env/headers, which are never reported); any
-// credentials embedded in a URL userinfo are redacted.
+// Sensitive command-line flags and key=value names whose value is a credential.
+// Redaction is deliberately broad: it runs on the reported target only, never
+// on the data the rules actually analyze, so over-masking costs a little
+// readability while under-masking leaks secrets into reports and CI logs.
+var (
+	// --api-key=v, --token v, /clientSecret:v (and single-dash forms).
+	secretFlagRe = regexp.MustCompile(`(?i)(--?[A-Za-z0-9-]*(?:api[_-]?key|access[_-]?token|client[_-]?secret|token|secret|passwd|password|pwd|credential|signature|private[_-]?key)[A-Za-z0-9-]*)([=:]|\s+)([^\s]+)`)
+	// Bare key=value pairs (env-inline, URL-form fragments): token=v, password: v.
+	secretKVRe = regexp.MustCompile(`(?i)([A-Za-z0-9_-]*(?:api[_-]?key|access[_-]?token|auth[_-]?token|client[_-]?secret|secret|token|passwd|password|credential)["']?\s*[=:]\s*["']?)([^\s"'&;]+)`)
+	// Well-known token shapes even without a flag name.
+	secretLiteralRe = regexp.MustCompile(`\b(?:sk-[A-Za-z0-9_-]{8,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|glpat-[A-Za-z0-9_-]{12,}|AKIA[0-9A-Z]{12,}|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]*)`)
+	bearerRe        = regexp.MustCompile(`(?i)\b(bearer\s+)([A-Za-z0-9._\-]{8,})`)
+)
+
+// redactSecrets masks credentials embedded in a command line or free text:
+// URL userinfo passwords, sensitive --flag values, key=value pairs, Bearer
+// tokens and recognizable provider token prefixes.
+func redactSecrets(s string) string {
+	s = redactTextURLs(s)
+	s = secretFlagRe.ReplaceAllString(s, "${1}${2}***")
+	s = secretKVRe.ReplaceAllString(s, "${1}***")
+	s = bearerRe.ReplaceAllString(s, "${1}***")
+	s = secretLiteralRe.ReplaceAllString(s, "***")
+	return s
+}
+
+// reportTarget returns a human-readable target for reports. Secrets travel in
+// env/headers (never reported), but users also pass them as command-line args
+// (--api-key=...) and inside URLs; all of those are masked here.
 func reportTarget(s *config.Server) string {
 	if s.URL != "" {
-		return redactTextURLs(s.URL)
+		return redactSecrets(s.URL)
 	}
-	return s.Target()
+	return redactSecrets(s.Target())
 }
 
 // Input 是单个 server 的审查输入。动态字段可能为零值（离线 / 连接失败）。
@@ -112,7 +138,7 @@ func Analyze(in Input) *Result {
 
 	// Strip credentials from any URL a rule quoted into its evidence.
 	for i := range r.Findings {
-		r.Findings[i].Evidence = redactTextURLs(r.Findings[i].Evidence)
+		r.Findings[i].Evidence = redactSecrets(r.Findings[i].Evidence)
 	}
 
 	r.Score, r.Grade = score(r)

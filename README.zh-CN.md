@@ -14,7 +14,7 @@ mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server �
 2. **源码**：当实现代码就在本地时，读取 JS/TS/Python 的工具 handler，追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及 eval、不安全反序列化和硬编码密钥。
 3. **运行时**：完成 MCP 握手，列出 tools、resources、prompts，并检查工具元数据是否被投毒。它不会调用任何工具。
 
-每个 server 都会得到一份发现清单、一个 0–100 的分数和一个 A–F 的评级。整个工具是一个 Go 二进制，没有运行时依赖，完全离线运行，也没有副作用。
+每个 server 都会得到一份发现清单、一个 0–100 的分数和一个 A–F 的评级。整个工具是一个 Go 二进制，没有运行时依赖。静态扫描完全离线、没有副作用；启动 server 做动态探测必须显式开启（`--dynamic` / `--probe`）。
 
 [![CI](https://github.com/HUA503/mcprism/actions/workflows/ci.yml/badge.svg)](https://github.com/HUA503/mcprism/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
@@ -95,7 +95,7 @@ mcprism vet server.py            # 审查单个文件
 - 看 schema。对于没有源码的在线 server，如果名为 command、url、path 之类的字符串参数接受任意值，会按命令执行、SSRF、路径风险报出；用 enum、const、pattern 约束过的参数不报。
 - 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套配置。
 - 风险接受清单。可以带理由和到期时间抑制发现，也可以用 `--baseline` 接受整份旧报告，只让新问题卡住构建；被抑制项仍显示在报告里，过期后自动重新出现。
-- 结果确定。34 条规则映射到 OWASP MCP01–MCP07。静态分析不联网；动态探测是可选的，会启动 server 进程，请在沙箱里运行。
+- 结果确定。35 条规则映射到 OWASP MCP01–MCP07。静态分析不联网；动态探测是可选的，会启动 server 进程，请在沙箱里运行。探测带有出站防护（不允许重定向到云元数据或 link-local 地址），并且默认只给被拉起的进程一个受限的环境变量集合，而不是整个 shell。
 - 面向人和机器的报告：table、JSON、Markdown、HTML、SARIF、JUnit XML、CycloneDX SBOM、CSV。
 - 一次扫描多个目标：文件、目录（递归）、URL。
 
@@ -194,6 +194,9 @@ mcprism profiles             # 列出内置基线
 | `--transport` | 对 URL 强制使用 `http`（Streamable HTTP）或 `sse`（旧版） |
 | `--dynamic`（`scan`） | 动态探测在线 server：启动/连接并列出 tools/resources/prompts。会启动目标进程，可能执行代码或联网，请在沙箱里运行 |
 | `--probe`（`vet`） | 真正启动/连接并枚举工具；会运行目标，建议在沙箱内进行 |
+| `--inherit-env` | 动态探测拉起 server 时透传当前完整环境变量。默认只给一小份安全白名单，避免把 shell 里的凭据交给不可信 server |
+| `--no-color` | 关闭终端报告里的 ANSI 颜色 |
+| `--ascii` | 终端只用 ASCII 字符（旧版 Windows 控制台和 `TERM=dumb` 会自动启用，同时尊重 `NO_COLOR`） |
 
 ## 示例输出
 
@@ -270,6 +273,7 @@ mcprism vet ./mcp-server/src/tool.ts
 | MCP804 | 动态执行代码（`eval`、`Function`、`exec`） | high |
 | MCP805 | 不安全反序列化（`pickle`、`marshal`、`yaml.load`） | high |
 | MCP806 | 源码中硬编码凭据 | high |
+| MCP807 | 动态 `require`/import 的模块名来自工具输入 | medium |
 
 为了压低误报，它能识别常见的安全写法，出现时就不报：
 
@@ -298,7 +302,13 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-引擎基于模式匹配加一层 taint 追踪，不使用第三方解析器，因此二进制保持小巧、自包含。它无法像完整数据流分析器那样覆盖所有情况，只针对大多数 MCP server 漏洞里那种从 handler 直接到 sink 的短路径。规则细节和更多示例见 [docs/SAST.md](docs/SAST.md)。
+引擎基于模式匹配加一层 taint 追踪，不使用第三方解析器，因此二进制保持小巧、自包含。它针对大多数 MCP server 漏洞里那种从 handler 直接到 sink 的短路径。请注意下面这些已知边界，不要把"没报问题"理解成"证明安全"：
+
+- taint 只在单个 handler 内追踪一跳。经过多个变量赋值、helper 函数、解构/导入别名（`import { exec as run }`、`child_process["ex"+"ec"]`）或跨函数流转的值不会被跟踪。
+- Go 分析目前没有用 `go/parser` 构建 AST，JS/Python 也没有用 tree-sitter，特殊排版或生成代码可能漏检。
+- 只分析 JavaScript/TypeScript、Python、Go；其他语言写的 server 只做配置和元数据层面的检查。
+
+对高风险 server，请配合完整数据流分析工具和人工复核一起使用。规则细节和更多示例见 [docs/SAST.md](docs/SAST.md)。
 
 <p align="center">
   <img src="assets/sast.png" alt="mcprism 源码分析发现" width="94%">
@@ -309,7 +319,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - 配置中的凭据。可识别的凭据格式（AWS、Google、GitHub、Slack、Stripe、GitLab、OpenAI、JWT 等）会按类型标出；看起来像生成密钥的高熵值会作为疑似密钥标出。占位符和 `${ENV_VAR}` 引用不会被标记。
 - 明文传输和关闭 TLS（`http://`、`NODE_TLS_REJECT_UNAUTHORIZED=0`）。
 - 权限过宽。文件系统 server 挂载到 `/` 或用户主目录；sandbox 或权限检查被关闭。
-- 工具投毒。工具名称、描述和 schema 中的注入指令、零宽/双向 Unicode、隐藏 HTML/Markdown、编码块。resource 和 prompt 模板的元数据也会做同样检查。
+- 工具投毒。工具名称、描述和 schema 中的注入指令、零宽/双向 Unicode、Unicode Tags、西里尔/希腊同形字（匹配前先做 NFKC 规范化）、隐藏 HTML/Markdown、编码块。正常的指导性说明不会被报；只有指令性措辞与隐藏或同形字符同时出现时才报 MCP205。resource 和 prompt 模板的元数据也会做同样检查。
 - 自由格式 schema 参数。对于没有源码的在线 server，会按参数名把接受任意字符串的命令、URL（SSRF）、路径参数标为风险。
 - 危险能力组合，比如 shell 加联网、读文件加联网、写文件加 shell。
 - 网络目标。云元数据端点（`169.254.169.254`）和私有/回环地址段。
@@ -387,7 +397,7 @@ flowchart TD
   F --> G[报告<br/>table · json · sarif · md · html · junit · cyclonedx · csv]
 ```
 
-mcprism 只枚举能力，因此分析没有副作用。自带的演示 server（`examples/testserver`）只模拟风险行为，不会真的执行。代码结构和数据流见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+静态分析（默认）只读本地配置和源码文件，没有副作用，也不需要联网。动态探测需要显式开启：传入 `--dynamic` 或 `--probe` 时才会启动或连接目标 server。该模式下，被拉起的进程默认只拿到一份受限的环境变量白名单（而不是整个 shell，可用 `--inherit-env` 覆盖），并且出站防护会拒绝重定向、拒绝拨向云元数据和 link-local 地址（169.254.0.0/16、100.100.100.200、fe80::/10）。即便有这些保护，仍应把不可信 server 当作不可信，在沙箱或虚拟机里探测。命令行、URL、证据里出现的密钥在所有报告格式中都会被掩码。自带的演示 server（`examples/testserver`）只模拟风险行为，不会真的执行。代码结构和数据流见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 ## 对比
 
@@ -415,7 +425,10 @@ mcprism 只枚举能力，因此分析没有副作用。自带的演示 server�
 不会。它只做 MCP 的 initialize 和列出请求，不会调用工具、不会通过 server 打开文件、也不会发送提示词。
 
 **它会把数据发到别处吗？**
-不会。规则在本地运行，也没有任何遥测。静态分析不连接任何地方；动态扫描（`scan --dynamic` / `vet --probe`）会启动你指定的 server 并连接它，该进程可能执行代码或联网，请在沙箱里运行。
+不会。规则在本地运行，也没有任何遥测。静态分析不连接任何地方；动态扫描（`scan --dynamic` / `vet --probe`）会启动你指定的 server 并连接它，该进程可能执行代码或联网，请在沙箱里运行。探测会拒绝跨 host 重定向、拒绝连接云元数据/link-local 地址，默认也不会把你的 shell 环境传给被拉起的 server。
+
+**我的 token 会出现在报告里吗？**
+不会。URL 里的账号密码、`--api-key`/`--token` 一类参数、`key=value`、`Bearer` 头，以及已知 token 前缀（AWS、GitHub、Slack、GitLab、OpenAI、JWT）都会在目标字符串和证据里被掩码成 `***`，所有输出格式一致。检测仍基于原始值进行，因此脱敏不会造成漏报。
 
 **它和 mcp-scan、mcp-audit 有什么区别？**
 后两者基于 Python 或 Node，主要关注配置或投毒。mcprism 是 Go 单二进制，会对能力组合建模、执行策略即代码，除 SARIF 外还输出 JUnit、CycloneDX 和 CSV。详见[对比表](#对比)。

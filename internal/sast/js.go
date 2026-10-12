@@ -209,7 +209,7 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 		line := off2line(open)
 		code := lineText(b, line)
 		if !strings.ContainsAny(arg, "'\"`") && jsControllable(arg, b.params) {
-			out = append(out, issue(path, "MCP805", "Dynamic module require with tool input", SeverityMedium, line, code,
+			out = append(out, issue(path, "MCP807", "Dynamic module require with tool input", SeverityMedium, line, code,
 				"Do not require modules named by agent input. Map requests to a fixed set of modules."))
 		}
 	}

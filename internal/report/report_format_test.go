@@ -116,3 +116,27 @@ func TestCycloneDXAffectsRef(t *testing.T) {
 		}
 	}
 }
+
+// The SARIF rule definitions must be emitted in a fixed order, independent of
+// randomized map iteration, so output is reproducible for golden tests.
+func TestSARIFRulesSorted(t *testing.T) {
+	b, err := RenderSARIF(sampleReport())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	run := doc["runs"].([]any)[0].(map[string]any)
+	driver := run["tool"].(map[string]any)["driver"].(map[string]any)
+	rs := driver["rules"].([]any)
+	var ids []string
+	for _, r := range rs {
+		ids = append(ids, r.(map[string]any)["id"].(string))
+	}
+	want := []string{"MCP101", "MCP803"}
+	if strings.Join(ids, ",") != strings.Join(want, ",") {
+		t.Fatalf("rules not sorted deterministically: got %v want %v", ids, want)
+	}
+}

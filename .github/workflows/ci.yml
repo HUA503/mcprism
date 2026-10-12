@@ -16,13 +16,37 @@ jobs:
           check-latest: true
       - name: Verify modules
         run: go mod verify
+      - name: gofmt
+        run: |
+          out=$(gofmt -l internal cmd)
+          if [ -n "$out" ]; then
+            echo "These files need gofmt -w:"
+            echo "$out"
+            exit 1
+          fi
       - name: Vet
         run: go vet ./...
-      - name: Test
-        run: go test ./...
+      - name: Test (with race detector)
+        run: go test -race -count=1 ./...
       - name: Build
         run: go build ./...
       - name: Smoke test (static scan)
         run: |
           go build -o mcprism ./cmd/mcprism
           ./mcprism scan examples/vulnerable.mcp.json
+
+  cross-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          check-latest: true
+      # Files carrying an implicit _windows GOOS suffix are only compiled on
+      # Windows, so a Linux-only run misses them. Cross vet compiles the
+      # Windows test packages and catches build breaks before release.
+      - name: Vet (Windows)
+        run: GOOS=windows go vet ./...
+      - name: Build (Windows)
+        run: GOOS=windows go build ./...

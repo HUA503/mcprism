@@ -26,10 +26,6 @@ func TestWindowsDriveRootOverbroad(t *testing.T) {
 
 // C:\Users and %USERPROFILE% are broad; a specific project subfolder is not.
 func TestWindowsUserProfilePaths(t *testing.T) {
-	base := func(arg string) *config.Server {
-		return &config.Server{Name: "fs", Transport: config.TransportStdio,
-			Command: "npx", Args: []string{"@modelcontextprotocol/server-filesystem", arg}}
-	}
 	for _, broad := range []string{`C:\Users`, `%USERPROFILE%`, `D:/`} {
 		if !isOverbroadPath(broad) {
 			t.Errorf("expected %q to be overbroad", broad)

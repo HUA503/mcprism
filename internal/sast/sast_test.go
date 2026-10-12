@@ -1,6 +1,9 @@
 package sast
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func ruleIDSet(iss []Issue) map[string]bool {
 	m := map[string]bool{}
@@ -74,5 +77,27 @@ func TestUnsupportedFile(t *testing.T) {
 func TestIsSourceProject(t *testing.T) {
 	if !IsSourceProject("testdata") {
 		t.Error("testdata is a source project")
+	}
+}
+
+// Dynamic require of an agent-controlled module name is MCP807, distinct from
+// the unsafe-deserialization rule MCP805.
+func TestDynamicRequireIsMCP807(t *testing.T) {
+	src := `server.tool("load", {name: z.string()}, async ({name}) => {
+  const mod = require(name)
+  return mod.x
+})
+`
+	dir := t.TempDir()
+	p := dir + "/dyn.js"
+	if err := os.WriteFile(p, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ids := ruleIDSet(analyzeJS(p))
+	if !ids["MCP807"] {
+		t.Fatalf("expected MCP807 for dynamic require, got %v", ids)
+	}
+	if ids["MCP805"] {
+		t.Fatalf("dynamic require must not be reported as MCP805, got %v", ids)
 	}
 }

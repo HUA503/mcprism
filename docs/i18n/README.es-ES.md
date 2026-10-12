@@ -94,7 +94,7 @@ mcprism vet server.py            # revisar un archivo
 - Comprobaciones estática, de código y en vivo. Lee la configuración, revisa el código JS/TS/Python/Go cuando hay un árbol de código y hace el saludo MCP para listar herramientas, recursos e indicaciones. Nunca llama a una herramienta.
 - Política como código. Activa o desactiva reglas, cambia severidades, permite o bloquea paquetes/comandos/dominios y exige aislamiento de red. Los perfiles integrados ofrecen las líneas base `default`, `strict` y `ci`.
 - Registro de riesgos aceptados. Suprime hallazgos con un motivo y una fecha de caducidad. Los elementos suprimidos siguen visibles en el informe y vuelven al caducar.
-- Determinista y sin conexión. 34 reglas mapeadas a OWASP MCP01–MCP07; nada sale de tu máquina.
+- Determinista y sin conexión. 35 reglas mapeadas a OWASP MCP01–MCP07; nada sale de tu máquina.
 - Informes para personas y máquinas: table, JSON, Markdown, HTML, SARIF, JUnit XML, SBOM CycloneDX y CSV.
 - Escanea varios destinos a la vez: archivos, directorios (de forma recursiva) y URL.
 

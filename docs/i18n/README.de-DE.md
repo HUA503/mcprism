@@ -94,7 +94,7 @@ mcprism vet server.py            # eine Datei prüfen
 - Statische, Quell- und Live-Prüfung. Liest die Konfiguration, prüft JS/TS/Python/Go-Quellcode, wenn ein Checkout vorhanden ist, und führt den MCP-Handshake durch, um Tools, Ressourcen und Prompts aufzulisten. Er ruft nie ein Tool auf.
 - Policy als Code. Regeln ein-/ausschalten, Schweregrade ändern, Pakete/Befehle/Domains erlauben oder ablehnen und Netzwerkisolation verlangen. Die eingebauten Profile bieten die Baselines `default`, `strict` und `ci`.
 - Risikoakzeptanz-Register. Befunde mit Grund und Ablaufdatum unterdrücken. Unterdrückte Einträge bleiben im Bericht sichtbar und kehren nach Ablauf zurück.
-- Deterministisch und offline. 34 Regeln, abgebildet auf OWASP MCP01–MCP07; nichts verlässt Ihren Rechner.
+- Deterministisch und offline. 35 Regeln, abgebildet auf OWASP MCP01–MCP07; nichts verlässt Ihren Rechner.
 - Berichte für Menschen und Maschinen: table, JSON, Markdown, HTML, SARIF, JUnit XML, CycloneDX-SBOM und CSV.
 - Mehrere Ziele auf einmal scannen: Dateien, Verzeichnisse (rekursiv) und URLs.
 

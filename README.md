@@ -22,8 +22,9 @@ servers. It looks at a server from three angles:
    prompts and checks tool metadata for poisoning. It never calls a tool.
 
 Every server gets a list of findings, a 0–100 score and an A–F grade. mcprism
-ships as one Go binary with no runtime dependencies, runs fully offline, and
-has no side effects.
+ships as one Go binary with no runtime dependencies. Static scans run fully
+offline and have no side effects; launching a server for live probing is
+strictly opt-in (`--dynamic` / `--probe`).
 
 [![CI](https://github.com/HUA503/mcprism/actions/workflows/ci.yml/badge.svg)](https://github.com/HUA503/mcprism/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
@@ -124,9 +125,11 @@ below, with no network needed.
 - Accepted-risk register. Suppress findings with a reason and an expiry, or
   accept a whole `--baseline` report so only new problems fail the build.
   Suppressed items stay visible in the report, and expired ones come back.
-- Deterministic. 34 rules mapped to OWASP MCP01–MCP07. Static analysis never
+- Deterministic. 35 rules mapped to OWASP MCP01–MCP07. Static analysis never
   touches the network; live probing is opt-in and starts the server, so run it
-  in a sandbox.
+  in a sandbox. Probing applies an egress guard (no redirects to cloud
+  metadata or link-local addresses) and passes the spawned process a restricted
+  environment instead of your full shell.
 - Reports for people and machines: table, JSON, Markdown, HTML, SARIF, JUnit
   XML, CycloneDX SBOM and CSV.
 - Scan several targets at once: files, directories (recursively), or URLs.
@@ -231,6 +234,9 @@ mcprism profiles             # list built-in profiles
 | `--transport` | Force `http` (Streamable HTTP) or `sse` (legacy) for URLs |
 | `--dynamic` (`scan`) | Probe live servers: launch/connect and enumerate tools, resources and prompts. Starts the target process, which may run code or reach the network; run it in a sandbox |
 | `--probe` (`vet`) | Launch/connect and enumerate tools; runs the target, prefer a sandbox |
+| `--inherit-env` | When spawning a server for probing, pass through the full parent environment. Default is a small safe allowlist, so credentials in your shell are not handed to an untrusted server |
+| `--no-color` | Disable ANSI colors in the terminal report |
+| `--ascii` | Use ASCII-only glyphs in the terminal (auto-enabled for legacy Windows consoles and `TERM=dumb`; honors `NO_COLOR`) |
 
 ## Example output
 
@@ -321,6 +327,7 @@ code, and say how to fix it:
 | MCP804 | Dynamic code execution (`eval`, `Function`, `exec`) | high |
 | MCP805 | Unsafe deserialization (`pickle`, `marshal`, `yaml.load`) | high |
 | MCP806 | Hardcoded credential in the source | high |
+| MCP807 | Dynamic module `require`/import whose name comes from tool input | medium |
 
 It recognizes the usual safe patterns and stays quiet when they are present, to
 keep false positives down:
@@ -355,9 +362,21 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 ```
 
 The engine is pattern-based with one level of taint tracking and no third-party
-parser, so the binary stays small and self-contained. It won't catch everything
-a full data-flow analyzer would; it targets the short, direct handler-to-sink
-paths behind most MCP server bugs. Rule details and more examples are in
+parser, so the binary stays small and self-contained. It targets the short,
+direct handler-to-sink paths behind most MCP server bugs. Be aware of the
+known limits so you do not read a clean report as a proof of safety:
+
+- Taint is tracked a single hop inside one handler. A value copied through
+  several variables, a helper function, a destructuring/import alias
+  (`import { exec as run }`, `child_process["ex"+"ec"]`), or across functions
+  is not followed.
+- The Go analyzer does not yet build an AST with `go/parser`, and JS/Python do
+  not use tree-sitter, so unusual formatting or generated code can be missed.
+- Only JavaScript/TypeScript, Python and Go are analyzed; servers in other
+  languages get config- and metadata-level checks only.
+
+For assurance on a high-risk server, pair mcprism with a full data-flow
+analyzer and manual review. Rule details and more examples are in
 [docs/SAST.md](docs/SAST.md).
 
 <p align="center">
@@ -375,8 +394,11 @@ paths behind most MCP server bugs. Rule details and more examples are in
 - Over-broad permissions. Filesystem servers mounted at `/` or the home
   directory; sandbox or permission checks turned off.
 - Tool poisoning. Injection directives, zero-width/bidirectional Unicode,
-  hidden HTML/Markdown and encoded blobs in tool names, descriptions and schemas.
-  The same checks cover resource and prompt-template metadata.
+  Unicode Tags and Cyrillic/Greek homoglyphs (normalized with NFKC before
+  matching), hidden HTML/Markdown and encoded blobs in tool names, descriptions
+  and schemas. Plain instructional text is not flagged; directive language is
+  only reported when combined with hidden or confusable characters. The same
+  checks cover resource and prompt-template metadata.
 - Free-form schema parameters. A live server with no source available is
   checked by parameter name for command, URL (SSRF) and path risk when the
   parameter accepts any string.
@@ -469,10 +491,18 @@ flowchart TD
   F --> G[Report<br/>table · json · sarif · md · html · junit · cyclonedx · csv]
 ```
 
-mcprism only enumerates capabilities, so analysis has no side effects. The
-bundled demo server (`examples/testserver`) simulates risky behavior without
-performing any of it. The package layout and data flow are described in
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Static analysis (the default) only reads local config and source files, so it
+has no side effects and needs no network. Live probing is opt-in: when you pass
+`--dynamic` or `--probe`, mcprism starts or connects to the target server. In
+that mode it hands the spawned process a restricted environment (a small
+allowlist instead of your full shell; use `--inherit-env` to override) and
+applies an egress guard that blocks redirects and dial-out to cloud-metadata
+and link-local addresses (169.254.0.0/16, 100.100.100.200, fe80::/10). Even
+with those guards, treat an untrusted server as untrusted and probe it inside a
+sandbox or VM. Secrets seen on the command line, in URLs or in evidence are
+masked in every report format. The bundled demo server (`examples/testserver`)
+simulates risky behavior without performing any of it. The package layout and
+data flow are described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Comparison
 
@@ -504,7 +534,16 @@ invoked, files are not opened through a server, and prompts are not sent.
 No. The rules run locally and there is no telemetry. Static analysis never
 connects anywhere. A live scan (`--dynamic` for scan, `--probe` for vet)
 connects to the server you point it at and starts its process, which may run
-code or reach the network, so run live probes in a sandbox.
+code or reach the network, so run live probes in a sandbox. Probing refuses
+cross-host redirects and connections to cloud-metadata/link-local addresses,
+and by default does not pass your shell environment to the spawned server.
+
+**Will my tokens end up in the report?**
+No. Credentials in URL userinfo, `--api-key`/`--token` style arguments,
+`key=value` pairs, `Bearer` headers and known token prefixes (AWS, GitHub,
+Slack, GitLab, OpenAI, JWT) are masked as `***` in the target string and in
+finding evidence across all output formats. Detection still runs on the
+original values; only the rendered report is redacted.
 
 **How is this different from mcp-scan or mcp-audit?**
 Those run on Python or Node and focus on config or poisoning. mcprism is a Go

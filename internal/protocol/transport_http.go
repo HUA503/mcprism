@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -17,11 +18,19 @@ import (
 )
 
 // streamingHTTPClient bounds the connection and header phases but leaves the
-// response body open, so a long-lived SSE stream is not cut off.
+// response body open, so a long-lived SSE stream is not cut off. The dialer
+// enforces the egress guard (no link-local/cloud-metadata targets, including
+// hosts that resolve to them), and redirects are confined to the same host.
 func streamingHTTPClient() *http.Client {
+	dialer := &net.Dialer{
+		Timeout: 10 * time.Second,
+		Control: egressControl,
+	}
 	return &http.Client{
+		CheckRedirect: safeCheckRedirect,
 		Transport: &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
+			DialContext:           dialer.DialContext,
 			TLSHandshakeTimeout:   10 * time.Second,
 			ResponseHeaderTimeout: 15 * time.Second,
 		},

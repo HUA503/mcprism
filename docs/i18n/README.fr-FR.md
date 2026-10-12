@@ -94,7 +94,7 @@ mcprism vet server.py            # vérifier un fichier
 - Vérifications statique, source et en direct. Il lit la configuration, examine le source JS/TS/Python/Go quand une arborescence est présente, et effectue la poignée de main MCP pour lister les outils, ressources et invites. Il n'appelle jamais un outil.
 - Politique sous forme de code. Activez/désactivez des règles, changez les sévérités, autorisez ou refusez des paquets, commandes et domaines, et exigez l'isolation réseau. Les profils intégrés offrent les bases `default`, `strict` et `ci`.
 - Registre des risques acceptés. Supprimez des constats avec une raison et une date d'expiration. Les éléments supprimés restent visibles dans le rapport et reviennent à expiration.
-- Déterministe et hors ligne. 34 règles mappées sur OWASP MCP01–MCP07 ; rien ne quitte votre machine.
+- Déterministe et hors ligne. 35 règles mappées sur OWASP MCP01–MCP07 ; rien ne quitte votre machine.
 - Des rapports pour les humains et les machines : table, JSON, Markdown, HTML, SARIF, JUnit XML, SBOM CycloneDX et CSV.
 - Scannez plusieurs cibles à la fois : fichiers, répertoires (récursivement) ou URL.
 

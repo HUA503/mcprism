@@ -59,6 +59,7 @@ var srcOWASP = map[string]string{
 	"MCP804": "MCP05",
 	"MCP805": "MCP05",
 	"MCP806": "MCP01",
+	"MCP807": "MCP05",
 }
 
 var srcDescription = map[string]string{
@@ -68,6 +69,7 @@ var srcDescription = map[string]string{
 	"MCP804": "A tool handler evaluates agent-controlled input as code (eval, Function, exec). Running attacker-influenced code gives the agent execution inside the server process.",
 	"MCP805": "A tool handler deserializes agent-controlled data with an unsafe loader (pickle, marshal, yaml.load without SafeLoader). Crafted data can lead to code execution or object injection.",
 	"MCP806": "The server source contains a hardcoded credential. Anyone with the source or the built artifact can extract it and reuse it.",
+	"MCP807": "A tool handler builds a module name from an agent-controlled argument and passes it to require()/dynamic import(). The agent can load an unexpected or attacker-installed package and run its initialization code.",
 }
 
 var srcReferences = map[string][]string{
@@ -77,4 +79,5 @@ var srcReferences = map[string][]string{
 	"MCP804": {"https://cwe.mitre.org/data/definitions/94.html"},
 	"MCP805": {"https://cwe.mitre.org/data/definitions/502.html"},
 	"MCP806": {"https://cwe.mitre.org/data/definitions/798.html"},
+	"MCP807": {"https://cwe.mitre.org/data/definitions/829.html"},
 }

@@ -25,6 +25,10 @@ func TestInitASCII(t *testing.T) {
 
 func TestInitNoColorFromEnv(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
+	// Pin a UTF-8 capable terminal so the assertion is host-independent: legacy
+	// Windows conhost would otherwise force the ASCII glyph set on its own.
+	t.Setenv("TERM", "xterm-256color")
+	t.Setenv("WT_SESSION", "1")
 	Init(false, false)
 	if ColorEnabled() {
 		t.Fatal("NO_COLOR should disable color")
@@ -41,7 +45,7 @@ func TestInitDumbTermIsASCII(t *testing.T) {
 	t.Setenv("WT_SESSION", "")
 	Init(false, false)
 	if !ASCII() {
-		t.Fatal("TERM=dumb should fall back to ASCII glyphs")
+		t.Fatal("TERM=dumb (and legacy conhost) should fall back to ASCII glyphs")
 	}
 }
 

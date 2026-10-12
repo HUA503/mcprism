@@ -4,6 +4,85 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.7.0] - 2026-10-12
+
+This release focuses on detection accuracy and on not leaking data while
+reporting it. Most of the work came from adversarial review: bypass samples
+that scored 100 are now caught, the Windows test build is green again, and
+secrets on a command line no longer appear in reports.
+
+### Security
+
+- Reports now mask secrets everywhere they can surface. URL userinfo was
+  already redacted; this extends to `--api-key`/`--token`/`--client-secret`
+  style arguments, bare `key=value` pairs, `Bearer` headers and known token
+  prefixes (AWS, GitHub `ghp_`/`github_pat_`, Slack, GitLab, OpenAI, JWT) in
+  the target string and in finding evidence, across all formats. Detection
+  still uses the original values, so redaction causes no false negatives.
+- Live probing applies an egress guard: redirects are confined to the same
+  scheme+host (no HTTPS downgrade, chain capped at three), and dial-out to
+  cloud-metadata and link-local targets is refused after DNS resolution,
+  covering 169.254.0.0/16, 100.100.100.200 and fe80::/10. Loopback and RFC1918
+  intranet servers remain allowed.
+- A spawned server gets a restricted environment by default instead of the
+  full parent shell; pass `--inherit-env` to restore the old behavior.
+
+### Added
+
+- Built-in rules rise from 34 to 35. New rule MCP807 reports a dynamic
+  `require`/import whose module name comes from tool input; it previously
+  shared the MCP805 id with unsafe deserialization, which conflated two issues.
+- Poisoning detection normalizes metadata with NFKC and folds Cyrillic/Greek
+  homoglyphs before matching, so full-width and look-alike spellings of
+  injection phrases are caught. It now also flags the Unicode Tags block
+  (U+E0000–E007F) and mixed-script tokens.
+- New flags `--inherit-env`, `--no-color` and `--ascii`; ASCII glyphs are also
+  auto-selected on legacy Windows consoles and `TERM=dumb`, and `NO_COLOR` is
+  honored.
+- Shared terminal theme under `internal/ui` used by both the table report and
+  the TUI.
+
+### Changed
+
+- MCP205 (directive language) is no longer reported for normal API guidance
+  such as "Before calling this tool, make sure the file exists". It fires only
+  when imperative wording appears together with hidden or confusable text, and
+  is informational.
+- SARIF `rules[]` are emitted in a fixed id order so output is reproducible.
+
+### Fixed
+
+- The Windows test build failed because a test file carried an implicit
+  `_windows` build suffix and an unused variable. The file is renamed so the
+  cross-platform rule tests run on every OS, and the dead code is removed. CI
+  now cross-checks `GOOS=windows` vet/build.
+- A UI test depended on the host terminal's UTF-8 capability and failed on
+  legacy Windows conhost; it pins the terminal environment explicitly.
+- SAST path confinement is bound to the specific variable reaching the sink in
+  Python (matching the JS/Go behavior), so an unrelated `realpath` +
+  `startswith` elsewhere in a handler no longer excuses an unguarded `open()`.
+- A constant-URL guard no longer accepts string concatenation:
+  `fetch("https://" + url)` is reported as SSRF; only a single string literal
+  counts as a fixed host.
+- `@latest`, `@next`, ranges and wildcards are treated as unpinned versions;
+  only an exact `@x.y.z` satisfies the pinning rule.
+- Windows shells and paths are detected: `powershell`/`pwsh`/`cmd` and
+  `-EncodedCommand`, plus drive roots such as `C:\` and `%USERPROFILE%`.
+- Config parsing strips a UTF-8 BOM, tolerates trailing commas, warns on files
+  it cannot parse instead of silently skipping them, and honors `projectDir`
+  during `scan` so SAST actually runs.
+- Streamable HTTP SSE responses are matched by JSON-RPC id instead of taking
+  the last message, so interleaved progress notifications no longer hijack a
+  result. HTTP clients have bounded timeouts.
+- CSV output quotes formula-triggering cells; SARIF includes `startLine` and a
+  legal relative artifact URI; CycloneDX adds `bom-ref`/`affects` linkage.
+- Spawned stdio process trees are cleaned up as a group (process groups on
+  Unix, taskkill on Windows), removing orphaned children.
+- Baseline fingerprints include severity and an evidence hash, so a finding
+  that changes severity is no longer silently suppressed.
+- Source reads are bounded (per-file, total-bytes and walk-depth limits).
+- The install script verifies release checksums.
+
 ## [0.6.1] - 2026-10-08
 
 ### Fixed

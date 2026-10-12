@@ -95,12 +95,16 @@ func metadataPoisoningRules(in Input) []Finding {
 func scanMetadata(server, kind, loc, scan string) []Finding {
 	var f []Finding
 	noun := kind
+	// Fold NFKC compatibility forms and Cyrillic/Greek homoglyphs so injection
+	// phrasing hidden behind full-width letters or look-alike code points still
+	// matches the English signatures.
+	folded := normalizeForScan(scan)
 
 	// 1. Prompt injection (aggregate every hit on this object, keep the worst).
 	var hits []string
 	worst := SeverityInfo
 	for _, sig := range injectionSigs {
-		if m := sig.re.FindString(scan); m != "" {
+		if m := sig.re.FindString(folded); m != "" {
 			hits = append(hits, clipEvidence(m, 60))
 			if sevRank(sig.sev) > sevRank(worst) {
 				worst = sig.sev
@@ -118,8 +122,10 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 		})
 	}
 
-	// 2. Invisible / bidi Unicode.
-	if r, bad := invisibleRune(scan); bad {
+	// 2. Invisible / bidi / Tags Unicode.
+	obfuscated := false
+	if r, invKind, bad := findInvisible(scan); bad {
+		obfuscated = true
 		sev := SeverityHigh
 		if isBidi(r) {
 			sev = SeverityCritical
@@ -127,9 +133,20 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 		f = append(f, Finding{
 			RuleID: "MCP202", Title: "Invisible or bidirectional Unicode in " + noun + " metadata",
 			Severity: sev, OWASP: "MCP03", Server: server, Location: loc,
-			Evidence:    "character U+" + fmt.Sprintf("%04X", r),
-			Description: "Zero-width or bidirectional-override characters can hide instructions or visually rearrange text so reviewers and the model see different things.",
-			Advice:      "Strip non-text-control Unicode from names, descriptions and schemas before loading them.",
+			Evidence:    fmt.Sprintf("%s character U+%04X", invKind, r),
+			Description: "Zero-width, bidirectional-override or Unicode Tags characters can hide instructions or visually rearrange text so reviewers and the model see different things.",
+			Advice:      "Strip non-text-control Unicode (Cf/Tags) from names, descriptions and schemas before loading them.",
+		})
+	}
+	// 2b. Mixed-script homoglyph token (e.g. Cyrillic look-alikes in English).
+	if tok := findMixedScriptToken(scan); tok != "" {
+		obfuscated = true
+		f = append(f, Finding{
+			RuleID: "MCP202", Title: "Mixed-script homoglyph in " + noun + " metadata",
+			Severity: SeverityHigh, OWASP: "MCP03", Server: server, Location: loc,
+			Evidence:    "mixed-script token: " + clipEvidence(tok, 60),
+			Description: "A single token mixes Latin with Cyrillic/Greek letters that look nearly identical, a common way to disguise keywords from plaintext review and ASCII-based scanners.",
+			Advice:      "Confine tool metadata to one script, or normalize confusable code points before loading them.",
 		})
 	}
 
@@ -169,36 +186,20 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 		})
 	}
 
-	// 5. Directive language (weak signal).
-	if m := imperative.FindString(scan); m != "" {
-		f = append(f, Finding{
-			RuleID: "MCP205", Title: noun + " metadata uses directive language",
-			Severity: SeverityLow, OWASP: "MCP03", Server: server, Location: loc, Evidence: clipEvidence(m, 80),
-			Description: "The metadata phrases behavior as instructions to the model. This is a weak signal worth reviewing when it constrains or steers agent behavior.",
-			Advice:      "Prefer factual descriptions over directives that command the model.",
-		})
-	}
-	return f
-}
-
-func invisibleRune(s string) (rune, bool) {
-	for _, r := range s {
-		switch r {
-		case 0x200B, 0x200C, 0x200D, 0xFEFF, 0x2060,
-			0x200E, 0x200F, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
-			0x2066, 0x2067, 0x2068, 0x2069:
-			return r, true
+	// 5. Directive language is reported only alongside real obfuscation. Plain
+	// guidance such as "Before calling this tool, make sure the file exists" is
+	// normal API documentation and must not be flagged on its own.
+	if obfuscated {
+		if m := imperative.FindString(folded); m != "" {
+			f = append(f, Finding{
+				RuleID: "MCP205", Title: "Directive language combined with hidden text in " + noun + " metadata",
+				Severity: SeverityInfo, OWASP: "MCP03", Server: server, Location: loc, Evidence: clipEvidence(m, 80),
+				Description: "Imperative phrasing steers the model, and here it appears together with invisible or confusable characters, which is a strong poisoning indicator.",
+				Advice:      "Prefer factual descriptions and strip the hidden/confusable characters.",
+			})
 		}
 	}
-	return 0, false
-}
-
-func isBidi(r rune) bool {
-	switch r {
-	case 0x200E, 0x200F, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E, 0x2066, 0x2067, 0x2068, 0x2069:
-		return true
-	}
-	return false
+	return f
 }
 
 func schemaEmpty(raw []byte) bool {

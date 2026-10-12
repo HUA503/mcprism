@@ -3,6 +3,7 @@ package report
 import (
 	"encoding/json"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -106,6 +107,14 @@ func RenderSARIF(r *Report) ([]byte, error) {
 	for _, d := range ruleDefs {
 		rulesList = append(rulesList, d)
 	}
+	// Stable rule ordering keeps SARIF output deterministic across runs and
+	// machines (the map above has randomized iteration order).
+	sort.Slice(rulesList, func(i, j int) bool {
+		if rulesList[i].ID == rulesList[j].ID {
+			return rulesList[i].ShortDescription.Text < rulesList[j].ShortDescription.Text
+		}
+		return ruleIDLess(rulesList[i].ID, rulesList[j].ID)
+	})
 
 	out := sarifReport{
 		Schema:  "https://json.schemastore.org/sarif-2.1.0.json",
@@ -166,4 +175,24 @@ func sanitizeArtifactURI(s string) string {
 	}
 	r := strings.NewReplacer(" ", "-", "(", "", ")", "", ":", "-", "\\", "/")
 	return r.Replace(s)
+}
+
+// ruleIDLess orders rule ids by their alphabetic prefix then by the numeric
+// suffix (MCP101 < MCP102 < MCP1000), instead of lexicographic string order.
+func ruleIDLess(a, b string) bool {
+	pa, na := splitRuleID(a)
+	pb, nb := splitRuleID(b)
+	if pa != pb {
+		return pa < pb
+	}
+	return na < nb
+}
+
+func splitRuleID(s string) (string, int) {
+	i := len(s)
+	for i > 0 && s[i-1] >= '0' && s[i-1] <= '9' {
+		i--
+	}
+	n, _ := strconv.Atoi(s[i:])
+	return s[:i], n
 }
