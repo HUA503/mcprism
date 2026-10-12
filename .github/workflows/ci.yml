@@ -33,7 +33,14 @@ jobs:
       - name: Smoke test (static scan)
         run: |
           go build -o mcprism ./cmd/mcprism
-          ./mcprism scan examples/vulnerable.mcp.json
+          # A clean config must pass with exit 0.
+          ./mcprism scan examples/clean.mcp.json
+          # The vulnerable sample carries critical findings, so the default
+          # gate must fail the build with a non-zero exit code.
+          if ./mcprism scan examples/vulnerable.mcp.json; then
+            echo "expected a non-zero exit code for the vulnerable sample"
+            exit 1
+          fi
 
   cross-windows:
     runs-on: ubuntu-latest
