@@ -27,7 +27,7 @@ mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server �
 ---
 
 <p align="center">
-  <img src="assets/demo.gif" alt="mcprism 在终端扫描 MCP server" width="78%">
+  <img src="assets/demo.gif?v=0.7.0" alt="mcprism 在终端扫描 MCP server" width="78%">
 </p>
 
 <p align="center">
@@ -62,7 +62,7 @@ mcprism vet server.py            # 审查单个文件
 `vet` 默认只做静态分析，不会运行目标。加 `--probe` 才会启动它并枚举 tools、resources 和 prompts。源码目录或文件会走下面的源码分析引擎，不需要联网。
 
 <p align="center">
-  <img src="assets/vet.png" alt="mcprism vet 拦截 curl|sh 启动命令" width="94%">
+  <img src="assets/vet.png?v=0.7.0" alt="mcprism vet 拦截 curl|sh 启动命令" width="94%">
 </p>
 
 ## 目录
@@ -108,13 +108,13 @@ mcprism vet server.py            # 审查单个文件
 ## 报告
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png" alt="mcprism 对在线 server 的 HTML 报告" width="86%">
+  <img src="assets/screenshot-dynamic.png?v=0.7.0" alt="mcprism 对在线 server 的 HTML 报告" width="86%">
 </p>
 
 跨多个 server 的批量审查（静态模式）：
 
 <p align="center">
-  <img src="assets/screenshot-static.png" alt="mcprism 跨多个 server 的 HTML 报告" width="70%">
+  <img src="assets/screenshot-static.png?v=0.7.0" alt="mcprism 跨多个 server 的 HTML 报告" width="70%">
 </p>
 
 ## 安装
@@ -311,7 +311,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 对高风险 server，请配合完整数据流分析工具和人工复核一起使用。规则细节和更多示例见 [docs/SAST.md](docs/SAST.md)。
 
 <p align="center">
-  <img src="assets/sast.png" alt="mcprism 源码分析发现" width="94%">
+  <img src="assets/sast.png?v=0.7.0" alt="mcprism 源码分析发现" width="94%">
 </p>
 
 ## 检测内容
