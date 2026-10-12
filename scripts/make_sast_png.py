@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Render a high-resolution static terminal shot of `mcprism vet` on a Go file.
+# The rows mirror the real table output of `mcprism vet internal/sast/testdata/vuln.go`.
 from PIL import Image, ImageDraw, ImageFont
 
 MONO = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
@@ -15,38 +16,46 @@ GREEN = (166, 227, 161)
 RED = (243, 139, 168)
 YELLOW = (249, 226, 175)
 ORANGE = (250, 179, 135)
-BLUE = (137, 180, 250)
-TEAL = (137, 220, 235)
 RULE = (69, 71, 90)
 
 CELLW = int(round(font.getlength("M")))
 LINEH = 24
 PAD = 20
+HBAR = 88
+
+def finding(sev, sevcol, rule, title, loc, code, advice):
+    return [
+        [("  " + sev.ljust(4) + " ", sevcol, True), (rule, DIM, False), ("  " + title, FG, False)],
+        [("      \u21b3 " + loc, DIM, False)],
+        [("      " + code, sevcol, False)],
+        [("      \u2192 " + advice, GREEN, False)],
+    ]
 
 rows = [
-    [("  \u25c6 mcprism   ", BLUE, True), ("v0.6.0", GREEN, True), ("   \u00b7 2026-10-07", DIM, False)],
-    [("  " + "\u2500" * 72, RULE, False)],
-    [("  ", FG, False), ("@F@", RED, True), (" ", FG, False), ("vuln", FG, True),
-     ("   \u00b7 static only", DIM, False)],
-    [("    source file: internal/sast/testdata/vuln.go", DIM, False)],
-    [("    vet \u00b7 vet (source file)", DIM, False)],
-    [("    capabilities: none", DIM, False)],
+    [("\u25c6 mcprism", FG, True), ("   v0.7.0", DIM, False), ("  \u00b7 2026-10-12", DIM, False)],
+    [("\u2500" * HBAR, RULE, False)],
+    [(" F ", RED, True), (" ", FG, False), ("vuln", FG, True),
+     ("  ", FG, False), ("\u25cc static only", DIM, False)],
+    [("  source file: internal/sast/testdata/vuln.go", DIM, False)],
+    [("  vet \u00b7 vet (source file)", DIM, False)],
+    [("  capabilities: none", DIM, False)],
     [("", FG, False)],
-    [("  CRIT ", RED, True), ("MCP801", TEAL, False), ("  Tool argument passed to an OS shell", FG, True)],
-    [("      c := ", FG, False), ("exec", BLUE, False), (".", FG, False), ("Command", BLUE, False),
-     ("(", FG, False), ('"sh"', GREEN, False), (", ", FG, False), ('"-c"', GREEN, False),
-     (", ", FG, False), ("command", RED, True), (")", FG, False)],
-    [("  HIGH ", ORANGE, True), ("MCP802", TEAL, False), ("  Tool argument controls a request URL (SSRF)", FG, True)],
-    [("      r, err := ", FG, False), ("http", BLUE, False), (".", FG, False), ("Get", BLUE, False),
-     ("(", FG, False), ("target", RED, True), (")", FG, False)],
-    [("  HIGH ", ORANGE, True), ("MCP803", TEAL, False), ("  Tool argument used as a file path", FG, True)],
-    [("      data, err := ", FG, False), ("os", BLUE, False), (".", FG, False), ("ReadFile", BLUE, False),
-     ("(", FG, False), ("p", RED, True), (")", FG, False)],
-    [("  HIGH ", ORANGE, True), ("MCP806", TEAL, False), ("  Hardcoded secret in server source", FG, True)],
-    [("      ", FG, False), ("var", BLUE, False), (" apiToken = ", FG, False),
-     ('"sk-1234567890abcdefghijklmnop"', RED, True)],
+]
+rows += finding("CRIT", RED, "MCP801", "Tool argument passed to an OS shell",
+    "vuln.go:20", 'c := exec.Command("sh", "-c", command)',
+    "Avoid running a shell over agent input. Call exec.Command with a fixed program and\u2026")
+rows += finding("HIGH", ORANGE, "MCP802", "Tool argument controls a request URL (SSRF)",
+    "vuln.go:29", "r, err := http.Get(target)",
+    "Do not let agent input choose the host. Pin a constant base URL or allow-list hosts, and\u2026")
+rows += finding("HIGH", ORANGE, "MCP803", "Tool argument used as a file path",
+    "vuln.go:40", "data, err := os.ReadFile(p)",
+    "Resolve the path, confirm it stays inside one base directory with HasPrefix, and reject\u2026")
+rows += finding("HIGH", ORANGE, "MCP806", "Hardcoded secret in server source",
+    "vuln.go:13", 'var apiToken = "***"',
+    "Load the secret from an environment variable or secret store and rotate the exposed value.")
+rows += [
     [("", FG, False)],
-    [("  " + "\u2500" * 72, RULE, False)],
+    [("\u2500" * HBAR, RULE, False)],
     [("  1 servers (0 reachable) \u00b7 0 tools \u00b7 ", DIM, False), ("4 findings", YELLOW, True)],
     [("  ", DIM, False), ("1 CRIT", RED, True), ("   ", DIM, False), ("3 HIGH", ORANGE, True),
      ("   ", DIM, False), ("0 MED", DIM, False), ("   ", DIM, False), ("0 LOW", DIM, False)],
@@ -62,11 +71,6 @@ for ri, row in enumerate(rows):
     y = PAD + ri * LINEH
     x = PAD
     for text, color, bold in row:
-        if text == "@F@":
-            d.rounded_rectangle([x, y - 2, x + CELLW + 4, y + LINEH - 4], 5, fill=RED)
-            d.text((x + 4, y), "F", font=fontb, fill=BG)
-            x += CELLW + 8
-            continue
         f = fontb if bold else font
         d.text((x, y), text, font=f, fill=color)
         x += len(text) * CELLW

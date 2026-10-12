@@ -18,6 +18,7 @@ RED = (243, 139, 168)
 YELLOW = (249, 226, 175)
 ORANGE = (250, 179, 135)
 BLUE = (137, 180, 250)
+PURPLE = (203, 166, 247)
 TEAL = (137, 220, 235)
 CURSOR = (245, 224, 220)
 RULE = (58, 58, 84)
@@ -27,7 +28,7 @@ LINEH = 21
 PAD = 18
 BARH = 30
 
-CMD = "mcprism scan examples/dynamic.mcp.json"
+CMD = "mcprism scan examples/dynamic.mcp.json --dynamic"
 
 # output rows (index 0 is the command line). Each row is a list of (text,color,bold).
 def fnd(sev, sc, title):
@@ -36,24 +37,25 @@ def fnd(sev, sc, title):
 rows = [
     None,  # 0 command line, filled per frame
     [("", FG, False)],
-    [("  \u25c6 mcprism ", BLUE, True), ("v0.6.0", GREEN, True), ("  \u00b7 2026-10-07", DIM, False)],
+    [("\u25c6 mcprism", FG, True), ("   v0.7.0", DIM, False), ("  \u00b7 2026-10-12", DIM, False)],
     [("  " + "\u2500" * 62, RULE, False)],
-    [("  ", FG, False), ("\u25cf", GREEN, False), (" demo-server   ", FG, True),
-     ("\u25cf connected", GREEN, False)],
+    [(" F ", RED, True), (" ", FG, False), ("demo-server", FG, True),
+     ("  ", FG, False), ("\u25cf connected", GREEN, False)],
     [("    ./bin/testserver", DIM, False)],
     [("    explicit \u00b7 examples/dynamic.mcp.json", DIM, False)],
-    [("    capabilities: ", DIM, False), ("SHELL", RED, True), (" \u00b7 ", DIM, False),
-     ("READ", YELLOW, True), (" \u00b7 ", DIM, False), ("NETWORK", BLUE, True)],
+    [("    capabilities: ", DIM, False), ("SHELL", RED, False), (" \u00b7 ", DIM, False),
+     ("READ", BLUE, False), (" \u00b7 ", DIM, False), ("NET", PURPLE, False),
+     (" \u00b7 ", DIM, False), ("DB", YELLOW, False)],
     [("", FG, False)],
-    [("  CRIT ", RED, True), ("MCP201", TEAL, False), ("  Prompt injection in tool metadata", FG, False)],
-    [("  HIGH ", ORANGE, True), ("MCP202", TEAL, False), ("  Invisible or bidirectional Unicode in tool metadata", FG, False)],
-    [("  CRIT ", RED, True), ("MCP201", TEAL, False), ("  Prompt injection in resource metadata", FG, False)],
-    [("  CRIT ", RED, True), ("MCP201", TEAL, False), ("  Prompt injection in prompt metadata", FG, False)],
-    [("  CRIT ", RED, True), ("MCP301", TEAL, False), ("  Command execution combined with network access", FG, False)],
-    [("  HIGH ", ORANGE, True), ("MCP301", TEAL, False), ("  File read combined with network access", FG, False)],
-    [("  HIGH ", ORANGE, True), ("MCP302", TEAL, False), ("  Tool executes arbitrary commands", FG, False)],
-    [("  MED  ", YELLOW, True), ("MCP304", TEAL, False), ("  Free-form command parameter without validation", FG, False)],
-    [("  MED  ", YELLOW, True), ("MCP306", TEAL, False), ("  Free-form path parameter without validation", FG, False)],
+    [("  HIGH ", ORANGE, True), ("MCP202", DIM, False), ("  Invisible or bidirectional Unicode in tool metadata", FG, False)],
+    [("  CRIT ", RED, True), ("MCP201", DIM, False), ("  Prompt injection in tool metadata", FG, False)],
+    [("  CRIT ", RED, True), ("MCP201", DIM, False), ("  Prompt injection in resource metadata", FG, False)],
+    [("  CRIT ", RED, True), ("MCP201", DIM, False), ("  Prompt injection in prompt metadata", FG, False)],
+    [("  CRIT ", RED, True), ("MCP301", DIM, False), ("  Command execution combined with network access", FG, False)],
+    [("  HIGH ", ORANGE, True), ("MCP301", DIM, False), ("  File read combined with network access", FG, False)],
+    [("  HIGH ", ORANGE, True), ("MCP302", DIM, False), ("  Tool executes arbitrary commands", FG, False)],
+    [("  MED  ", YELLOW, True), ("MCP304", DIM, False), ("  Free-form command parameter without validation", FG, False)],
+    [("  MED  ", YELLOW, True), ("MCP306", DIM, False), ("  Free-form path parameter without validation", FG, False)],
     [("", FG, False)],
     [("  1 servers (1 reachable) \u00b7 5 tools \u00b7 ", DIM, False), ("9 findings", YELLOW, True)],
     [("  ", DIM, False), ("4 CRIT", RED, True), ("   ", DIM, False), ("3 HIGH", ORANGE, True),
