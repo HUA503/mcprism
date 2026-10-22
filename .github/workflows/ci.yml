@@ -57,3 +57,14 @@ jobs:
         run: GOOS=windows go vet ./...
       - name: Build (Windows)
         run: GOOS=windows go build ./...
+
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          check-latest: true
+      - name: Test (native Windows)
+        run: go test -count=1 ./...

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"syscall"
 )
@@ -16,6 +17,38 @@ var metadataHosts = map[string]bool{
 	"metadata":                 true,
 	"169.254.169.254":          true, // AWS/Azure/GCP link-local metadata
 	"100.100.100.200":          true, // Alibaba Cloud metadata
+}
+
+// validateProbeURL also checks literal destinations before proxy routing. The
+// socket-level guard only sees the proxy's address when a proxy is configured.
+func validateProbeURL(u *url.URL) error {
+	if u == nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+		return fmt.Errorf("MCP probe requires an absolute http(s) URL")
+	}
+	host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+	if metadataHosts[host] {
+		return fmt.Errorf("mcprism egress guard: refusing cloud-metadata host %s", host)
+	}
+	// IPv6 link-local URLs may carry a zone identifier, such as fe80::1%%eth0.
+	ipHost, _, _ := strings.Cut(host, "%")
+	if ip := net.ParseIP(ipHost); ip != nil && isBlockedIP(ip) {
+		return fmt.Errorf("mcprism egress guard: refusing link-local/metadata address %s", host)
+	}
+	return nil
+}
+
+func sameHTTPOrigin(a, b *url.URL) bool {
+	port := func(u *url.URL) string {
+		if p := u.Port(); p != "" {
+			return p
+		}
+		if u.Scheme == "https" {
+			return "443"
+		}
+		return "80"
+	}
+	return strings.EqualFold(a.Scheme, b.Scheme) &&
+		strings.EqualFold(a.Hostname(), b.Hostname()) && port(a) == port(b)
 }
 
 // isBlockedIP reports an address the probe must never connect to: IPv4
@@ -65,8 +98,8 @@ func safeCheckRedirect(req *http.Request, via []*http.Request) error {
 		return fmt.Errorf("mcprism egress guard: stopped after %d redirects", len(via))
 	}
 	root := via[0].URL
-	if metadataHosts[strings.ToLower(req.URL.Hostname())] {
-		return fmt.Errorf("mcprism egress guard: refusing redirect to metadata host %s", req.URL.Hostname())
+	if err := validateProbeURL(req.URL); err != nil {
+		return err
 	}
 	if !strings.EqualFold(req.URL.Host, root.Host) {
 		return fmt.Errorf("mcprism egress guard: refusing cross-host redirect from %q to %q", root.Host, req.URL.Host)
