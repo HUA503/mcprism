@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [Unreleased]
+
+### Fixed
+
+- Streamable HTTP returns as soon as the matching SSE response arrives instead
+  of waiting for the server to close the stream. Notifications do not wait for
+  a response body, and stream read errors are preserved.
+- HTTP replies must have a successful status and a matching JSON-RPC response
+  id. JSON bodies and assembled SSE events are limited to 16 MiB, including
+  multiline events in the legacy SSE transport.
+- Legacy SSE setup and the initialized notification honor the caller's context;
+  notification failures now fail initialization instead of being ignored.
+- Native Windows tests run in CI in addition to the Windows cross-build.
+
+### Security
+
+- Legacy SSE endpoint events are confined to the configured server's origin
+  before any configured headers are sent. Cross-host, cross-port and HTTPS
+  downgrade endpoints are refused; relative endpoints and explicit default
+  ports remain supported.
+- Literal cloud-metadata and link-local destinations are checked before proxy
+  routing as well as at direct socket connection time.
+
 ## [0.7.0] - 2026-10-12
 
 This release focuses on detection accuracy and on not leaking data while

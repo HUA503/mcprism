@@ -45,9 +45,19 @@ func defaultHTTPClient() *http.Client {
 }
 
 // newHTTPTransport 创建基于 HTTP 的传输；legacy 为 true 时使用旧版 SSE 模式。
-func newHTTPTransport(srv *config.Server, legacy bool) (transport, error) {
+func newHTTPTransport(ctx context.Context, srv *config.Server, legacy bool) (transport, error) {
 	if srv.URL == "" {
 		return nil, fmt.Errorf("server %q has no url", srv.Name)
+	}
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid MCP server URL: %w", err)
+	}
+	if err := validateProbeURL(u); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	if legacy {
 		t := &legacySSETransport{
@@ -58,8 +68,6 @@ func newHTTPTransport(srv *config.Server, legacy bool) (transport, error) {
 			closed:      make(chan struct{}),
 			gotEndpoint: make(chan struct{}),
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
-		defer cancel()
 		if err := t.connect(ctx); err != nil {
 			return nil, err
 		}
@@ -73,6 +81,8 @@ func newHTTPTransport(srv *config.Server, legacy bool) (transport, error) {
 }
 
 // ---------- Streamable HTTP ----------
+
+const maxRPCMessageSize = 16 * 1024 * 1024
 
 type httpTransport struct {
 	url     string
@@ -99,9 +109,15 @@ func (t *httpTransport) notify(ctx context.Context, method string, params any) e
 }
 
 func (t *httpTransport) roundTrip(ctx context.Context, req RPCRequest) (*RPCResponse, error) {
-	body, _ := json.Marshal(req)
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("encode HTTP request: %w", err)
+	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, t.url, bytes.NewReader(body))
 	if err != nil {
+		return nil, err
+	}
+	if err := validateProbeURL(httpReq.URL); err != nil {
 		return nil, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
@@ -120,6 +136,9 @@ func (t *httpTransport) roundTrip(ctx context.Context, req RPCRequest) (*RPCResp
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("MCP HTTP request returned status %d", resp.StatusCode)
+	}
 
 	if sid := resp.Header.Get("Mcp-Session-Id"); sid != "" {
 		t.mu.Lock()
@@ -127,47 +146,61 @@ func (t *httpTransport) roundTrip(ctx context.Context, req RPCRequest) (*RPCResp
 		t.mu.Unlock()
 	}
 
+	// A notification has no response, even if the server keeps its body open.
+	if req.ID == nil {
+		return &RPCResponse{}, nil
+	}
+	wantID, _ := req.ID.(int64)
 	if strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream") {
-		wantID, _ := req.ID.(int64)
 		return parseSSEResponse(resp.Body, wantID)
 	}
-	if resp.StatusCode == http.StatusAccepted || resp.StatusCode == http.StatusNoContent {
-		return &RPCResponse{}, nil // 通知被接受
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxRPCMessageSize+1))
+	if err != nil {
+		return nil, fmt.Errorf("read HTTP response: %w", err)
+	}
+	if len(data) > maxRPCMessageSize {
+		return nil, fmt.Errorf("HTTP response exceeds %d byte limit", maxRPCMessageSize)
 	}
 	var rpcResp RPCResponse
-	if err := json.NewDecoder(resp.Body).Decode(&rpcResp); err != nil {
+	if err := json.Unmarshal(data, &rpcResp); err != nil {
 		return nil, fmt.Errorf("decode http response (status %d): %w", resp.StatusCode, err)
+	}
+	if !matchesRPCResponse(&rpcResp, wantID) {
+		return nil, fmt.Errorf("HTTP response is not a JSON-RPC response for request id %d", wantID)
 	}
 	return &rpcResp, nil
 }
 
 func (t *httpTransport) close() error { return nil }
 
+func matchesRPCResponse(resp *RPCResponse, wantID int64) bool {
+	var id int64
+	return resp.JSONRPC == "2.0" && json.Unmarshal(resp.ID, &id) == nil && id == wantID &&
+		(len(resp.Result) > 0 || resp.Error != nil)
+}
+
 // parseSSEResponse extracts the JSON-RPC response for wantID from an SSE
 // stream. Streamable HTTP servers may interleave notifications and progress
 // events, so the last message is not necessarily ours: messages are matched by
 // request id. wantID 0 is a notification, which carries no result.
 func parseSSEResponse(r io.Reader, wantID int64) (*RPCResponse, error) {
+	if wantID == 0 {
+		return &RPCResponse{}, nil
+	}
 	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxRPCMessageSize)
 	var dataBuf bytes.Buffer
-	var matched, otherID *RPCResponse
-	flush := func() {
+	flush := func() *RPCResponse {
 		if dataBuf.Len() == 0 {
-			return
+			return nil
 		}
 		var rpcResp RPCResponse
-		if err := json.Unmarshal(dataBuf.Bytes(), &rpcResp); err == nil && len(rpcResp.ID) > 0 {
-			var id int64
-			if json.Unmarshal(rpcResp.ID, &id) == nil {
-				if wantID != 0 && id == wantID {
-					matched = &rpcResp
-				} else {
-					otherID = &rpcResp
-				}
-			}
-		}
+		err := json.Unmarshal(dataBuf.Bytes(), &rpcResp)
 		dataBuf.Reset()
+		if err == nil && matchesRPCResponse(&rpcResp, wantID) {
+			return &rpcResp
+		}
+		return nil
 	}
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -175,23 +208,24 @@ func parseSSEResponse(r io.Reader, wantID int64) (*RPCResponse, error) {
 		case strings.HasPrefix(line, "data:"):
 			payload := strings.TrimPrefix(line, "data:")
 			payload = strings.TrimPrefix(payload, " ")
+			if dataBuf.Len()+len(payload)+1 > maxRPCMessageSize {
+				return nil, fmt.Errorf("SSE event exceeds %d byte limit", maxRPCMessageSize)
+			}
 			if dataBuf.Len() > 0 {
 				dataBuf.WriteByte('\n')
 			}
 			dataBuf.WriteString(payload)
 		case line == "":
-			flush()
+			if resp := flush(); resp != nil {
+				return resp, nil
+			}
 		}
 	}
-	flush()
-	if wantID == 0 {
-		return &RPCResponse{}, nil // notification: no result is expected
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("read SSE response: %w", err)
 	}
-	if matched != nil {
-		return matched, nil
-	}
-	if otherID != nil {
-		return nil, fmt.Errorf("SSE stream had no response for request id %d", wantID)
+	if resp := flush(); resp != nil {
+		return resp, nil
 	}
 	return nil, fmt.Errorf("no JSON-RPC response for id %d in SSE stream", wantID)
 }
@@ -209,13 +243,22 @@ type legacySSETransport struct {
 	closed       chan struct{}
 	gotEndpoint  chan struct{}
 	endpointOnce sync.Once
+	readErr      error // protected by mu; recorded before closed is signaled
 }
 
 func (t *legacySSETransport) connect(ctx context.Context) error {
-	streamCtx, cancel := context.WithCancel(context.Background())
+	streamCtx, cancel := context.WithCancel(ctx)
 	t.cancel = cancel
+	// Bound setup without imposing a lifetime limit on an established stream.
+	setupCtx, setupCancel := context.WithTimeout(ctx, 12*time.Second)
+	stopSetup := context.AfterFunc(setupCtx, cancel)
+	defer func() { stopSetup(); setupCancel() }()
 
-	req, _ := http.NewRequestWithContext(streamCtx, http.MethodGet, t.url, nil)
+	req, err := http.NewRequestWithContext(streamCtx, http.MethodGet, t.url, nil)
+	if err != nil {
+		cancel()
+		return err
+	}
 	req.Header.Set("Accept", "text/event-stream")
 	for k, v := range t.headers {
 		req.Header.Set(k, v)
@@ -223,6 +266,9 @@ func (t *legacySSETransport) connect(ctx context.Context) error {
 	resp, err := t.client.Do(req)
 	if err != nil {
 		cancel()
+		if setupCtx.Err() != nil {
+			return setupCtx.Err()
+		}
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -235,40 +281,51 @@ func (t *legacySSETransport) connect(ctx context.Context) error {
 	select {
 	case <-t.gotEndpoint:
 		return nil
-	case <-ctx.Done():
+	case <-setupCtx.Done():
 		cancel()
-		return fmt.Errorf("timeout waiting for SSE endpoint event")
+		return fmt.Errorf("waiting for SSE endpoint event: %w", setupCtx.Err())
 	case <-t.closed:
 		cancel()
-		return fmt.Errorf("sse stream closed before endpoint event")
+		t.mu.Lock()
+		err := t.readErr
+		t.mu.Unlock()
+		return fmt.Errorf("sse stream closed before endpoint event: %w", err)
 	}
 }
 
 func (t *legacySSETransport) readLoop(body io.ReadCloser) {
 	defer body.Close()
+	streamErr := fmt.Errorf("legacy sse stream closed")
+	defer func() {
+		t.mu.Lock()
+		t.readErr = streamErr
+		t.mu.Unlock()
+		close(t.closed)
+		t.failAll(streamErr)
+	}()
 	scanner := bufio.NewScanner(body)
-	scanner.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
+	scanner.Buffer(make([]byte, 0, 64*1024), maxRPCMessageSize)
 
 	var eventType string
 	var dataBuf bytes.Buffer
-	dispatch := func() {
+	dispatch := func() error {
 		if dataBuf.Len() == 0 {
 			eventType = ""
-			return
+			return nil
 		}
 		data := dataBuf.String()
 		dataBuf.Reset()
 		if eventType == "endpoint" {
-			base, _ := url.Parse(t.url)
-			ref, err := url.Parse(strings.TrimSpace(data))
-			if err == nil {
-				t.mu.Lock()
-				t.postURL = base.ResolveReference(ref).String()
-				t.mu.Unlock()
-				t.endpointOnce.Do(func() { close(t.gotEndpoint) })
+			endpoint, err := resolveSSEEndpoint(t.url, data)
+			if err != nil {
+				return err
 			}
+			t.mu.Lock()
+			t.postURL = endpoint
+			t.mu.Unlock()
+			t.endpointOnce.Do(func() { close(t.gotEndpoint) })
 			eventType = ""
-			return
+			return nil
 		}
 		var rpcResp RPCResponse
 		if err := json.Unmarshal([]byte(data), &rpcResp); err == nil && len(rpcResp.ID) > 0 {
@@ -278,6 +335,7 @@ func (t *legacySSETransport) readLoop(body io.ReadCloser) {
 			}
 		}
 		eventType = ""
+		return nil
 	}
 
 	for scanner.Scan() {
@@ -286,20 +344,46 @@ func (t *legacySSETransport) readLoop(body io.ReadCloser) {
 		case strings.HasPrefix(line, "event:"):
 			eventType = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
 		case strings.HasPrefix(line, "data:"):
+			payload := strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " ")
+			if dataBuf.Len()+len(payload)+1 > maxRPCMessageSize {
+				streamErr = fmt.Errorf("SSE event exceeds %d byte limit", maxRPCMessageSize)
+				return
+			}
 			if dataBuf.Len() > 0 {
 				dataBuf.WriteByte('\n')
 			}
-			dataBuf.WriteString(strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " "))
+			dataBuf.WriteString(payload)
 		case line == "":
-			dispatch()
+			if err := dispatch(); err != nil {
+				streamErr = err
+				return
+			}
 		}
 	}
-	select {
-	case <-t.closed:
-	default:
-		close(t.closed)
+	if err := scanner.Err(); err != nil {
+		streamErr = fmt.Errorf("read legacy SSE stream: %w", err)
 	}
-	t.failAll(fmt.Errorf("legacy sse stream closed"))
+}
+
+// An endpoint event is server-controlled, not an authorization to send the
+// configured credentials to a different origin or over cleartext HTTP.
+func resolveSSEEndpoint(baseURL, endpoint string) (string, error) {
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid SSE base URL: %w", err)
+	}
+	ref, err := url.Parse(strings.TrimSpace(endpoint))
+	if err != nil {
+		return "", fmt.Errorf("invalid SSE endpoint: %w", err)
+	}
+	u := base.ResolveReference(ref)
+	if err := validateProbeURL(u); err != nil {
+		return "", err
+	}
+	if (u.User != nil && (base.User == nil || u.User.String() != base.User.String())) || !sameHTTPOrigin(base, u) {
+		return "", fmt.Errorf("mcprism egress guard: refusing cross-origin or credential-bearing SSE endpoint")
+	}
+	return u.String(), nil
 }
 
 func (t *legacySSETransport) deliver(id int64, resp RPCResponse) {
@@ -326,7 +410,13 @@ func (t *legacySSETransport) post(ctx context.Context, req RPCRequest) error {
 	if postURL == "" {
 		return fmt.Errorf("legacy sse endpoint not yet known")
 	}
-	body, _ := json.Marshal(req)
+	if _, err := resolveSSEEndpoint(t.url, postURL); err != nil {
+		return err
+	}
+	body, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("encode legacy SSE request: %w", err)
+	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, postURL, bytes.NewReader(body))
 	if err != nil {
 		return err

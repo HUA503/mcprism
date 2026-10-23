@@ -47,6 +47,16 @@ Streamable HTTP, or legacy SSE), and the client performs `initialize`, then
 lists tools, resources and prompts. It does not call tools. Transport details
 are isolated per file so adding a transport does not touch the client surface.
 
+HTTP responses are matched to their JSON-RPC request id; an SSE response is
+returned when its matching event arrives, without waiting for stream closure.
+JSON response bodies and individual assembled SSE events have a 16 MiB limit.
+Legacy SSE endpoint events must resolve to the configured server's origin
+(scheme, hostname and effective port), so configured headers are not forwarded
+to a different destination. Caller cancellation applies to connection setup,
+the established legacy stream and the initialized notification. Literal
+metadata/link-local URLs are rejected before proxy routing; resolved-IP checks
+apply to direct socket connections, not DNS resolution performed by a proxy.
+
 ### rules
 
 The analysis engine. `Analyze` takes a `rules.Input` (a server plus any data

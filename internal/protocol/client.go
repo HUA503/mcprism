@@ -70,9 +70,9 @@ func Dial(ctx context.Context, srv *config.Server) (*Client, error) {
 	case config.TransportStdio:
 		t, err = newStdioTransport(ctx, srv)
 	case config.TransportHTTP:
-		t, err = newHTTPTransport(srv, false)
+		t, err = newHTTPTransport(ctx, srv, false)
 	case config.TransportSSE:
-		t, err = newHTTPTransport(srv, true)
+		t, err = newHTTPTransport(ctx, srv, true)
 	default:
 		return nil, fmt.Errorf("unknown transport %q", srv.Transport)
 	}
@@ -122,7 +122,9 @@ func (c *Client) Initialize(ctx context.Context) (*InitializeResult, error) {
 	if err := json.Unmarshal(raw, &res); err != nil {
 		return nil, fmt.Errorf("decode initialize: %w", err)
 	}
-	_ = c.tr.notify(context.Background(), "notifications/initialized", map[string]any{})
+	if err := c.tr.notify(ctx, "notifications/initialized", map[string]any{}); err != nil {
+		return nil, fmt.Errorf("send initialized notification: %w", err)
+	}
 	return &res, nil
 }
 
