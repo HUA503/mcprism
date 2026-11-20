@@ -14,10 +14,13 @@ type candPath struct {
 	scope  string
 }
 
-// Discover 查找系统中存在的所有 MCP 客户端配置文件。
-// projectDir 非空时，同时查找该目录及其父级链中的项目级配置。
-func Discover(projectDir string) ([]*ClientFile, error) {
-	paths := globalCandidates()
+// Discover finds project configs in projectDir and its ancestors, and user
+// configs when includeGlobal is true.
+func Discover(projectDir string, includeGlobal bool) ([]*ClientFile, error) {
+	var paths []candPath
+	if includeGlobal {
+		paths = globalCandidates()
+	}
 	if projectDir != "" {
 		paths = append(paths, projectCandidates(projectDir)...)
 	}

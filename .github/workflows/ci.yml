@@ -35,10 +35,17 @@ jobs:
           go build -o mcprism ./cmd/mcprism
           # A clean config must pass with exit 0.
           ./mcprism scan examples/clean.mcp.json
-          # The vulnerable sample carries critical findings, so the default
-          # gate must fail the build with a non-zero exit code.
-          if ./mcprism scan examples/vulnerable.mcp.json; then
-            echo "expected a non-zero exit code for the vulnerable sample"
+          # A gate failure still produces a usable report.
+          status=0
+          ./mcprism scan examples/vulnerable.mcp.json -f json -o audit.json || status=$?
+          if [ "$status" -ne 1 ] || [ ! -s audit.json ]; then
+            echo "expected exit 1 and an audit report for the vulnerable sample"
+            exit 1
+          fi
+          status=0
+          ./mcprism scan examples/clean.mcp.json --fail-on typo || status=$?
+          if [ "$status" -ne 2 ]; then
+            echo "expected exit 2 for an invalid severity"
             exit 1
           fi
 

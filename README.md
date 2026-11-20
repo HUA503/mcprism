@@ -64,6 +64,25 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 mcprism scan
 ```
 
+### Try it without a configured MCP client
+
+From a checkout of this repository, scan the bundled examples and open the
+generated HTML report in your browser. Both scans run offline.
+
+```sh
+mcprism scan examples/clean.mcp.json
+mcprism scan examples/vulnerable.mcp.json --format html --output mcprism-report.html
+```
+
+The clean example exits with code 0. The second scan saves the report and
+exits with code 1 because the default policy flags critical findings. On
+Windows PowerShell, check the exit code with `$LASTEXITCODE` and open the
+report with `Invoke-Item .\mcprism-report.html`. See [Install](#install)
+for Windows binaries.
+
+To auto-discover only project configs from your current directory and its
+parents, run `mcprism scan --project-only`.
+
 ## Vet one server in one line
 
 Check a launch command, URL, package or a checkout on disk without adding it
@@ -228,8 +247,9 @@ mcprism profiles             # list built-in profiles
 | `-p, --policy` | Path to a policy YAML file |
 | `--profile` | Built-in profile: `default` · `strict` · `ci` |
 | `--suppressions` | Path to a suppressions YAML file |
-| `--fail-on` | Exit non-zero on `critical` / `high` / `medium` / `low` |
+| `--fail-on` | Fail the audit on active findings at or above `critical` / `high` / `medium` / `low` |
 | `--timeout` | Per-server handshake timeout (default `10s`) |
+| `--project-only` (`scan`) | Auto-discover project configs and skip global client configs. Use `--project DIR` to start discovery from another directory. |
 | `-i, --interactive` | Browse findings in a TUI |
 | `--transport` | Force `http` (Streamable HTTP) or `sse` (legacy) for URLs |
 | `--dynamic` (`scan`) | Probe live servers: launch/connect and enumerate tools, resources and prompts. Starts the target process, which may run code or reach the network; run it in a sandbox |
@@ -237,6 +257,15 @@ mcprism profiles             # list built-in profiles
 | `--inherit-env` | When spawning a server for probing, pass through the full parent environment. Default is a small safe allowlist, so credentials in your shell are not handed to an untrusted server |
 | `--no-color` | Disable ANSI colors in the terminal report |
 | `--ascii` | Use ASCII-only glyphs in the terminal (auto-enabled for legacy Windows consoles and `TERM=dumb`; honors `NO_COLOR`) |
+
+For batch `scan` and `vet` runs, use the exit code to distinguish audit results
+from command errors.
+
+| Exit code | Meaning |
+|---|---|
+| `0` | Audit completed and passed the configured gates. |
+| `1` | A policy or `--fail-on` gate failed. The report is still written. |
+| `2` | The command failed, for example due to an invalid flag, a malformed config file in an explicit directory scan, or a report write error. |
 
 ## Example output
 

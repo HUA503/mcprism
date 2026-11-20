@@ -6,8 +6,23 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- `scan --project-only` discovers project configs without including global
+  client configs.
+
+### Changed
+
+- Batch audits exit with code 1 when findings fail a gate, and command errors
+  exit with code 2. Reports remain available when a gate fails.
+
 ### Fixed
 
+- Explicit scans keep same-named servers from different projects and report
+  each scanned config file once. Recursive scans surface unreadable or
+  malformed config files.
+- Invalid audit options are rejected before probing. `inspect` requires a
+  target with exactly one server.
 - Streamable HTTP returns as soon as the matching SSE response arrives instead
   of waiting for the server to close the stream. Notifications do not wait for
   a response body, and stream read errors are preserved.

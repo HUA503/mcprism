@@ -34,7 +34,7 @@ func WalkDir(root string) ([]*ClientFile, error) {
 	var out []*ClientFile
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return err
 		}
 		if d.IsDir() {
 			if p != root && skipDirName(d.Name()) {
@@ -45,8 +45,11 @@ func WalkDir(root string) ([]*ClientFile, error) {
 		if !isConfigName(d.Name()) {
 			return nil
 		}
-		cf, perr := ParseFile(p, "walk", "project")
-		if perr == nil && len(cf.Servers) > 0 {
+		cf, err := ParseFile(p, "walk", "project")
+		if err != nil {
+			return err
+		}
+		if len(cf.Servers) > 0 {
 			out = append(out, cf)
 		}
 		return nil

@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,6 +37,8 @@ type auditOpts struct {
 // several hung servers does not make the scan wait timeout*N sequentially.
 const probeConcurrency = 4
 
+var errAuditFailed = errors.New("audit findings exceed the configured threshold")
+
 // addAuditFlags 注册 scan 与 vet 共用的标志。
 func addAuditFlags(cmd *cobra.Command, o *auditOpts) {
 	cmd.Flags().StringVarP(&o.format, "format", "f", "table", "output format: table|json|sarif|md|html|junit|cyclonedx|csv")
@@ -45,7 +49,7 @@ func addAuditFlags(cmd *cobra.Command, o *auditOpts) {
 	cmd.Flags().StringVarP(&o.policyFile, "policy", "p", "", "path to a policy YAML file")
 	cmd.Flags().StringVar(&o.profile, "profile", "", "built-in profile: default|strict|ci")
 	cmd.Flags().StringVar(&o.suppFile, "suppressions", "", "path to a suppressions YAML file")
-	cmd.Flags().StringVar(&o.baseline, "baseline", "", "path to a previous -f json report; findings already in it are accepted and only new findings are reported")
+	cmd.Flags().StringVar(&o.baseline, "baseline", "", "path to a previous -f json report; matching findings are shown as suppressed")
 	cmd.Flags().BoolVar(&o.inheritEnv, "inherit-env", false, "give dynamically launched servers the full parent environment (default: a minimal allowlist so host credentials are not leaked)")
 }
 
@@ -55,6 +59,17 @@ func addAuditFlags(cmd *cobra.Command, o *auditOpts) {
 // dynamic 决定是否真正启动进程或连接服务器：两者都默认静态、零副作用，
 // scan 用 --dynamic、vet 用 --probe 显式开启动态枚举。
 func audit(servers []*config.Server, files []string, dynamic bool, o auditOpts) error {
+	render, err := reportRenderer(o.format)
+	if err != nil {
+		return err
+	}
+	threshold := severityRank(rules.Severity(strings.ToLower(o.failOn)))
+	if o.failOn != "" && threshold == 0 {
+		return fmt.Errorf("invalid --fail-on %q (expected critical, high, medium or low)", o.failOn)
+	}
+	if o.timeout <= 0 {
+		return fmt.Errorf("--timeout must be positive")
+	}
 	pol, err := policy.Builtin(o.profile)
 	if err != nil {
 		return err
@@ -69,6 +84,21 @@ func audit(servers []*config.Server, files []string, dynamic bool, o auditOpts) 
 	}
 	if len(servers) == 0 {
 		return fmt.Errorf("no MCP servers to audit")
+	}
+
+	var sups []policy.Suppression
+	if o.suppFile != "" {
+		sups, err = policy.LoadSuppressions(o.suppFile)
+		if err != nil {
+			return err
+		}
+	}
+	var base map[string]bool
+	if o.baseline != "" {
+		base, err = baseline.Load(o.baseline)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Dynamic probing launches real processes; control how much of the host
@@ -100,19 +130,8 @@ func audit(servers []*config.Server, files []string, dynamic bool, o auditOpts) 
 	results := rules.AnalyzeAll(inputs)
 	results = policy.Enforce(results, pol)
 
-	var sups []policy.Suppression
-	if o.suppFile != "" {
-		sups, err = policy.LoadSuppressions(o.suppFile)
-		if err != nil {
-			return err
-		}
-	}
 	results = policy.ApplySuppressions(results, sups, time.Now())
 	if o.baseline != "" {
-		base, berr := baseline.Load(o.baseline)
-		if berr != nil {
-			return berr
-		}
 		baseline.Apply(results, base, o.baseline)
 	}
 	for _, r := range results {
@@ -130,7 +149,7 @@ func audit(servers []*config.Server, files []string, dynamic bool, o auditOpts) 
 
 	rep := report.Build(results, files, version, time.Now().Format(time.RFC3339))
 	rep.Compliance = &compliance
-	out, err := renderReport(rep, o.format)
+	out, err := render(rep)
 	if err != nil {
 		return err
 	}
@@ -139,12 +158,12 @@ func audit(servers []*config.Server, files []string, dynamic bool, o auditOpts) 
 			return err
 		}
 		fmt.Fprintf(os.Stderr, "report written to %s\n", o.output)
-	} else {
-		fmt.Print(string(out))
+	} else if _, err := os.Stdout.Write(out); err != nil {
+		return err
 	}
 
-	if !compliance.Pass || (o.failOn != "" && reaches(rep, o.failOn)) {
-		os.Exit(1)
+	if !compliance.Pass || (threshold > 0 && severityRank(rep.MaxSeverity()) >= threshold) {
+		return errAuditFailed
 	}
 	return nil
 }

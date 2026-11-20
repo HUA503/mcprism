@@ -47,6 +47,23 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 mcprism scan
 ```
 
+### 用示例离线体验
+
+在本仓库根目录运行以下命令。即使还没配置 MCP 客户端，也可以扫描示例，
+然后在浏览器里查看生成的 HTML 报告。
+
+```sh
+mcprism scan examples/clean.mcp.json
+mcprism scan examples/vulnerable.mcp.json --format html --output mcprism-report.html
+```
+
+第一个命令的退出码为 0。第二个命令会先保存报告，再以退出码 1 结束，
+因为默认策略拦截了严重级别为 `critical` 的发现。在 Windows PowerShell
+中，运行 `$LASTEXITCODE` 查看退出码，并用
+`Invoke-Item .\mcprism-report.html` 打开报告。Windows 二进制下载见[安装](#安装)。
+
+要从当前目录向上查找项目级配置并跳过个人配置，运行 `mcprism scan --project-only`。
+
 ## 一行审查单个 server
 
 不用写进任何配置，直接检查启动命令、URL、包名或本地代码：
@@ -188,8 +205,9 @@ mcprism profiles             # 列出内置基线
 | `-p, --policy` | 策略 YAML 文件路径 |
 | `--profile` | 内置基线：`default` · `strict` · `ci` |
 | `--suppressions` | 抑制清单 YAML 文件路径 |
-| `--fail-on` | 出现 `critical` / `high` / `medium` / `low` 级别发现时以非零码退出 |
+| `--fail-on` | 有未被抑制的发现达到指定严重级别时判定审查失败，可选 `critical` / `high` / `medium` / `low` |
 | `--timeout` | 单个 server 的握手超时（默认 `10s`） |
+| `--project-only`（`scan`） | 只自动发现项目级配置，跳过用户级配置。用 `--project DIR` 指定起始目录。 |
 | `-i, --interactive` | 在 TUI 中浏览发现 |
 | `--transport` | 对 URL 强制使用 `http`（Streamable HTTP）或 `sse`（旧版） |
 | `--dynamic`（`scan`） | 动态探测在线 server：启动/连接并列出 tools/resources/prompts。会启动目标进程，可能执行代码或联网，请在沙箱里运行 |
@@ -197,6 +215,14 @@ mcprism profiles             # 列出内置基线
 | `--inherit-env` | 动态探测拉起 server 时透传当前完整环境变量。默认只给一小份安全白名单，避免把 shell 里的凭据交给不可信 server |
 | `--no-color` | 关闭终端报告里的 ANSI 颜色 |
 | `--ascii` | 终端只用 ASCII 字符（旧版 Windows 控制台和 `TERM=dumb` 会自动启用，同时尊重 `NO_COLOR`） |
+
+在 CI 或脚本中运行 `scan` 和 `vet` 时，可以通过退出码区分审查结果与执行错误。
+
+| 退出码 | 含义 |
+|---|---|
+| `0` | 审查完成并通过检查。 |
+| `1` | 策略检查或 `--fail-on` 检查未通过，报告照常输出。 |
+| `2` | 命令执行失败，例如参数无效、显式扫描的目录中存在无法解析的配置文件，或报告写入失败。 |
 
 ## 示例输出
 

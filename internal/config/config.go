@@ -110,10 +110,10 @@ func ParseBytes(data []byte) ([]*Server, error) {
 		return nil, err
 	}
 
-	candidates := map[string]json.RawMessage{}
+	var candidates []json.RawMessage
 	for _, key := range []string{"mcpServers", "servers"} {
 		if raw, ok := root[key]; ok {
-			candidates[key] = raw
+			candidates = append(candidates, raw)
 		}
 	}
 	// Claude Code：projects.<path>.mcpServers。每个项目用独立键，避免后一个
@@ -121,13 +121,16 @@ func ParseBytes(data []byte) ([]*Server, error) {
 	if projectsRaw, ok := root["projects"]; ok {
 		var projects map[string]json.RawMessage
 		if err := json.Unmarshal(projectsRaw, &projects); err == nil {
-			i := 0
-			for _, p := range projects {
+			paths := make([]string, 0, len(projects))
+			for path := range projects {
+				paths = append(paths, path)
+			}
+			sort.Strings(paths)
+			for _, path := range paths {
 				var pobj map[string]json.RawMessage
-				if err := json.Unmarshal(p, &pobj); err == nil {
+				if err := json.Unmarshal(projects[path], &pobj); err == nil {
 					if mcp, ok := pobj["mcpServers"]; ok {
-						candidates[fmt.Sprintf("projects.%d.mcpServers", i)] = mcp
-						i++
+						candidates = append(candidates, mcp)
 					}
 				}
 			}
@@ -162,8 +165,7 @@ func ParseBytes(data []byte) ([]*Server, error) {
 			}
 		}
 	}
-	// 多项目 / 多根键来自 map，遍历顺序不确定；按名称排序保证结果确定性，
-	// 否则同一配置在不同机器上可能得到不同顺序的 server，影响 CI 判定。
+	// Preserve root and project order when multiple entries share a name.
 	sort.SliceStable(out, func(a, b int) bool { return out[a].Name < out[b].Name })
 	return out, nil
 }

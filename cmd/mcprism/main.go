@@ -8,9 +8,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -32,9 +34,15 @@ func init() {
 }
 
 func main() {
+	os.Exit(exitCode(rootCmd().Execute()))
+}
+
+func rootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "mcprism",
-		Short: "Vet MCP servers before your AI trusts them",
+		Use:           "mcprism",
+		Short:         "Vet MCP servers before your AI trusts them",
+		SilenceErrors: true,
+		SilenceUsage:  true,
 	}
 	var noColor, ascii bool
 	root.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable colored output (also honors NO_COLOR)")
@@ -43,8 +51,18 @@ func main() {
 		ui.Init(noColor, ascii)
 	}
 	root.AddCommand(scanCmd(), vetCmd(), inspectCmd(), rulesCmd(), profilesCmd(), versionCmd())
-	if err := root.Execute(); err != nil {
-		os.Exit(1)
+	return root
+}
+
+func exitCode(err error) int {
+	switch {
+	case err == nil:
+		return 0
+	case errors.Is(err, errAuditFailed):
+		return 1
+	default:
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		return 2
 	}
 }
 
@@ -60,11 +78,12 @@ func versionCmd() *cobra.Command {
 
 func scanCmd() *cobra.Command {
 	var (
-		o         auditOpts
-		project   string
-		transport string
-		dynamic   bool
-		noDynamic bool // deprecated: probing is now opt-in by default
+		o           auditOpts
+		project     string
+		transport   string
+		projectOnly bool
+		dynamic     bool
+		noDynamic   bool // deprecated: probing is now opt-in by default
 	)
 	cmd := &cobra.Command{
 		Use:   "scan [target ...]",
@@ -74,16 +93,29 @@ server URLs. With no targets, mcprism auto-discovers configs across the
 installed AI clients. To check a launch command or package without writing
 a config, use 'vet'.
 
-By default scan is static: it inspects configuration, metadata and (for source
-targets) code, and never spawns a process or connects to a server. Pass
+By default scan is static: it reviews configuration without spawning a
+server process or connecting to a server. Use 'vet' for source files. Pass
 --dynamic to probe live servers; probing starts the server process, so run it
 in a sandbox and treat it as executing untrusted code.`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(_ *cobra.Command, args []string) error {
+			if projectOnly && len(args) > 0 {
+				return fmt.Errorf("--project-only is for auto-discovery; specify the directory with --project")
+			}
+			if transport != "" && !strings.EqualFold(transport, "http") && !strings.EqualFold(transport, "sse") {
+				return fmt.Errorf("invalid --transport %q (expected http or sse)", transport)
+			}
 			if noDynamic {
 				dynamic = false
 			}
-			servers, files, err := collectMany(args, project, transport)
+			var servers []*config.Server
+			var files []string
+			var err error
+			if len(args) == 0 {
+				servers, files, err = discoverAll(project, !projectOnly)
+			} else {
+				servers, files, err = collectMany(args, transport)
+			}
 			if err != nil {
 				return err
 			}
@@ -99,6 +131,7 @@ in a sandbox and treat it as executing untrusted code.`,
 	cmd.Flags().BoolVar(&noDynamic, "no-dynamic", false, "deprecated: probing is opt-in by default, this flag is a no-op")
 	_ = cmd.Flags().MarkHidden("no-dynamic")
 	cmd.Flags().StringVar(&project, "project", "", "project directory for project-level config discovery")
+	cmd.Flags().BoolVar(&projectOnly, "project-only", false, "discover project configs only (skip global client configs)")
 	cmd.Flags().StringVar(&transport, "transport", "", "force transport for URL targets: http|sse")
 	return cmd
 }
@@ -115,9 +148,18 @@ func inspectCmd() *cobra.Command {
 		Short: "Connect and list a server's tools, resources and prompts",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			servers, _, err := collectMany([]string{args[0]}, "", "")
+			if format != "table" && format != "json" {
+				return fmt.Errorf("unknown format %q (expected table or json)", format)
+			}
+			if timeout <= 0 {
+				return fmt.Errorf("--timeout must be positive")
+			}
+			servers, _, err := collectMany([]string{args[0]}, "")
 			if err != nil {
 				return err
+			}
+			if len(servers) != 1 {
+				return fmt.Errorf("inspect requires exactly one MCP server (found %d); use 'scan' for multiple servers", len(servers))
 			}
 			in := probeServer(context.Background(), servers[0], timeout)
 			if in.ConnectErr != nil {
@@ -203,24 +245,23 @@ func profilesCmd() *cobra.Command {
 
 // ---------- collection ----------
 
-func collectMany(targets []string, projectDir, transport string) ([]*config.Server, []string, error) {
-	if len(targets) == 0 {
-		return discoverAll(projectDir)
-	}
+func collectMany(targets []string, transport string) ([]*config.Server, []string, error) {
 	var servers []*config.Server
 	var files []string
 	seen := map[string]bool{}
 
-	addFile := func(cf *config.ClientFile) {
-		for _, s := range cf.Servers {
-			key := cf.Path + "::" + s.Name
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-			servers = append(servers, s)
+	addFile := func(cf *config.ClientFile) error {
+		key, err := filepath.Abs(cf.Path)
+		if err != nil {
+			return err
 		}
+		if seen[key] {
+			return nil
+		}
+		seen[key] = true
+		servers = append(servers, cf.Servers...)
 		files = append(files, cf.Path)
+		return nil
 	}
 
 	for _, t := range targets {
@@ -240,7 +281,9 @@ func collectMany(targets []string, projectDir, transport string) ([]*config.Serv
 				return nil, nil, err
 			}
 			for _, cf := range cfs {
-				addFile(cf)
+				if err := addFile(cf); err != nil {
+					return nil, nil, err
+				}
 			}
 			continue
 		}
@@ -248,17 +291,34 @@ func collectMany(targets []string, projectDir, transport string) ([]*config.Serv
 		if err != nil {
 			return nil, nil, err
 		}
-		addFile(cf)
+		if err := addFile(cf); err != nil {
+			return nil, nil, err
+		}
 	}
 	sort.Strings(files)
 	return servers, files, nil
 }
 
-func discoverAll(projectDir string) ([]*config.Server, []string, error) {
+func discoverAll(projectDir string, includeGlobal bool) ([]*config.Server, []string, error) {
 	if projectDir == "" {
-		projectDir, _ = os.Getwd()
+		var err error
+		projectDir, err = os.Getwd()
+		if err != nil {
+			return nil, nil, err
+		}
 	}
-	cfs, err := config.Discover(projectDir)
+	projectDir, err := filepath.Abs(projectDir)
+	if err != nil {
+		return nil, nil, err
+	}
+	info, err := os.Stat(projectDir)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !info.IsDir() {
+		return nil, nil, fmt.Errorf("project path %q is not a directory", projectDir)
+	}
+	cfs, err := config.Discover(projectDir, includeGlobal)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -310,26 +370,32 @@ func probeServer(parent context.Context, srv *config.Server, timeout time.Durati
 
 // ---------- rendering / exit ----------
 
-func renderReport(r *report.Report, format string) ([]byte, error) {
+func reportRenderer(format string) (func(*report.Report) ([]byte, error), error) {
 	switch strings.ToLower(format) {
 	case "json":
-		return report.RenderJSON(r)
+		return report.RenderJSON, nil
 	case "sarif":
-		return report.RenderSARIF(r)
+		return report.RenderSARIF, nil
 	case "md", "markdown":
-		return []byte(report.RenderMarkdown(r)), nil
+		return textReport(report.RenderMarkdown), nil
 	case "html":
-		return []byte(report.RenderHTML(r)), nil
+		return textReport(report.RenderHTML), nil
 	case "junit":
-		return report.RenderJUnit(r)
+		return report.RenderJUnit, nil
 	case "cyclonedx", "cdx", "sbom":
-		return report.RenderCycloneDX(r)
+		return report.RenderCycloneDX, nil
 	case "csv":
-		return report.RenderCSV(r)
+		return report.RenderCSV, nil
 	case "table":
-		return []byte(report.RenderTable(r)), nil
+		return textReport(report.RenderTable), nil
 	}
 	return nil, fmt.Errorf("unknown format %q", format)
+}
+
+func textReport(render func(*report.Report) string) func(*report.Report) ([]byte, error) {
+	return func(r *report.Report) ([]byte, error) {
+		return []byte(render(r)), nil
+	}
 }
 
 func severityRank(s rules.Severity) int {
@@ -344,13 +410,6 @@ func severityRank(s rules.Severity) int {
 		return 1
 	}
 	return 0
-}
-
-func reaches(r *report.Report, threshold string) bool {
-	want := map[string]int{
-		"critical": 4, "high": 3, "medium": 2, "low": 1,
-	}[strings.ToLower(threshold)]
-	return severityRank(r.MaxSeverity()) >= want
 }
 
 func transportFor(target, forced string) config.Transport {
