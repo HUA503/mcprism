@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Reject Registry audit entries missing a name or version so incomplete records
+  cannot be reported as fully audited.
+
 ## [0.9.1] - 2026-11-24
 
 ### Added
