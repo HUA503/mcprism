@@ -140,7 +140,14 @@ brew tap HUA503/mcprism https://github.com/HUA503/mcprism
 brew install HUA503/mcprism/mcprism
 ```
 
-O descarga un binario desde la página de [versiones](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 y arm64, además de Linux ARMv7). En Windows, instala con Scoop: `scoop bucket add mcprism https://github.com/HUA503/mcprism` y `scoop install mcprism/mcprism`. Nix sigue en la hoja de ruta.
+O descarga un binario desde la página de [versiones](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 y arm64, además de Linux ARMv7). En Windows, instala con Scoop: `scoop bucket add mcprism https://github.com/HUA503/mcprism` y `scoop install mcprism/mcprism`.
+
+Con Nix flakes, instala la versión más reciente de `main` en Linux o macOS (x86_64 y aarch64):
+
+```sh
+nix profile install github:HUA503/mcprism
+nix run github:HUA503/mcprism -- scan
+```
 
 En Linux y macOS, si no se puede escribir en `/usr/local/bin`, el instalador usa `~/.local/bin`. Si indica que ese directorio no está en PATH, añádelo o ejecuta directamente `~/.local/bin/mcprism scan`.
 
@@ -432,7 +439,7 @@ No. mcprism notifica riesgos conocidos y observables. No puede probar que un ser
 - [ ] Integraciones de editor (VS Code, JetBrains)
 - [x] Paquete Scoop
 - [x] Fórmula de Homebrew
-- [ ] Paquete Nix
+- [x] Paquete Nix
 
 ## Contribuir
 
@@ -443,3 +450,4 @@ Se agradecen issues y PR. Una buena aportación de regla es una comprobación de
 [MIT](../../LICENSE) © mcprism contributors.
 
 mcprism es una herramienta defensiva. Notifica riesgos; no prueba que un servidor sea seguro, y un informe limpio no es motivo para confiar en un servidor que no entiendes.
+
