@@ -22,7 +22,7 @@ go test ./...                  # unit tests
 
 ```
 cmd/mcprism/            CLI entry point (cobra)
-internal/config/        MCP config model, JSON/JSONC parsing, auto-discovery
+internal/config/        MCP config model, JSON/JSONC/TOML parsing, auto-discovery
 internal/protocol/      MCP client: JSON-RPC, stdio / Streamable HTTP / SSE
 internal/rules/         Analysis engine and rule sets
 internal/report/        table / json / sarif / markdown / html renderers
@@ -30,6 +30,10 @@ internal/tui/           Interactive terminal UI (bubbletea)
 examples/               Demo configs and a simulated malicious server
 docs/                   Documentation (rule catalog)
 ```
+
+When changing config support, update the matching example and the English and
+Chinese README sections. Keep the localized client-support sections under
+`docs/i18n/` in sync when a feature changes what those clients can scan.
 
 ## Adding a rule
 

@@ -1,11 +1,9 @@
-# Codex MCP config example. These values mirror examples/clean.mcp.json.
+# Codex MCP config example with a pinned local package and an authenticated
+# remote server. The token itself stays in the environment.
 
 [mcp_servers.notes]
 command = "npx"
 args = ["-y", "@acme/notes-mcp@2.0.1"]
-
-[mcp_servers.notes.env]
-API_TOKEN = "${NOTES_TOKEN}"
 
 [mcp_servers.secure-remote]
 url = "https://mcp.example.com/v1"
