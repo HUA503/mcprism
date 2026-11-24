@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-11-24
+
 ### Fixed
 
 - Release binaries report their actual version in the CLI and MCP handshake.
