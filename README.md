@@ -294,6 +294,11 @@ mcprism rules                # list built-in rules
 mcprism profiles             # list built-in profiles
 ```
 
+Registry batch audit checks the first page of results (up to `--limit`, maximum
+100). Additional matches may exist. Warnings about unsupported or skipped
+entries are printed to stderr and may not appear in the exported report; review
+them before interpreting the results.
+
 ### Flags
 
 | Flag | Description |
