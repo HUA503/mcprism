@@ -301,6 +301,16 @@ them before interpreting the results. Add `--require-complete` in CI to exit
 with code 2 when more matches exist or a configuration is skipped. The report
 is still written when possible; a policy failure retains exit code 1.
 
+### Shell completion
+
+`mcprism completion` generates scripts for Bash, Zsh, Fish and PowerShell. Run the command for your shell:
+
+- Bash or Zsh: `source <(mcprism completion bash)` / `source <(mcprism completion zsh)`
+- Fish: `mcprism completion fish | source`
+- PowerShell: `mcprism completion powershell | Out-String | Invoke-Expression`
+
+Add the command to your shell profile to enable completion in new sessions.
+
 ### Flags
 
 | Flag | Description |

@@ -199,6 +199,16 @@ mcprism rules                # lister les règles intégrées
 mcprism profiles             # lister les profils intégrés
 ```
 
+### Complétion du shell
+
+`mcprism completion` génère des scripts pour Bash, Zsh, Fish et PowerShell. Exécutez la commande correspondante dans le shell actuel :
+
+- Bash ou Zsh : `source <(mcprism completion bash)` / `source <(mcprism completion zsh)`
+- Fish : `mcprism completion fish | source`
+- PowerShell : `mcprism completion powershell | Out-String | Invoke-Expression`
+
+Ajoutez la commande à votre profil shell pour l’activer dans les prochaines sessions.
+
 ### Options
 
 | Option | Description |

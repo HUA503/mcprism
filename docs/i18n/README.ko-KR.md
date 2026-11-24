@@ -199,6 +199,16 @@ mcprism rules                # 내장 규칙 나열
 mcprism profiles             # 내장 프로필 나열
 ```
 
+### 셸 자동 완성
+
+`mcprism completion`은 Bash, Zsh, Fish, PowerShell용 완성 스크립트를 생성합니다. 현재 셸에서 해당 명령을 실행하세요.
+
+- Bash / Zsh: `source <(mcprism completion bash)` / `source <(mcprism completion zsh)`
+- Fish: `mcprism completion fish | source`
+- PowerShell: `mcprism completion powershell | Out-String | Invoke-Expression`
+
+새 세션에서도 사용하려면 해당 명령을 셸 프로필에 추가하세요.
+
 ### 플래그
 
 | 플래그 | 설명 |
