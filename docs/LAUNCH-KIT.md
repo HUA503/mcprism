@@ -5,7 +5,7 @@ The post text is written in first person because these communities expect a
 person, not a press release. Adapt each post to the channel and your own voice;
 don't cross-post identical text everywhere.
 
-**Current release: [v0.8.9](https://github.com/HUA503/mcprism/releases/tag/v0.8.9).**
+**Current release: [v0.9.0](https://github.com/HUA503/mcprism/releases/tag/v0.9.0).**
 The copy below reflects the current product and privacy boundaries.
 
 ## The hook
@@ -56,11 +56,12 @@ Policy-as-code and SARIF/JUnit/CycloneDX output make it usable in CI.
 
 Local scans do not need an LLM, runtime dependencies, or a cloud account. Registry lookups are explicit and fetch public metadata from the official service.
 
-Registry discovery is included in v0.8.9:
-```sh
+Registry discovery and batch auditing are included in v0.9.0:
+````sh
 mcprism registry search filesystem
 mcprism registry scan <namespace/server>
-```
+mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
+````
 These commands fetch public metadata from the official Registry. They do not
 start or connect to the listed MCP server.
 
@@ -198,7 +199,7 @@ https://github.com/HUA503/mcprism
    https://github.com/bh-rat/awesome-mcp-enterprise/issues/154. Once it has the
    `approved-for-pr` label before opening a PR. The proposal is for the Emerging
    list under Security and Governance; refresh its release and privacy evidence
-   before resubmitting because the original issue text predates v0.8.9.
+   before resubmitting because the original issue text predates v0.9.0.
 7. **Reply to comments early.** The first hour of discussion decides how far a Show HN or Reddit post travels.
 
 ## Tracking
