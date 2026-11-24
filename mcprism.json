@@ -1,13 +1,22 @@
 {
-  "version": "0.7.0",
-  "description": "Security scanner for Model Context Protocol servers",
-  "homepage": "https://github.com/HUA503/mcprism",
-  "license": "MIT",
-  "architecture": {
-    "64bit": {
-      "url": "https://github.com/HUA503/mcprism/releases/download/v0.7.0/mcprism_windows_amd64.zip",
-      "hash": "a87e461e1cc1ebc1cab0b1a40b07cbe2b4a5f124039abb1f4d12c8a8e8b0d7bd"
-    }
-  },
-  "bin": "mcprism.exe"
+    "version": "0.8.0",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/HUA503/mcprism/releases/download/v0.8.0/mcprism_windows_amd64.zip",
+            "bin": [
+                "mcprism.exe"
+            ],
+            "hash": "2792c98c46640d98310cfc84e4ae3a8af132cb69387456906c3d79a69d34714b"
+        },
+        "arm64": {
+            "url": "https://github.com/HUA503/mcprism/releases/download/v0.8.0/mcprism_windows_arm64.zip",
+            "bin": [
+                "mcprism.exe"
+            ],
+            "hash": "38878e7e59ee262043a36d3f3cb8ce9cbb9b5e953ffaec9fe526eef7f1686d2e"
+        }
+    },
+    "homepage": "https://github.com/HUA503/mcprism",
+    "license": "MIT",
+    "description": "Security scanner for Model Context Protocol servers"
 }
