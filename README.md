@@ -22,9 +22,11 @@ servers. It looks at a server from three angles:
    prompts and checks tool metadata for poisoning. It never calls a tool.
 
 Every server gets a list of findings, a 0–100 score and an A–F grade. mcprism
-ships as one Go binary with no runtime dependencies. Static scans run fully
-offline and have no side effects; launching a server for live probing is
-strictly opt-in (`--dynamic` / `--probe`).
+ships as one Go binary with no runtime dependencies. Local config and source
+scans run fully offline and have no side effects. `registry` commands explicitly
+contact the [official MCP Registry](https://registry.modelcontextprotocol.io/)
+for public metadata but never launch or connect to the listed server. Live
+probing is strictly opt-in (`--dynamic` / `--probe`).
 
 [![CI](https://github.com/HUA503/mcprism/actions/workflows/ci.yml/badge.svg)](https://github.com/HUA503/mcprism/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
@@ -145,9 +147,10 @@ below, with no network needed.
 - Accepted-risk register. Suppress findings with a reason and an expiry, or
   accept a whole `--baseline` report so only new problems fail the build.
   Suppressed items stay visible in the report, and expired ones come back.
-- Deterministic. 35 rules mapped to OWASP MCP01–MCP07. Static analysis never
-  touches the network; live probing is opt-in and starts the server, so run it
-  in a sandbox. Probing applies an egress guard (no redirects to cloud
+- Deterministic. 35 rules mapped to OWASP MCP01–MCP07. Config and source scans
+  never touch the network; registry commands only fetch public metadata from
+  the official registry. Live probing is opt-in and starts the server, so run
+  it in a sandbox. Probing applies an egress guard (no redirects to cloud
   metadata or link-local addresses) and passes the spawned process a restricted
   environment instead of your full shell.
 - Reports for people and machines: table, JSON, Markdown, HTML, SARIF, JUnit
@@ -163,6 +166,10 @@ below, with no network needed.
   machines.
 - You review changes in CI. Run `mcprism scan --profile ci` to fail the build
   on high and above, or publish SARIF to code scanning.
+- You want to check a server before adding it to a client. Search the official
+  MCP Registry, then scan its supported package and remote transport metadata
+  with `mcprism registry scan <server-name>`. Unsupported package formats are
+  reported as warnings.
 
 ## Report
 
@@ -273,6 +280,10 @@ mcprism vet "uvx some-mcp-server"
 mcprism vet https://mcp.example.com
 mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # actually run it and list tools
+
+# Search and statically scan a server from the official MCP Registry
+mcprism registry search filesystem
+mcprism registry scan io.github.user/server-name
 
 # Reference
 mcprism inspect mcp.json     # list a server's tools/resources/prompts
@@ -626,7 +637,7 @@ Based on public project descriptions (features may change):
 | JUnit / CycloneDX / CSV output | ✅ | ❌ | ❌ | ❌ |
 | Recursive, multi-target scan | ✅ | partial | ❌ | ❌ |
 | SARIF + CI exit codes | ✅ | ✅ | ❌ | ❌ |
-| Fully offline, no LLM | ✅ | ✅ | partial | ✅ |
+| Offline local scans, no LLM | ✅ | ✅ | partial | ✅ |
 | Cross-platform | ✅ | partial | partial | — |
 
 ## FAQ
@@ -636,12 +647,14 @@ No. It performs the MCP initialization and listing calls only. Tools are not
 invoked, files are not opened through a server, and prompts are not sent.
 
 **Does it send data anywhere?**
-No. The rules run locally and there is no telemetry. Static analysis never
-connects anywhere. A live scan (`--dynamic` for scan, `--probe` for vet)
-connects to the server you point it at and starts its process, which may run
-code or reach the network, so run live probes in a sandbox. Probing refuses
-cross-host redirects and connections to cloud-metadata/link-local addresses,
-and by default does not pass your shell environment to the spawned server.
+There is no telemetry, and local configs or reports are never uploaded.
+`registry search` sends the search term and `registry scan` sends the requested
+server name to the official MCP Registry to fetch public metadata. Other static
+scans do not connect anywhere. A live scan (`--dynamic` for scan, `--probe` for
+vet) connects to the server you point it at and may start its process; treat it
+as untrusted and use a sandbox. Probing refuses cross-host redirects and
+connections to cloud-metadata/link-local addresses, and by default does not
+pass your shell environment to the spawned server.
 
 **Will my tokens end up in the report?**
 No. Credentials in URL userinfo, `--api-key`/`--token` style arguments,
@@ -668,7 +681,7 @@ so only run servers you trust.
 ## Roadmap
 
 - [ ] More rules and fewer false positives as the MCP spec evolves
-- [ ] MCP registry / marketplace scanning
+- [x] MCP registry scanning
 - [ ] User-defined rules beyond policy overrides
 - [x] Pre-commit hook
 - [x] GitHub Actions integration with SARIF output
@@ -694,4 +707,5 @@ layout is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Run
 
 mcprism is a defensive tool. It reports risk; it does not prove a server is
 safe, and a clean report is not a reason to trust a server you do not understand.
+
 
