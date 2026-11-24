@@ -14,7 +14,7 @@ mcprism ist ein Sicherheits-Scanner für [Model Context Protocol](https://modelc
 2. **Quellcode** — liegt die Implementierung auf der Platte, liest er JS/TS/Python/Go-Tool-Handler und verfolgt von einem Agenten steuerbare Argumente bis zu gefährlichen Senken: Prozessausführung, ausgehende Anfragen (SSRF) und Dateisystempfade, außerdem eval, unsichere Deserialisierung und fest codierte Geheimnisse.
 3. **Laufzeit** — er führt den MCP-Handshake durch, listet Tools, Ressourcen und Prompts auf und prüft das Poisoning der Tool-Metadaten. Er ruft nie ein Tool auf.
 
-Jeder Server erhält eine Liste an Befunden, eine Punktzahl von 0 bis 100 und eine Note von A bis F. mcprism kommt als einzelne Go-Binärdatei ohne Laufzeitabhängigkeiten, läuft vollständig offline und hat keine Nebenwirkungen.
+Jeder Server erhält Befunde, eine Punktzahl von 0 bis 100 und eine Note von A bis F. mcprism ist eine einzelne Go-Binärdatei ohne Laufzeitabhängigkeiten. Lokale Konfigurations- und Quellcodeprüfungen laufen offline; Registry-Befehle rufen öffentliche Metadaten aus der offiziellen MCP Registry ab.
 
 [![CI](https://github.com/HUA503/mcprism/actions/workflows/ci.yml/badge.svg)](https://github.com/HUA503/mcprism/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
@@ -94,7 +94,7 @@ mcprism vet server.py            # eine Datei prüfen
 - Statische, Quell- und Live-Prüfung. Liest die Konfiguration, prüft JS/TS/Python/Go-Quellcode, wenn ein Checkout vorhanden ist, und führt den MCP-Handshake durch, um Tools, Ressourcen und Prompts aufzulisten. Er ruft nie ein Tool auf.
 - Policy als Code. Regeln ein-/ausschalten, Schweregrade ändern, Pakete/Befehle/Domains erlauben oder ablehnen und Netzwerkisolation verlangen. Die eingebauten Profile bieten die Baselines `default`, `strict` und `ci`.
 - Risikoakzeptanz-Register. Befunde mit Grund und Ablaufdatum unterdrücken. Unterdrückte Einträge bleiben im Bericht sichtbar und kehren nach Ablauf zurück.
-- Deterministisch und offline. 35 Regeln, abgebildet auf OWASP MCP01–MCP07; nichts verlässt Ihren Rechner.
+- Deterministisch. 35 Regeln sind OWASP MCP01–MCP07 zugeordnet. Lokale Konfigurations- und Quellcodeprüfungen laufen offline; Registry-Befehle rufen öffentliche Metadaten aus der offiziellen Registry ab. Es gibt keine Telemetrie.
 - Berichte für Menschen und Maschinen: table, JSON, Markdown, HTML, SARIF, JUnit XML, CycloneDX-SBOM und CSV.
 - Mehrere Ziele auf einmal scannen: Dateien, Verzeichnisse (rekursiv) und URLs.
 
@@ -103,6 +103,7 @@ mcprism vet server.py            # eine Datei prüfen
 - Sie haben MCP-Server installiert und wollen vor dem Start durch einen Agenten wissen, worauf sie zugreifen. Führen Sie `mcprism scan` aus.
 - Ein Team teilt sich einen Satz Server und will eine dokumentierte Baseline. Legen Sie eine `policy.yml` in die Versionsverwaltung und fahren Sie auf Produktionsrechnern `--profile strict`.
 - Sie prüfen Änderungen in der CI. Führen Sie `mcprism scan --profile ci` aus, um den Build ab „high“ scheitern zu lassen, oder veröffentlichen Sie SARIF im Code-Scanning.
+- Wenn Sie einen MCP-Registry-Server vor dem Hinzufügen zu einem Client im offiziellen Katalog suchen und seine veröffentlichten Start- und Verbindungsdaten prüfen wollen. Führen Sie `mcprism registry search <Suchbegriff>` und anschließend `mcprism registry scan <Name>` aus.
 
 ## Bericht
 
@@ -188,6 +189,10 @@ mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # wirklich starten und Tools auflisten
 
 # Referenz
+# Offizielle MCP Registry durchsuchen und öffentliche Server-Metadaten statisch prüfen
+mcprism registry search filesystem
+mcprism registry scan io.github.user/server-name
+
 mcprism inspect mcp.json     # Tools/Ressourcen/Prompts eines Servers auflisten
 mcprism rules                # eingebaute Regeln auflisten
 mcprism profiles             # eingebaute Profile auflisten
@@ -409,7 +414,7 @@ Basiert auf den öffentlichen Projektbeschreibungen (Funktionen können sich än
 | JUnit-/CycloneDX-/CSV-Ausgabe | ✅ | ❌ | ❌ | ❌ |
 | Rekursiver Multi-Ziel-Scan | ✅ | teilweise | ❌ | ❌ |
 | SARIF + CI-Exit-Codes | ✅ | ✅ | ❌ | ❌ |
-| Vollständig offline, kein LLM | ✅ | ✅ | teilweise | ✅ |
+| Lokale Konfigurations-/Quellcodeprüfungen offline | ✅ | ✅ | teilweise | ✅ |
 | Plattformübergreifend | ✅ | teilweise | teilweise | — |
 
 ## Häufige Fragen
@@ -418,7 +423,7 @@ Basiert auf den öffentlichen Projektbeschreibungen (Funktionen können sich än
 Nein. Er führt nur die MCP-Initialisierung und die Auflistungsaufrufe durch. Tools werden nicht aufgerufen, Dateien nicht über einen Server geöffnet und Prompts nicht gesendet.
 
 **Sendet er Daten irgendwohin?**
-Nein. Die Regeln laufen lokal, es gibt keine Telemetrie. Ein Live-Scan spricht nur mit dem angegebenen Server für den Handshake; mit `--no-dynamic` entfällt auch das.
+Es gibt keine Telemetrie, und lokale Konfigurationen oder Berichte werden nicht hochgeladen. Registry-Befehle senden den Suchbegriff oder Servernamen an die offizielle MCP Registry, um öffentliche Metadaten abzurufen. Andere statische Prüfungen verbinden sich nicht. Ein Live-Scan (`scan --dynamic` / `vet --probe`) verbindet sich mit dem angegebenen Server.
 
 **Worin unterscheidet er sich von mcp-scan oder mcp-audit?**
 Jene laufen auf Python oder Node und konzentrieren sich auf Konfiguration oder Poisoning. mcprism ist eine einzelne Go-Binärdatei, modelliert Fähigkeitskombinationen, erzwingt eine Policy als Code und gibt neben SARIF auch JUnit, CycloneDX und CSV aus. Siehe die [Vergleichstabelle](#vergleich).
@@ -432,7 +437,7 @@ Nein. mcprism meldet bekannte, beobachtbare Risiken. Es kann nicht beweisen, das
 ## Roadmap
 
 - [ ] Mehr Regeln und weniger Fehlalarme, während sich die MCP-Spezifikation entwickelt
-- [ ] Scan von MCP-Registries / Marktplätzen
+- [x] Scan von MCP-Registries / Marktplätzen
 - [ ] Benutzerdefinierte Regeln über Policy-Überschreibungen hinaus
 - [x] Pre-Commit-Hook
 - [ ] Editor-Integrationen (VS Code, JetBrains)
