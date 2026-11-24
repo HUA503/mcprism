@@ -26,11 +26,11 @@ func TestSearchPagePagination(t *testing.T) {
 	})}
 	entries, cursor, err := SearchPage(context.Background(), "filesystem", 2, "")
 	if err != nil || len(entries) != 1 || cursor != "opaque cursor" {
-		t.Fatalf("SearchPage = %v, %v, %v", entries, more, err)
+		t.Fatalf("SearchPage = %v, %q, %v", entries, cursor, err)
 	}
 	body = `{"servers":[],"metadata":{"nextCursor":null}}`
 	entries, cursor, err = SearchPage(context.Background(), "filesystem", 2, "opaque cursor")
 	if err != nil || len(entries) != 0 || cursor != "" {
-		t.Fatalf("last page = %v, %v, %v", entries, more, err)
+		t.Fatalf("last page = %v, %q, %v", entries, cursor, err)
 	}
 }
