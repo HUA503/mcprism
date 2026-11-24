@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           check-latest: true
       - name: Verify modules
         run: go mod verify
@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           check-latest: true
       # Files carrying an implicit _windows GOOS suffix are only compiled on
       # Windows, so a Linux-only run misses them. Cross vet compiles the
@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           check-latest: true
       - name: Test (native Windows)
         run: go test -count=1 ./...

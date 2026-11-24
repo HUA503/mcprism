@@ -5,7 +5,7 @@ good contributions are very welcome.
 
 ## Getting started
 
-You need Go **1.24+**.
+You need Go **1.25+**.
 
 ```sh
 git clone https://github.com/HUA503/mcprism.git
