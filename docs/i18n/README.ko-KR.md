@@ -119,7 +119,7 @@ mcprism vet server.py            # 파일 하나 검사
 ## 설치
 
 ```sh
-# 한 줄 설치 스크립트(Linux / macOS / Windows의 Git Bash)
+# 한 줄 설치 스크립트(Linux / macOS)
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 

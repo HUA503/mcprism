@@ -119,7 +119,7 @@ Revue par lots de nombreux serveurs (mode statique) :
 ## Installation
 
 ```sh
-# Installeur en une ligne (Linux / macOS / Windows via Git Bash)
+# Installeur en une ligne (Linux / macOS)
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 

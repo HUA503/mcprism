@@ -119,7 +119,7 @@ mcprism vet server.py            # 1 ファイルを審査
 ## インストール
 
 ```sh
-# ワンラインインストーラ（Linux / macOS / Windows の Git Bash）
+# ワンラインインストーラ（Linux / macOS）
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 

@@ -178,7 +178,7 @@ Batch review across many servers (static mode):
 ## Install
 
 ```sh
-# One-line installer (Linux / macOS / Windows via Git Bash)
+# One-line installer (Linux / macOS)
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 

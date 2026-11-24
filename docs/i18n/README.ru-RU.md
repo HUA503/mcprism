@@ -119,7 +119,7 @@ mcprism vet server.py            # проверить один файл
 ## Установка
 
 ```sh
-# Установщик одной строкой (Linux / macOS / Windows через Git Bash)
+# Установщик одной строкой (Linux / macOS)
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 

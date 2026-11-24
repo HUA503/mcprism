@@ -137,7 +137,7 @@ mcprism vet server.py            # 审查单个文件
 ## 安装
 
 ```sh
-# 一键安装脚本（Linux / macOS / Windows 的 Git Bash）
+# 一键安装脚本（Linux / macOS）
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 

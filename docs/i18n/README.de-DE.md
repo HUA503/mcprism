@@ -119,7 +119,7 @@ Stapelprüfung vieler Server (statischer Modus):
 ## Installation
 
 ```sh
-# Einzeiler-Installer (Linux / macOS / Windows über Git Bash)
+# Einzeiler-Installer (Linux / macOS)
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 

@@ -155,7 +155,7 @@ mcprism vet server.py            # فحص ملف واحد
 </div>
 
 ```sh
-# مثبّت من سطر واحد (Linux / macOS / Windows عبر Git Bash)
+# مثبّت من سطر واحد (Linux / macOS)
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 
