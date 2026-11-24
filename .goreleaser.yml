@@ -56,6 +56,17 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
+scoops:
+  - name: mcprism
+    repository:
+      owner: HUA503
+      name: mcprism
+      branch: main
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    homepage: https://github.com/HUA503/mcprism
+    description: Security scanner for Model Context Protocol servers
+    license: MIT
+
 snapshot:
   version_template: "{{ incpatch .Version }}-dev"
 

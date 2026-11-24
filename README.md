@@ -195,7 +195,16 @@ go install github.com/HUA503/mcprism/cmd/mcprism@latest
 The Windows installer verifies the release SHA-256 checksum and adds the
 per-user install directory to PATH. You can also download a binary from the
 [releases](https://github.com/HUA503/mcprism/releases) page
-(Linux/macOS/Windows, amd64 and arm64, plus Linux ARMv7). Homebrew, Scoop and Nix are on the roadmap.
+(Linux/macOS/Windows, amd64 and arm64, plus Linux ARMv7), or install it with
+[Scoop](https://scoop.sh):
+
+```powershell
+scoop bucket add mcprism https://github.com/HUA503/mcprism
+scoop install mcprism/mcprism
+```
+
+GoReleaser updates the Scoop manifest during each stable release. Homebrew and
+Nix are on the roadmap.
 
 ## Quick start
 
@@ -603,7 +612,8 @@ so only run servers you trust.
 - [ ] User-defined rules beyond policy overrides
 - [x] Pre-commit hook
 - [ ] Editor integrations (VS Code, JetBrains)
-- [ ] Homebrew, Scoop and Nix packages
+- [x] Scoop package
+- [ ] Homebrew and Nix packages
 - [ ] More SAST languages (Rust, Java, C#)
 - [ ] Opt-in multi-hop / inter-procedural taint tracking
 - [ ] Built-in sandbox wrapper for live probes
