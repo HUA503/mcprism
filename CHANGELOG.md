@@ -10,7 +10,8 @@ semantic versioning.
 
 ### Added
 
-- Batch static audit of matching official MCP Registry entries with one combined report.
+- Batch static audit of matching official MCP Registry entries with one combined
+  report.
 
 ## [0.8.9] - 2026-11-24
 
@@ -358,7 +359,7 @@ secrets on a command line no longer appear in reports.
 - Interactive terminal UI and a bundled demo server.
 
 [Unreleased]: https://github.com/HUA503/mcprism/compare/v0.9.0...HEAD
-[0.9.0]: https://github.com/HUA503/mcprism/compare/v0.8.9...v0.9.0
+[0.9.0]: https://github.com/HUA503/mcprism/releases/tag/v0.9.0
 [0.8.9]: https://github.com/HUA503/mcprism/releases/tag/v0.8.9
 [0.8.8]: https://github.com/HUA503/mcprism/releases/tag/v0.8.8
 [0.8.7]: https://github.com/HUA503/mcprism/releases/tag/v0.8.7
