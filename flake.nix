@@ -22,7 +22,7 @@
             pname = "mcprism";
             inherit version;
             src = self;
-            vendorHash = pkgs.lib.fakeHash;
+            vendorHash = "sha256-H0WiIx+jG1zVUsKIsDhMC4/C4DRMhtgw/iXRxGwlGrE=";
             doCheck = false;
             subPackages = [ "cmd/mcprism" ];
             ldflags = [ "-s" "-w" "-X main.version=v${version}" ];
