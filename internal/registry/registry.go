@@ -93,7 +93,10 @@ type Input struct {
 }
 
 type serverList struct {
-	Servers []Entry `json:"servers"`
+	Servers  []Entry `json:"servers"`
+	Metadata struct {
+		NextCursor string `json:"nextCursor"`
+	} `json:"metadata"`
 }
 
 // SearchResult contains only safe discovery fields. Registry package inputs
@@ -115,6 +118,12 @@ var client = &http.Client{
 // Search returns the latest registry versions matching query. The official
 // registry requires at least three non-space Unicode characters.
 func Search(ctx context.Context, query string, limit int) ([]Entry, error) {
+	entries, _, err := SearchPage(ctx, query, limit)
+	return entries, err
+}
+
+// SearchPage returns matching entries and whether the Registry has another page.
+func SearchPage(ctx context.Context, query string, limit int) ([]Entry, bool, error) {
 	query = strings.TrimSpace(query)
 	nonSpaceCharacters := 0
 	for _, r := range query {
@@ -123,13 +132,13 @@ func Search(ctx context.Context, query string, limit int) ([]Entry, error) {
 		}
 	}
 	if nonSpaceCharacters < 3 {
-		return nil, errors.New("registry search needs at least 3 non-space characters")
+		return nil, false, errors.New("registry search needs at least 3 non-space characters")
 	}
 	if limit == 0 {
 		limit = defaultLimit
 	}
 	if limit < 1 || limit > maximumLimit {
-		return nil, fmt.Errorf("limit must be between 1 and %d", maximumLimit)
+		return nil, false, fmt.Errorf("limit must be between 1 and %d", maximumLimit)
 	}
 
 	u, _ := url.Parse(baseURL + "/v0.1/servers")
@@ -140,9 +149,9 @@ func Search(ctx context.Context, query string, limit int) ([]Entry, error) {
 	u.RawQuery = q.Encode()
 	var result serverList
 	if err := getJSON(ctx, u.String(), &result); err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return result.Servers, nil
+	return result.Servers, result.Metadata.NextCursor != "", nil
 }
 
 // Lookup fetches the latest version of one exact official registry name.
