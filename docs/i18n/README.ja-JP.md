@@ -140,7 +140,14 @@ brew tap HUA503/mcprism https://github.com/HUA503/mcprism
 brew install HUA503/mcprism/mcprism
 ```
 
-または[リリース](https://github.com/HUA503/mcprism/releases)ページからバイナリをダウンロードしてください（Linux/macOS/Windows は amd64 と arm64、さらに Linux ARMv7）。Windows では `scoop bucket add mcprism https://github.com/HUA503/mcprism`、`scoop install mcprism/mcprism` でインストールできます。Nix は引き続きロードマップにあります。
+または[リリース](https://github.com/HUA503/mcprism/releases)ページからバイナリをダウンロードしてください（Linux/macOS/Windows は amd64 と arm64、さらに Linux ARMv7）。Windows では `scoop bucket add mcprism https://github.com/HUA503/mcprism`、`scoop install mcprism/mcprism` でインストールできます。
+
+Nix flakes を使うと、Linux または macOS（x86_64、aarch64）で `main` の最新版をインストールできます。
+
+```sh
+nix profile install github:HUA503/mcprism
+nix run github:HUA503/mcprism -- scan
+```
 
 Linux と macOS で `/usr/local/bin` に書き込めない場合、インストーラは `~/.local/bin` にインストールします。このディレクトリが PATH にないというメッセージが表示されたら、PATH に追加するか、`~/.local/bin/mcprism scan` を直接実行してください。
 
@@ -432,7 +439,7 @@ mcprism は能力を列挙するだけなので、解析に副作用はありま
 - [ ] エディタ連携（VS Code、JetBrains）
 - [x] Scoop パッケージ
 - [x] Homebrew formula
-- [ ] Nix パッケージ
+- [x] Nix パッケージ
 
 ## コントリビュート
 
@@ -443,3 +450,4 @@ Issue と PR を歓迎します。良いルール貢献は、信号が明確で�
 [MIT](../../LICENSE) © mcprism contributors.
 
 mcprism は防御ツールです。リスクを報告するもので、サーバーが安全であることを証明できず、レポートがきれいでも、よく分からないサーバーを信頼する理由にはなりません。
+

@@ -140,7 +140,14 @@ brew tap HUA503/mcprism https://github.com/HUA503/mcprism
 brew install HUA503/mcprism/mcprism
 ```
 
-Ou téléchargez un binaire depuis la page des [versions](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 et arm64, plus Linux ARMv7). Sous Windows, installez avec `scoop bucket add mcprism https://github.com/HUA503/mcprism`, puis `scoop install mcprism/mcprism`. Nix reste au programme.
+Ou téléchargez un binaire depuis la page des [versions](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 et arm64, plus Linux ARMv7). Sous Windows, installez avec `scoop bucket add mcprism https://github.com/HUA503/mcprism`, puis `scoop install mcprism/mcprism`.
+
+Avec Nix flakes, installez la dernière version de `main` sous Linux ou macOS (x86_64 et aarch64) :
+
+```sh
+nix profile install github:HUA503/mcprism
+nix run github:HUA503/mcprism -- scan
+```
 
 Sous Linux et macOS, si `/usr/local/bin` n'est pas accessible en écriture, l'installeur utilise `~/.local/bin`. S'il indique que ce répertoire n'est pas dans PATH, ajoutez-le ou lancez directement `~/.local/bin/mcprism scan`.
 
@@ -432,7 +439,7 @@ Non. mcprism signale les risques connus et observables. Il ne peut pas prouver q
 - [ ] Intégrations d’éditeurs (VS Code, JetBrains)
 - [x] Paquet Scoop
 - [x] Formule Homebrew
-- [ ] Paquet Nix
+- [x] Paquet Nix
 
 ## Contribuer
 
@@ -443,3 +450,4 @@ Les issues et PR sont bienvenues. Une bonne contribution de règle est un contr�
 [MIT](../../LICENSE) © mcprism contributors.
 
 mcprism est un outil défensif. Il signale les risques ; il ne prouve pas qu'un serveur est sûr, et un rapport propre n'est pas une raison de faire confiance à un serveur que vous ne comprenez pas.
+
