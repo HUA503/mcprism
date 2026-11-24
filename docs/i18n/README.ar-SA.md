@@ -173,6 +173,8 @@ go install github.com/HUA503/mcprism/cmd/mcprism@latest
 
 أو نزّل ملفًا ثنائيًا من صفحة <a href="https://github.com/HUA503/mcprism/releases">الإصدارات</a> (Linux/macOS/Windows بمعماريتي amd64 وarm64، إضافة إلى Linux ARMv7). على Windows، ثبّت عبر Scoop باستخدام `scoop bucket add mcprism https://github.com/HUA503/mcprism` ثم `scoop install mcprism/mcprism`. ما زال Homebrew وNix ضمن خارطة الطريق.
 
+على Linux وmacOS، إذا تعذرت الكتابة إلى `/usr/local/bin`، يثبّت البرنامج في `~/.local/bin`. إذا لم يكن هذا الدليل ضمن PATH، فأضفه إليه أو شغّل `~/.local/bin/mcprism scan` مباشرةً.
+
 ## بداية سريعة
 
 </div>

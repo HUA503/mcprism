@@ -135,6 +135,8 @@ go install github.com/HUA503/mcprism/cmd/mcprism@latest
 
 または[リリース](https://github.com/HUA503/mcprism/releases)ページからバイナリをダウンロードしてください（Linux/macOS/Windows は amd64 と arm64、さらに Linux ARMv7）。Windows では `scoop bucket add mcprism https://github.com/HUA503/mcprism`、`scoop install mcprism/mcprism` でインストールできます。Homebrew と Nix は引き続きロードマップにあります。
 
+Linux と macOS で `/usr/local/bin` に書き込めない場合、インストーラは `~/.local/bin` にインストールします。このディレクトリが PATH にないというメッセージが表示されたら、PATH に追加するか、`~/.local/bin/mcprism scan` を直接実行してください。
+
 ## クイックスタート
 
 ```sh

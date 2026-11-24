@@ -135,6 +135,8 @@ go install github.com/HUA503/mcprism/cmd/mcprism@latest
 
 Oder laden Sie eine Binärdatei von der Seite der [Veröffentlichungen](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 und arm64, zusätzlich Linux ARMv7). Unter Windows installieren Sie mit `scoop bucket add mcprism https://github.com/HUA503/mcprism` und `scoop install mcprism/mcprism`. Homebrew und Nix stehen weiterhin auf der Roadmap.
 
+Unter Linux und macOS wird bei fehlenden Schreibrechten für `/usr/local/bin` nach `~/.local/bin` installiert. Meldet das Skript, dass dieses Verzeichnis nicht im PATH ist, fügen Sie es hinzu oder führen Sie `~/.local/bin/mcprism scan` direkt aus.
+
 ## Schnellstart
 
 ```sh
