@@ -241,6 +241,16 @@ mcprism profiles             # 列出内置基线
 
 Registry 批量审计只检查搜索结果的第一页（最多 `--limit` 条，上限为 100 条），可能还有其他匹配项。不支持或跳过的条目会在标准错误输出中警告，这些警告可能不会出现在导出的报告中；解读结果前请先检查警告。在 CI 中加入 `--require-complete`，当仍有匹配结果或有配置无法审计时返回退出码 2；条件允许时仍会输出报告，策略检查失败仍返回退出码 1。
 
+### Shell 自动补全
+
+`mcprism completion` 可生成 Bash、Zsh、Fish 和 PowerShell 的补全脚本。在当前终端执行对应命令：
+
+- Bash 或 Zsh：`source <(mcprism completion bash)` / `source <(mcprism completion zsh)`
+- Fish：`mcprism completion fish | source`
+- PowerShell：`mcprism completion powershell | Out-String | Invoke-Expression`
+
+将对应命令加入 shell 配置文件，即可在新终端中自动启用。
+
 ### 参数
 
 | 参数 | 说明 |
