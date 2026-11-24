@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- `registry audit --require-complete` fails when results are truncated or a
+  configuration cannot be audited, while preserving any generated report.
+
 ## [0.9.0] - 2026-11-24
 
 ### Added
