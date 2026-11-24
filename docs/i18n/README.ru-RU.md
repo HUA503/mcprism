@@ -340,6 +340,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 mcprism читает конфигурацию MCP в JSON/JSONC, которую используют Claude Desktop, Claude Code, Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Continue и похожие инструменты, — и как объект `mcpServers`, и как массив. Поддерживаются все три транспорта MCP: stdio, Streamable HTTP и устаревший HTTP+SSE.
 
+Также поддерживается TOML-конфигурация MCP в Codex. Для глобальной конфигурации проверяется `$CODEX_HOME/config.toml` (или `~/.codex/config.toml`), а для проекта — `.codex/config.toml` и `config.toml`.
+
 ## CI/CD
 
 Блокируйте рискованные серверы в конвейере профилем `ci`:

@@ -340,6 +340,8 @@ La liste complète avec la correspondance OWASP est dans [docs/RULES.md](../RULE
 
 mcprism lit la configuration MCP JSON/JSONC utilisée par Claude Desktop, Claude Code, Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Continue et outils similaires, sous formes d'objet `mcpServers` et de tableau. Il gère les trois transports MCP : stdio, Streamable HTTP et l'ancien HTTP+SSE.
 
+mcprism prend également en charge la configuration MCP TOML de Codex. La découverte globale vérifie `$CODEX_HOME/config.toml` (ou `~/.codex/config.toml`) ; la découverte de projet vérifie `.codex/config.toml` et `config.toml`.
+
 ## CI/CD
 
 Bloquez les serveurs risqués dans un pipeline avec le profil `ci` :

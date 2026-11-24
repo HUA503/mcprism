@@ -418,6 +418,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 يقرأ mcprism تكوين MCP بصيغ JSON/JSONC الذي تستخدمه Claude Desktop وClaude Code وCursor وVS Code (GitHub Copilot Chat) وWindsurf وCline وContinue وأدوات مشابهة، سواء على هيئة كائن `mcpServers` أو مصفوفة. يدعم وسائل نقل MCP الثلاث جميعها: stdio وStreamable HTTP وHTTP+SSE القديم.
 
+يدعم أيضًا إعداد MCP بصيغة TOML في Codex. يبحث عن الإعداد العام في `$CODEX_HOME/config.toml` (أو `~/.codex/config.toml`) وعن إعدادات المشروع في `.codex/config.toml` و`config.toml`.
+
 ## CI/CD
 
 احجب الخوادم الخطرة داخل خط الأنابيب باستخدام الملف الشخصي `ci`:

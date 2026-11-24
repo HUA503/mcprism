@@ -340,6 +340,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 mcprism は Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Continue などが使う JSON/JSONC MCP 設定を読み取り、`mcpServers` オブジェクトと配列の両形式に対応します。3 種類すべての MCP トランスポート（stdio、Streamable HTTP、旧 HTTP+SSE）をサポートします。
 
+Codex の MCP TOML 設定にも対応しています。グローバル設定では `$CODEX_HOME/config.toml`（未設定時は `~/.codex/config.toml`）、プロジェクト設定では `.codex/config.toml` と `config.toml` を検出します。
+
 ## CI/CD
 
 `ci` プロファイルでパイプライン内の危険なサーバーをブロック：
