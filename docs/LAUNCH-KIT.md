@@ -57,11 +57,11 @@ Policy-as-code and SARIF/JUnit/CycloneDX output make it usable in CI.
 Local scans do not need an LLM, runtime dependencies, or a cloud account. Registry lookups are explicit and fetch public metadata from the official service.
 
 Registry discovery and batch auditing are included in v0.9.0:
-```sh
+````sh
 mcprism registry search filesystem
 mcprism registry scan <namespace/server>
 mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
-```
+````
 These commands fetch public metadata from the official Registry. They do not
 start or connect to the listed MCP server.
 
