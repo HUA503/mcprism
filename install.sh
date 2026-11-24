@@ -116,7 +116,15 @@ main() {
   fi
   install_file "$tmpdir/$binname" "$install_dir/$binname"
   echo "Installed ${binname} to ${install_dir}/${binname}"
-  echo "Run '${BINARY} scan' to get started."
+  case ":${PATH:-}:" in
+    *":${install_dir}:"*)
+      echo "Run '${BINARY} scan' to get started."
+      ;;
+    *)
+      echo "The install directory is not on PATH: ${install_dir}"
+      echo "Add it to PATH, or run the binary by its full path."
+      ;;
+  esac
 }
 
 main "$@"

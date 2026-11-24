@@ -6,6 +6,10 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- The Unix installer warns when its install directory is missing from PATH.
+
 ## [0.8.2] - 2026-11-24
 
 ### Fixed

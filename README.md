@@ -198,6 +198,10 @@ per-user install directory to PATH. You can also download a binary from the
 (Linux/macOS/Windows, amd64 and arm64, plus Linux ARMv7), or install it with
 [Scoop](https://scoop.sh):
 
+On Linux and macOS, the installer uses `~/.local/bin` when `/usr/local/bin` is
+not writable. If it reports that the directory is not on PATH, add that
+directory to PATH or run `~/.local/bin/mcprism` directly.
+
 ```powershell
 scoop bucket add mcprism https://github.com/HUA503/mcprism
 scoop install mcprism/mcprism
