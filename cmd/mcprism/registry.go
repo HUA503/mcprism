@@ -102,4 +102,3 @@ with 'scan --dynamic' or 'vet --probe' for opt-in probing.`,
 	addAuditFlags(cmd, &o)
 	return cmd
 }
-
