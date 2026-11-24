@@ -103,7 +103,7 @@ mcprism vet server.py            # 1 ファイルを審査
 - MCP サーバーをインストール済みで、エージェントが実行する前にアクセス範囲を知りたい。`mcprism scan` を実行してください。
 - チームでサーバー群を共有し、文書化されたベースラインが欲しい。`policy.yml` をバージョン管理し、本番マシンで `--profile strict` を実行してください。
 - CI で変更をレビューしたい。`mcprism scan --profile ci` を実行すると high 以上でビルドを失敗させ、SARIF をコードスキャンに公開できます。
-- MCP Registry のサーバーをクライアントに追加する前に、公式カタログで検索し、公開された起動・接続情報を確認したい場合。`mcprism registry search <キーワード>` の後に `mcprism registry scan <名前>` を実行します。
+- MCP Registry のサーバーをクライアントに追加する前に、公式カタログで検索し、公開された起動・接続情報を確認したい場合。`mcprism registry search <キーワード>` で検索し、`mcprism registry scan <名前>` で1件を確認できます。`mcprism registry audit <キーワード>` は一致した複数の項目をまとめて静的監査します。サーバーは起動・接続しません。
 
 ## レポート
 
@@ -189,9 +189,10 @@ mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # 実際に起動してツールを一覧
 
 # 参考情報
-# 公式 MCP Registry を検索し、サーバーの公開メタデータを静的スキャン
+# 公式 MCP Registry を検索し、公開メタデータを静的監査
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
+mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
 
 mcprism inspect mcp.json     # サーバーのツール/リソース/プロンプトを一覧
 mcprism rules                # 組み込みルールを一覧
@@ -423,7 +424,7 @@ mcprism は能力を列挙するだけなので、解析に副作用はありま
 いいえ。MCP の初期化と一覧取得のみを行います。ツールを呼び出さず、サーバー経由でファイルを開かず、プロンプトも送信しません。
 
 **データをどこかに送信しますか？**
-テレメトリはありません。ローカルの設定・レポートはアップロードされません。Registry コマンドは検索語またはサーバー名を公式 MCP Registry に送り、公開メタデータを取得します。その他の静的スキャンは接続しません。ライブスキャン（`scan --dynamic` / `vet --probe`）は指定したサーバーに接続します。
+テレメトリはありません。ローカルの設定・レポートはアップロードされません。Registry コマンドは検索語またはサーバー名を公式 MCP Registry に送り、公開メタデータを取得します。`registry audit` は検索語を送り、一致する項目の公開メタデータをまとめて取得します。その他の静的スキャンは接続しません。ライブスキャン（`scan --dynamic` / `vet --probe`）は指定したサーバーに接続します。
 
 **mcp-scan や mcp-audit との違いは？**
 後者は Python や Node で動き、設定やポイズニングに焦点を当てています。mcprism は Go の単一バイナリで、能力の組み合わせをモデル化し、ポリシー・アズ・コードを実行し、SARIF に加え JUnit、CycloneDX、CSV を出力します。[比較表](#比較)を参照してください。
