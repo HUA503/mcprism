@@ -6,6 +6,10 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Batch static audit of matching official MCP Registry entries with one combined report.
+
 ## [0.8.9] - 2026-11-24
 
 ### Fixed
