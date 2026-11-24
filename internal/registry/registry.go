@@ -116,8 +116,14 @@ var client = &http.Client{
 // registry requires at least three non-space Unicode characters.
 func Search(ctx context.Context, query string, limit int) ([]Entry, error) {
 	query = strings.TrimSpace(query)
-	if len([]rune(query)) < 3 {
-		return nil, errors.New("registry search needs at least 3 characters")
+	nonSpaceCharacters := 0
+	for _, r := range query {
+		if !unicode.IsSpace(r) {
+			nonSpaceCharacters++
+		}
+	}
+	if nonSpaceCharacters < 3 {
+		return nil, errors.New("registry search needs at least 3 non-space characters")
 	}
 	if limit == 0 {
 		limit = defaultLimit
