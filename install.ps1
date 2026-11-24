@@ -9,6 +9,9 @@ if ($PSVersionTable.PSEdition -eq "Desktop") {
 $repository = "HUA503/mcprism"
 $releaseBase = "https://github.com/$repository/releases/latest/download"
 $architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
+if ($architecture -eq "X86" -and [Environment]::Is64BitOperatingSystem) {
+    $architecture = "X64"
+}
 
 switch ($architecture) {
     "X64" { $archiveArchitecture = "amd64" }
