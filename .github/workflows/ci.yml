@@ -16,6 +16,8 @@ jobs:
           check-latest: true
       - name: Verify modules
         run: go mod verify
+      - name: Check installer syntax
+        run: sh -n install.sh
       - name: gofmt
         run: |
           out=$(gofmt -l internal cmd)

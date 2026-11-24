@@ -68,24 +68,26 @@ main() {
   download "${base}/${archive_name}" "$tmpdir/archive"
   echo "Downloading checksums.txt"
   if ! download "${base}/checksums.txt" "$tmpdir/checksums.txt"; then
-    echo "warning: could not fetch checksums.txt; skipping integrity check" >&2
-  else
-    want=$(awk -v n="$archive_name" '$2==n {print $1}' "$tmpdir/checksums.txt")
-    if [ -z "$want" ]; then
-      echo "error: ${archive_name} not found in checksums.txt; refusing to install" >&2
-      exit 1
-    fi
-    got=$(sha256_of "$tmpdir/archive")
-    if [ -z "$got" ]; then
-      echo "warning: no sha256 tool found; skipping integrity check" >&2
-    elif [ "$got" != "$want" ]; then
-      echo "error: checksum mismatch for ${archive_name}" >&2
-      echo "  expected ${want}" >&2
-      echo "  got      ${got}" >&2
-      exit 1
-    fi
-    echo "Checksum verified"
+    echo "error: could not fetch checksums.txt; refusing to install" >&2
+    exit 1
   fi
+  want=$(awk -v n="$archive_name" '$2==n {print $1}' "$tmpdir/checksums.txt")
+  if [ -z "$want" ]; then
+    echo "error: ${archive_name} not found in checksums.txt; refusing to install" >&2
+    exit 1
+  fi
+  got=$(sha256_of "$tmpdir/archive")
+  if [ -z "$got" ]; then
+    echo "error: no sha256 tool found; refusing to install" >&2
+    exit 1
+  fi
+  if [ "$got" != "$want" ]; then
+    echo "error: checksum mismatch for ${archive_name}" >&2
+    echo "  expected ${want}" >&2
+    echo "  got      ${got}" >&2
+    exit 1
+  fi
+  echo "Checksum verified"
 
   if [ "$os" = "windows" ]; then
     if command -v unzip >/dev/null 2>&1; then
