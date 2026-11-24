@@ -171,7 +171,14 @@ scoop bucket add mcprism https://github.com/HUA503/mcprism
 scoop install mcprism/mcprism
 ```
 
-GoReleaser 会在每次正式发布时更新 Scoop 清单和 Homebrew 公式。Homebrew 从带校验值的源码包构建。也可以从 [releases](https://github.com/HUA503/mcprism/releases) 下载二进制（Linux/macOS/Windows 支持 amd64 和 arm64，Linux 另支持 ARMv7）。Nix 仍在计划中。
+使用 Nix flakes 可在 Linux 或 macOS（x86_64、aarch64）上安装 v0.8.8：
+
+```sh
+nix profile install github:HUA503/mcprism/v0.8.8
+nix run github:HUA503/mcprism/v0.8.8 -- scan
+```
+
+GoReleaser 会在每次正式发布时更新 Scoop 清单和 Homebrew 公式。Homebrew 从带校验值的源码包构建。也可以从 [releases](https://github.com/HUA503/mcprism/releases) 下载二进制（Linux/macOS/Windows 支持 amd64 和 arm64，Linux 另支持 ARMv7）。Nix flake 锁定了 nixpkgs 和 Go 依赖哈希，并从源码构建。
 
 从 v0.8.4 开始，发布包会附带可验证的构建来源证明。可在[安全政策](SECURITY.md)中查看验证方法。
 
@@ -528,7 +535,7 @@ flowchart TD
 - [ ] 编辑器集成（VS Code、JetBrains）
 - [x] Scoop 包
 - [x] Homebrew 公式
-- [ ] Nix 包
+- [x] Nix 包
 
 ## 贡献
 
@@ -539,3 +546,4 @@ flowchart TD
 [MIT](LICENSE) © mcprism contributors。
 
 mcprism 是防御工具。它报告风险，但不能证明某个 server 一定安全；报告干净也不代表可以信任一个你并不了解的 server。
+
