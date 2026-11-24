@@ -24,13 +24,13 @@ func TestSearchPagePagination(t *testing.T) {
 		}
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
 	})}
-	entries, more, err := SearchPage(context.Background(), "filesystem", 2)
-	if err != nil || len(entries) != 1 || !more {
-		t.Fatalf("SearchPage = %v, %v, %v", entries, more, err)
+	entries, cursor, err := SearchPage(context.Background(), "filesystem", 2, "")
+	if err != nil || len(entries) != 1 || cursor != "opaque cursor" {
+		t.Fatalf("SearchPage = %v, %q, %v", entries, cursor, err)
 	}
 	body = `{"servers":[],"metadata":{"nextCursor":null}}`
-	entries, more, err = SearchPage(context.Background(), "filesystem", 2)
-	if err != nil || len(entries) != 0 || more {
-		t.Fatalf("last page = %v, %v, %v", entries, more, err)
+	entries, cursor, err = SearchPage(context.Background(), "filesystem", 2, "opaque cursor")
+	if err != nil || len(entries) != 0 || cursor != "" {
+		t.Fatalf("last page = %v, %q, %v", entries, cursor, err)
 	}
 }

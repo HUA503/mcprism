@@ -231,7 +231,7 @@ mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
 
 # 批量审计最多 20 个匹配条目，并生成一份合并报告
-mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
+mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
 
 # 参考信息
 mcprism inspect mcp.json     # 列出 server 的 tools/resources/prompts
@@ -239,7 +239,7 @@ mcprism rules                # 列出内置规则
 mcprism profiles             # 列出内置基线
 ```
 
-Registry 批量审计只检查搜索结果的第一页（最多 `--limit` 条，上限为 100 条），可能还有其他匹配项。不支持或跳过的条目会在标准错误输出中警告，这些警告可能不会出现在导出的报告中；解读结果前请先检查警告。在 CI 中加入 `--require-complete`，当仍有匹配结果或有配置无法审计时返回退出码 2；条件允许时仍会输出报告，策略检查失败仍返回退出码 1。
+Registry 批量审计默认只检查一页（最多 100 条）。加上 `--all` 会继续按游标分页并审计所有匹配项；`--require-complete` 会在仍有配置无法审计时返回非零状态。解读报告前请检查标准错误输出中的警告，因为这些警告可能不会写入报告。
 
 ### Shell 自动补全
 

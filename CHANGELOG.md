@@ -6,6 +6,10 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- `registry audit --all` follows Registry cursors to audit every matching entry.
+
 ### Fixed
 
 - Reject Registry audit entries missing a name or version so incomplete records
