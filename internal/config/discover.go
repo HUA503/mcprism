@@ -107,7 +107,7 @@ func globalCandidates() []candPath {
 func projectCandidates(dir string) []candPath {
 	var out []candPath
 	d := dir
-	for i := 0; i < 6 && d != ""; i++ {
+	for d != "" {
 		out = append(out,
 			candPath{filepath.Join(d, ".mcp.json"), "generic", "project"},
 			candPath{filepath.Join(d, ".cursor", "mcp.json"), "cursor", "project"},

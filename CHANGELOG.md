@@ -6,6 +6,12 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.8.6] - 2026-11-24
+
+### Fixed
+
+- Project config discovery now checks all parent directories instead of stopping after six levels.
+
 ## [0.8.5] - 2026-11-24
 
 ### Added
