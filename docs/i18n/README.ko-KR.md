@@ -140,7 +140,14 @@ brew tap HUA503/mcprism https://github.com/HUA503/mcprism
 brew install HUA503/mcprism/mcprism
 ```
 
-또는 [릴리스](https://github.com/HUA503/mcprism/releases) 페이지에서 바이너리를 내려받으세요(Linux/macOS/Windows amd64와 arm64, Linux ARMv7 추가 지원). Windows에서는 `scoop bucket add mcprism https://github.com/HUA503/mcprism` 후 `scoop install mcprism/mcprism`으로 설치할 수 있습니다. Nix는 계속 로드맵에 있습니다.
+또는 [릴리스](https://github.com/HUA503/mcprism/releases) 페이지에서 바이너리를 내려받으세요(Linux/macOS/Windows amd64와 arm64, Linux ARMv7 추가 지원). Windows에서는 `scoop bucket add mcprism https://github.com/HUA503/mcprism` 후 `scoop install mcprism/mcprism`으로 설치할 수 있습니다.
+
+Nix flakes로 Linux 또는 macOS(x86_64, aarch64)에 `main`의 최신 버전을 설치할 수 있습니다.
+
+```sh
+nix profile install github:HUA503/mcprism
+nix run github:HUA503/mcprism -- scan
+```
 
 Linux와 macOS에서 `/usr/local/bin`에 쓸 수 없으면 설치 프로그램은 `~/.local/bin`에 설치합니다. 이 디렉터리가 PATH에 없다는 안내가 나오면 PATH에 추가하거나 `~/.local/bin/mcprism scan`을 직접 실행하세요.
 
@@ -432,7 +439,7 @@ mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. �
 - [ ] 에디터 연동(VS Code, JetBrains)
 - [x] Scoop 패키지
 - [x] Homebrew formula
-- [ ] Nix 패키지
+- [x] Nix 패키지
 
 ## 기여하기
 
@@ -443,3 +450,4 @@ mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. �
 [MIT](../../LICENSE) © mcprism contributors.
 
 mcprism은 방어 도구입니다. 위험을 보고할 뿐 서버가 안전함을 증명하지 못하며, 보고서가 깨끗하다고 해서 이해하지 못하는 서버를 신뢰할 이유는 되지 않습니다.
+
