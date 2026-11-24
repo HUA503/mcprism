@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-11-24
+
 ### Added
 
 - Homebrew formula that builds from source and updates with each stable release.
