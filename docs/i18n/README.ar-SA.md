@@ -159,6 +159,11 @@ mcprism vet server.py            # فحص ملف واحد
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+```
+
 ```sh
 # Go
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
@@ -166,7 +171,7 @@ go install github.com/HUA503/mcprism/cmd/mcprism@latest
 
 <div dir="rtl">
 
-أو نزّل ملفًا ثنائيًا من صفحة <a href="https://github.com/HUA503/mcprism/releases">الإصدارات</a> (Linux/macOS/Windows، بمعماريتي amd64 وarm64). توفير عبر Homebrew وScoop وNix مدرج في خارطة الطريق.
+أو نزّل ملفًا ثنائيًا من صفحة <a href="https://github.com/HUA503/mcprism/releases">الإصدارات</a> (Linux/macOS بمعماريتي amd64 وarm64، وWindows بمعمارية amd64). توفير عبر Homebrew وScoop وNix مدرج في خارطة الطريق.
 
 ## بداية سريعة
 

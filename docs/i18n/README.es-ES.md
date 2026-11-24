@@ -123,12 +123,17 @@ Revisión por lotes de muchos servidores (modo estático):
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+```
+
 ```sh
 # Go
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-O descarga un binario desde la página de [versiones](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 y arm64). Homebrew, Scoop y Nix están en la hoja de ruta.
+O descarga un binario desde la página de [versiones](https://github.com/HUA503/mcprism/releases) (Linux/macOS amd64 y arm64, Windows amd64). Homebrew, Scoop y Nix están en la hoja de ruta.
 
 ## Inicio rápido
 

@@ -123,12 +123,17 @@ mcprism vet server.py            # 파일 하나 검사
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+```
+
 ```sh
 # Go
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-또는 [릴리스](https://github.com/HUA503/mcprism/releases) 페이지에서 바이너리를 내려받으세요(Linux/macOS/Windows, amd64와 arm64). Homebrew, Scoop, Nix는 로드맵에 있습니다.
+또는 [릴리스](https://github.com/HUA503/mcprism/releases) 페이지에서 바이너리를 내려받으세요(Linux/macOS amd64와 arm64, Windows amd64). Homebrew, Scoop, Nix는 로드맵에 있습니다.
 
 ## 빠른 시작
 
