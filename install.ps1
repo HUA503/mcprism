@@ -1,5 +1,11 @@
 $ErrorActionPreference = "Stop"
 
+# Windows PowerShell 5.1 may default to TLS 1.0 on older .NET Framework
+# installations, while GitHub's release endpoints require TLS 1.2.
+if ($PSVersionTable.PSEdition -eq "Desktop") {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+}
+
 $repository = "HUA503/mcprism"
 $releaseBase = "https://github.com/$repository/releases/latest/download"
 $architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
