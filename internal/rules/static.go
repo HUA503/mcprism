@@ -283,7 +283,7 @@ func downloadsAndExecutes(script string) bool {
 
 func isFetcher(cmd string) bool {
 	switch baseNameCross(cmd) {
-	case "npx", "npm", "bunx", "uvx", "pipx", "pnpm", "yarn", "deno":
+	case "npx", "npm", "bunx", "uvx", "pipx", "pnpm", "yarn", "deno", "dnx":
 		return true
 	}
 	return false
@@ -341,3 +341,4 @@ func envHasToken(env map[string]string) bool {
 	}
 	return false
 }
+
