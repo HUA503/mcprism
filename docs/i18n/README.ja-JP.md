@@ -199,6 +199,16 @@ mcprism rules                # 組み込みルールを一覧
 mcprism profiles             # 組み込みプロファイルを一覧
 ```
 
+### シェル補完
+
+`mcprism completion` は Bash、Zsh、Fish、PowerShell 用の補完スクリプトを生成します。現在のシェルで次のコマンドを実行してください。
+
+- Bash / Zsh：`source <(mcprism completion bash)` / `source <(mcprism completion zsh)`
+- Fish：`mcprism completion fish | source`
+- PowerShell：`mcprism completion powershell | Out-String | Invoke-Expression`
+
+新しいセッションでも有効にするには、該当するコマンドをシェルの設定ファイルに追加します。
+
 ### フラグ
 
 | フラグ | 説明 |
