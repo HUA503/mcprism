@@ -425,7 +425,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@main # 正式使用时固定到 release tag 或 commit SHA
+        uses: HUA503/mcprism@62fda57dd7c2dd2aa1de97072ac037e28c905a2e
         with:
           version: v0.7.0
           target: mcp.json
