@@ -297,7 +297,9 @@ mcprism profiles             # list built-in profiles
 Registry batch audit checks the first page of results (up to `--limit`, maximum
 100). Additional matches may exist. Warnings about unsupported or skipped
 entries are printed to stderr and may not appear in the exported report; review
-them before interpreting the results.
+them before interpreting the results. Add `--require-complete` in CI to exit
+with code 2 when more matches exist or a configuration is skipped. The report
+is still written when possible; a policy failure retains exit code 1.
 
 ### Flags
 
