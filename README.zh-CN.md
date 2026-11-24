@@ -231,7 +231,7 @@ mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
 
 # 批量审计最多 20 个匹配条目，并生成一份合并报告
-mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
+mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
 
 # 参考信息
 mcprism inspect mcp.json     # 列出 server 的 tools/resources/prompts
