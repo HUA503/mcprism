@@ -172,6 +172,8 @@ scoop install mcprism/mcprism
 
 GoReleaser 会在每次正式发布时更新 Scoop 清单和 Homebrew 公式。Homebrew 从带校验值的源码包构建。也可以从 [releases](https://github.com/HUA503/mcprism/releases) 下载二进制（Linux/macOS/Windows 支持 amd64 和 arm64，Linux 另支持 ARMv7）。Nix 仍在计划中。
 
+从 v0.8.4 开始，发布包会附带可验证的构建来源证明。可在[安全政策](SECURITY.md)中查看验证方法。
+
 ## 快速开始
 
 ```sh
@@ -403,7 +405,7 @@ mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copil
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.8.3
+  rev: v0.8.4
   hooks:
     - id: mcprism
 ```
@@ -436,7 +438,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.8.3
+        uses: HUA503/mcprism@v0.8.4
         with:
           target: mcp.json
           sarif-file: mcprism.sarif

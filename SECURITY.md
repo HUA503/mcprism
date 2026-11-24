@@ -4,8 +4,8 @@
 
 | Version | Supported |
 |---|---|
-| 0.1.x | ✅ |
-| < 0.1 | ❌ |
+| 0.8.x | ✅ |
+| Older versions | ❌ |
 
 ## Reporting a vulnerability
 
@@ -38,4 +38,18 @@ disclosure.
 ## Hardening dependencies
 
 If you find a vulnerable dependency, please report it as above. Release
-artifacts are built with `CGO_ENABLED=0` and published with checksums.
+artifacts are built with `CGO_ENABLED=0` and published with checksums. Starting
+with v0.8.4, every release archive listed in `checksums.txt` also has a GitHub
+artifact attestation that records its build provenance.
+
+To verify a downloaded archive, install the GitHub CLI and run:
+
+```sh
+gh attestation verify mcprism_linux_amd64.tar.gz \
+  --repo HUA503/mcprism \
+  --signer-workflow HUA503/mcprism/.github/workflows/release.yml
+```
+
+Use the archive filename for the platform you downloaded. The command checks
+that its digest matches a signed attestation from this repository's release
+workflow.

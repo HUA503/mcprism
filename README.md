@@ -219,6 +219,9 @@ GoReleaser updates the Scoop manifest during each stable release. Homebrew
 builds from the tagged source and updates its formula during the release flow.
 Nix is on the roadmap.
 
+Release archives from v0.8.4 onward include verifiable build provenance. See
+[SECURITY.md](SECURITY.md) for the optional verification command.
+
 ## Quick start
 
 ```sh
@@ -502,7 +505,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.8.3
+  rev: v0.8.4
   hooks:
     - id: mcprism
 ```
@@ -537,7 +540,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.8.3
+        uses: HUA503/mcprism@v0.8.4
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
