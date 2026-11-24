@@ -11,13 +11,17 @@ import (
 )
 
 func registryAuditCmd() *cobra.Command {
-	return registryAuditCmdWithSearch(registry.SearchPage)
+	return registryAuditCmdWithSearch(func(ctx context.Context, query string, limit int) ([]registry.Entry, bool, error) {
+		entries, cursor, err := registry.SearchPage(ctx, query, limit, "")
+		return entries, cursor != "", err
+	})
 }
 
 func registryAuditCmdWithSearch(search func(context.Context, string, int) ([]registry.Entry, bool, error)) *cobra.Command {
 	var o auditOpts
 	var limit int
 	var requireComplete bool
+	var auditAll bool
 	cmd := &cobra.Command{
 		Use:   "audit <query>",
 		Short: "Search and statically audit matching official MCP Registry entries",
@@ -29,7 +33,14 @@ exist. Unsupported formats and skipped entries are reported on stderr and may
 not appear in the report. Review warnings before interpreting the results.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			entries, hasMore, err := search(cmd.Context(), args[0], limit)
+			var entries []registry.Entry
+			var hasMore bool
+			var err error
+			if auditAll {
+				entries, err = registry.SearchAll(cmd.Context(), args[0], limit)
+			} else {
+				entries, hasMore, err = search(cmd.Context(), args[0], limit)
+			}
 			if err != nil {
 				return err
 			}
@@ -90,6 +101,7 @@ not appear in the report. Review warnings before interpreting the results.`,
 		},
 	}
 	cmd.Flags().IntVar(&limit, "limit", 20, "maximum matching entries to audit (1-100)")
+	cmd.Flags().BoolVar(&auditAll, "all", false, "follow Registry cursors and audit every matching result")
 	cmd.Flags().BoolVar(&requireComplete, "require-complete", false, "exit non-zero if matches remain or configurations cannot be audited")
 	addAuditFlags(cmd, &o)
 	return cmd
