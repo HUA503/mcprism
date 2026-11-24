@@ -133,7 +133,7 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-Или скачайте бинарный файл со страницы [релизов](https://github.com/HUA503/mcprism/releases) (Linux/macOS amd64 и arm64, Windows amd64). Homebrew, Scoop и Nix — в планах.
+Или скачайте бинарный файл со страницы [релизов](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 и arm64). Homebrew, Scoop и Nix — в планах.
 
 ## Быстрый старт
 

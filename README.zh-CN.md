@@ -152,7 +152,7 @@ go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
 PowerShell 安装脚本会校验发布包的 SHA-256，并将用户级安装目录加入 PATH。
-也可以从 [releases](https://github.com/HUA503/mcprism/releases) 页面下载二进制（Linux/macOS 支持 amd64 和 arm64，Windows 支持 amd64）。Homebrew、Scoop、Nix 在计划中。
+也可以从 [releases](https://github.com/HUA503/mcprism/releases) 页面下载二进制（Linux/macOS/Windows 均支持 amd64 和 arm64）。Homebrew、Scoop、Nix 在计划中。
 
 ## 快速开始
 

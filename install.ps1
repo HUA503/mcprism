@@ -15,8 +15,9 @@ if ($architecture -eq "X86" -and [Environment]::Is64BitOperatingSystem) {
 
 switch ($architecture) {
     "X64" { $archiveArchitecture = "amd64" }
+    "Arm64" { $archiveArchitecture = "arm64" }
     default {
-        throw "No Windows release is published for architecture $architecture. Download a compatible binary from https://github.com/$repository/releases"
+        throw "Unsupported Windows architecture: $architecture. Download a compatible binary from https://github.com/$repository/releases"
     }
 }
 
