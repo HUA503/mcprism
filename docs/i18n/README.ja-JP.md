@@ -14,7 +14,7 @@ mcprism は [Model Context Protocol](https://modelcontextprotocol.io/) サーバ
 2. **ソースコード** — 実装が手元にある場合、JS/TS/Python/Go のツールハンドラーを読み、エージェントが制御できる引数を危険なシンクまで追跡します。プロセス実行、外部リクエスト（SSRF）、ファイルシステムパスに加え、eval、安全でないデシリアライズ、ハードコードされたシークレットを検出します。
 3. **ランタイム** — MCP ハンドシェイクを行い、ツール、リソース、プロンプトを一覧表示し、ツールメタデータのポイズニングを確認します。ツールを呼び出すことはありません。
 
-すべてのサーバーには検出項目の一覧、0〜100 のスコア、A〜F のグレードが付きます。mcprism は 1 つの Go バイナリとして配布され、実行時の依存はなく、完全にオフラインで動作し、副作用もありません。
+すべてのサーバーに検出項目、0〜100 のスコア、A〜F のグレードを表示します。mcprism は実行時依存のない Go 製単一バイナリです。ローカル設定・ソースコードのスキャンはオフラインで実行でき、Registry コマンドは公式 MCP Registry から公開メタデータを取得します。
 
 [![CI](https://github.com/HUA503/mcprism/actions/workflows/ci.yml/badge.svg)](https://github.com/HUA503/mcprism/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
@@ -94,7 +94,7 @@ mcprism vet server.py            # 1 ファイルを審査
 - 静的・ソース・ライブ解析。設定を読み、コードがある場合は JS/TS/Python/Go ソースをレビューし、MCP ハンドシェイクを行ってツール、リソース、プロンプトを列挙します。ツールを呼び出すことはありません。
 - ポリシー・アズ・コード。ルールのオン/オフ、重要度の変更、パッケージ・コマンド・ドメインの許可/拒否、ネットワーク分離の要求ができます。組み込みプロファイルには `default`、`strict`、`ci` のベースラインがあります。
 - リスク許容レジスタ。理由と期限を付けて検出項目を抑制できます。抑制された項目はレポートに表示され続け、期限が切れると再び報告されます。
-- 決定論的でオフライン。35 のルールが OWASP MCP01〜MCP07 にマップされ、データがマシンの外に出ることはありません。
+- 決定論的。35 のルールが OWASP MCP01〜MCP07 に対応します。ローカルの設定・ソースコード検査はオフラインで実行され、Registry コマンドは公式 Registry の公開メタデータを取得します。テレメトリはありません。
 - 人とマシン向けのレポート：table、JSON、Markdown、HTML、SARIF、JUnit XML、CycloneDX SBOM、CSV。
 - 複数の対象を一度にスキャン：ファイル、ディレクトリ（再帰）、URL。
 
@@ -103,6 +103,7 @@ mcprism vet server.py            # 1 ファイルを審査
 - MCP サーバーをインストール済みで、エージェントが実行する前にアクセス範囲を知りたい。`mcprism scan` を実行してください。
 - チームでサーバー群を共有し、文書化されたベースラインが欲しい。`policy.yml` をバージョン管理し、本番マシンで `--profile strict` を実行してください。
 - CI で変更をレビューしたい。`mcprism scan --profile ci` を実行すると high 以上でビルドを失敗させ、SARIF をコードスキャンに公開できます。
+- MCP Registry のサーバーをクライアントに追加する前に、公式カタログで検索し、公開された起動・接続情報を確認したい場合。`mcprism registry search <キーワード>` の後に `mcprism registry scan <名前>` を実行します。
 
 ## レポート
 
@@ -188,6 +189,10 @@ mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # 実際に起動してツールを一覧
 
 # 参考情報
+# 公式 MCP Registry を検索し、サーバーの公開メタデータを静的スキャン
+mcprism registry search filesystem
+mcprism registry scan io.github.user/server-name
+
 mcprism inspect mcp.json     # サーバーのツール/リソース/プロンプトを一覧
 mcprism rules                # 組み込みルールを一覧
 mcprism profiles             # 組み込みプロファイルを一覧
@@ -409,7 +414,7 @@ mcprism は能力を列挙するだけなので、解析に副作用はありま
 | JUnit / CycloneDX / CSV 出力 | ✅ | ❌ | ❌ | ❌ |
 | 再帰・複数対象スキャン | ✅ | 部分的 | ❌ | ❌ |
 | SARIF + CI 終了コード | ✅ | ✅ | ❌ | ❌ |
-| 完全オフライン、LLM 不使用 | ✅ | ✅ | 部分的 | ✅ |
+| ローカル設定・コードスキャンはオフライン、LLM 不使用 | ✅ | ✅ | 部分的 | ✅ |
 | クロスプラットフォーム | ✅ | 部分的 | 部分的 | — |
 
 ## よくある質問
@@ -418,7 +423,7 @@ mcprism は能力を列挙するだけなので、解析に副作用はありま
 いいえ。MCP の初期化と一覧取得のみを行います。ツールを呼び出さず、サーバー経由でファイルを開かず、プロンプトも送信しません。
 
 **データをどこかに送信しますか？**
-いいえ。ルールはローカルで実行され、テレメトリもありません。ライブスキャンはハンドシェイクのために指定したサーバーと通信するだけで、`--no-dynamic` を付ければそれも行いません。
+テレメトリはありません。ローカルの設定・レポートはアップロードされません。Registry コマンドは検索語またはサーバー名を公式 MCP Registry に送り、公開メタデータを取得します。その他の静的スキャンは接続しません。ライブスキャン（`scan --dynamic` / `vet --probe`）は指定したサーバーに接続します。
 
 **mcp-scan や mcp-audit との違いは？**
 後者は Python や Node で動き、設定やポイズニングに焦点を当てています。mcprism は Go の単一バイナリで、能力の組み合わせをモデル化し、ポリシー・アズ・コードを実行し、SARIF に加え JUnit、CycloneDX、CSV を出力します。[比較表](#比較)を参照してください。
@@ -432,7 +437,7 @@ mcprism は能力を列挙するだけなので、解析に副作用はありま
 ## ロードマップ
 
 - [ ] MCP 仕様の進展に合わせてルールを追加し誤検出を減らす
-- [ ] MCP レジストリ / マーケットプレイスのスキャン
+- [x] MCP レジストリ / マーケットプレイスのスキャン
 - [ ] ポリシー上書きを超えたユーザー定義ルール
 - [x] pre-commit フック
 - [x] GitHub Actions と SARIF 出力
