@@ -167,9 +167,9 @@ below, with no network needed.
 - You review changes in CI. Run `mcprism scan --profile ci` to fail the build
   on high and above, or publish SARIF to code scanning.
 - You want to check a server before adding it to a client. Search the official
-  MCP Registry, then scan its supported package and remote transport metadata
-  with `mcprism registry scan <server-name>`. Unsupported package formats are
-  reported as warnings.
+  MCP Registry, then scan one entry with `mcprism registry scan <server-name>`
+  or audit matching entries together with `mcprism registry audit <query>`. The
+  batch audit applies your policy to supported metadata without starting servers.
 
 ## Report
 
@@ -281,9 +281,12 @@ mcprism vet https://mcp.example.com
 mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # actually run it and list tools
 
-# Search and statically scan a server from the official MCP Registry
+# Search and statically scan one server from the official MCP Registry
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
+
+# Batch-audit up to 20 matching entries with one combined report
+mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
 
 # Reference
 mcprism inspect mcp.json     # list a server's tools/resources/prompts
@@ -648,8 +651,8 @@ invoked, files are not opened through a server, and prompts are not sent.
 
 **Does it send data anywhere?**
 There is no telemetry, and local configs or reports are never uploaded.
-`registry search` sends the search term and `registry scan` sends the requested
-server name to the official MCP Registry to fetch public metadata. Other static
+`registry search` and `registry audit` send the search term, while `registry scan`
+sends the requested server name to the official MCP Registry to fetch public metadata. Other static
 scans do not connect anywhere. A live scan (`--dynamic` for scan, `--probe` for
 vet) connects to the server you point it at and may start its process; treat it
 as untrusted and use a sandbox. Probing refuses cross-host redirects and
