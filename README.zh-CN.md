@@ -171,11 +171,11 @@ scoop bucket add mcprism https://github.com/HUA503/mcprism
 scoop install mcprism/mcprism
 ```
 
-使用 Nix flakes 可在 Linux 或 macOS（x86_64、aarch64）上安装 v0.8.8：
+使用 Nix flakes 可在 Linux 或 macOS（x86_64、aarch64）上安装 `main` 分支的最新版本：
 
 ```sh
-nix profile install github:HUA503/mcprism/v0.8.8
-nix run github:HUA503/mcprism/v0.8.8 -- scan
+nix profile install github:HUA503/mcprism
+nix run github:HUA503/mcprism -- scan
 ```
 
 GoReleaser 会在每次正式发布时更新 Scoop 清单和 Homebrew 公式。Homebrew 从带校验值的源码包构建。也可以从 [releases](https://github.com/HUA503/mcprism/releases) 下载二进制（Linux/macOS/Windows 支持 amd64 和 arm64，Linux 另支持 ARMv7）。Nix flake 锁定了 nixpkgs 和 Go 依赖哈希，并从源码构建。
