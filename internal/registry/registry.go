@@ -122,8 +122,8 @@ func Search(ctx context.Context, query string, limit int) ([]Entry, error) {
 	return entries, err
 }
 
-// SearchPage returns matching entries and whether the Registry has another page.
-func SearchPage(ctx context.Context, query string, limit int) ([]Entry, bool, error) {
+// SearchPage returns matching entries and the opaque cursor for the next page.
+func SearchPage(ctx context.Context, query string, limit int, cursor string) ([]Entry, string, error) {
 	query = strings.TrimSpace(query)
 	nonSpaceCharacters := 0
 	for _, r := range query {
@@ -132,13 +132,13 @@ func SearchPage(ctx context.Context, query string, limit int) ([]Entry, bool, er
 		}
 	}
 	if nonSpaceCharacters < 3 {
-		return nil, false, errors.New("registry search needs at least 3 non-space characters")
+		return nil, "", errors.New("registry search needs at least 3 non-space characters")
 	}
 	if limit == 0 {
 		limit = defaultLimit
 	}
 	if limit < 1 || limit > maximumLimit {
-		return nil, false, fmt.Errorf("limit must be between 1 and %d", maximumLimit)
+		return nil, "", fmt.Errorf("limit must be between 1 and %d", maximumLimit)
 	}
 
 	u, _ := url.Parse(baseURL + "/v0.1/servers")
@@ -146,12 +146,39 @@ func SearchPage(ctx context.Context, query string, limit int) ([]Entry, bool, er
 	q.Set("search", query)
 	q.Set("version", "latest")
 	q.Set("limit", fmt.Sprint(limit))
+	if cursor != "" {
+		q.Set("cursor", cursor)
+	}
 	u.RawQuery = q.Encode()
 	var result serverList
 	if err := getJSON(ctx, u.String(), &result); err != nil {
-		return nil, false, err
+		return nil, "", err
 	}
-	return result.Servers, result.Metadata.NextCursor != "", nil
+	return result.Servers, result.Metadata.NextCursor, nil
+}
+
+}
+
+// SearchAll follows Registry cursors until every matching page has been read.
+func SearchAll(ctx context.Context, query string, limit int) ([]Entry, error) {
+	var entries []Entry
+	cursor := ""
+	seen := make(map[string]struct{})
+	for {
+		page, next, err := SearchPage(ctx, query, limit, cursor)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, page...)
+		if next == "" {
+			return entries, nil
+		}
+		if _, ok := seen[next]; ok {
+			return nil, errors.New("MCP Registry repeated a pagination cursor")
+		}
+		seen[next] = struct{}{}
+		cursor = next
+	}
 }
 
 // Lookup fetches the latest version of one exact official registry name.
