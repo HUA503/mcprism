@@ -23,7 +23,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w
+      - -s -w -X main.version={{ .Version }}
 
   - id: mcprism-linux-armv7
     main: ./cmd/mcprism
@@ -40,7 +40,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w
+      - -s -w -X main.version={{ .Version }}
 
 archives:
   - id: default

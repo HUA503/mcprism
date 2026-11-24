@@ -26,7 +26,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.7.0"
+// Set to the release version by GoReleaser. Local builds keep the explicit
+// development marker instead of reporting a stale release number.
+var version = "dev"
 
 func init() {
 	// Keep the protocol clientInfo version in lockstep with the CLI version.
