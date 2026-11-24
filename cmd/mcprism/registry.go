@@ -17,7 +17,7 @@ func registryCmd() *cobra.Command {
 		Use:   "registry",
 		Short: "Search and scan servers in the official MCP Registry",
 	}
-	cmd.AddCommand(registrySearchCmd(), registryScanCmd())
+	cmd.AddCommand(registrySearchCmd(), registryScanCmd(), registryAuditCmd())
 	return cmd
 }
 
