@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 func registryAuditCmd() *cobra.Command {
 	var o auditOpts
 	var limit int
+	var requireComplete bool
 	cmd := &cobra.Command{
 		Use:   "audit <query>",
 		Short: "Search and statically audit matching official MCP Registry entries",
@@ -24,7 +24,7 @@ exist. Unsupported formats and skipped entries are reported on stderr and may
 not appear in the report. Review warnings before interpreting the results.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			entries, err := registry.Search(context.Background(), args[0], limit)
+			entries, hasMore, err := registry.SearchPage(cmd.Context(), args[0], limit)
 			if err != nil {
 				return err
 			}
@@ -32,17 +32,25 @@ not appear in the report. Review warnings before interpreting the results.`,
 				return fmt.Errorf("no official MCP Registry entries matched %q", args[0])
 			}
 
+			incomplete := hasMore
+			if hasMore {
+				fmt.Fprintln(cmd.ErrOrStderr(), "Warning: more Registry matches exist beyond this page")
+			}
 			var servers []*config.Server
 			auditedEntries := 0
 			for _, entry := range entries {
 				name := registry.SanitizeText(entry.Server.Name)
 				status := strings.ToLower(strings.TrimSpace(entry.Meta.Official.Status))
 				if status == "deleted" {
+					incomplete = true
 					fmt.Fprintf(cmd.ErrOrStderr(), "Warning: registry entry %s is deleted; skipped\n", name)
 					continue
 				}
 
 				entryServers, warnings, auditErr := registry.AuditServers(entry)
+				if len(warnings) > 0 || auditErr != nil {
+					incomplete = true
+				}
 				for _, warning := range warnings {
 					fmt.Fprintf(cmd.ErrOrStderr(), "Warning: %s: %s\n", name, registry.SanitizeText(warning))
 				}
@@ -66,10 +74,18 @@ not appear in the report. Review warnings before interpreting the results.`,
 				return fmt.Errorf("no supported server configurations found among %d matching Registry entries", len(entries))
 			}
 			fmt.Fprintf(cmd.ErrOrStderr(), "Registry audit: %d of %d entries, %d server configurations\n", auditedEntries, len(entries), len(servers))
-			return audit(servers, nil, false, o)
+			err = audit(servers, nil, false, o)
+			if err != nil {
+				return err
+			}
+			if requireComplete && incomplete {
+				return fmt.Errorf("Registry audit incomplete; see warnings on stderr")
+			}
+			return nil
 		},
 	}
 	cmd.Flags().IntVar(&limit, "limit", 20, "maximum matching entries to audit (1-100)")
+	cmd.Flags().BoolVar(&requireComplete, "require-complete", false, "exit non-zero if matches remain or configurations cannot be audited")
 	addAuditFlags(cmd, &o)
 	return cmd
 }
