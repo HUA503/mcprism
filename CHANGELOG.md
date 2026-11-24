@@ -11,6 +11,7 @@ semantic versioning.
 - Nix flake package for Linux and macOS on x86_64 and aarch64.
 - Add a locked nixpkgs input and a fixed hash for Go dependencies.
 - Build the Nix package in GitHub Actions.
+- Search and statically scan package and remote transports from the official MCP Registry.
 
 ## [0.8.7] - 2026-11-24
 
@@ -344,4 +345,5 @@ secrets on a command line no longer appear in reports.
 
 [0.2.0]: https://github.com/HUA503/mcprism/releases/tag/v0.2.0
 [0.1.0]: https://github.com/HUA503/mcprism/releases/tag/v0.1.0
+
 
