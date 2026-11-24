@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -10,6 +11,10 @@ import (
 )
 
 func registryAuditCmd() *cobra.Command {
+	return registryAuditCmdWithSearch(registry.SearchPage)
+}
+
+func registryAuditCmdWithSearch(search func(context.Context, string, int) ([]registry.Entry, bool, error)) *cobra.Command {
 	var o auditOpts
 	var limit int
 	var requireComplete bool
@@ -24,7 +29,7 @@ exist. Unsupported formats and skipped entries are reported on stderr and may
 not appear in the report. Review warnings before interpreting the results.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			entries, hasMore, err := registry.SearchPage(cmd.Context(), args[0], limit)
+			entries, hasMore, err := search(cmd.Context(), args[0], limit)
 			if err != nil {
 				return err
 			}
