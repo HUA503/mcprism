@@ -6,6 +6,10 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Validate MCP Registry search length using non-space Unicode characters.
+
 ## [0.8.8] - 2026-11-24
 
 ### Added
