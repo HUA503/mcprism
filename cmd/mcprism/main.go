@@ -52,7 +52,7 @@ func rootCmd() *cobra.Command {
 	root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		ui.Init(noColor, ascii)
 	}
-	root.AddCommand(scanCmd(), vetCmd(), inspectCmd(), rulesCmd(), profilesCmd(), versionCmd())
+	root.AddCommand(scanCmd(), vetCmd(), inspectCmd(), registryCmd(), rulesCmd(), profilesCmd(), versionCmd())
 	return root
 }
 
@@ -434,3 +434,4 @@ func hostFromURL(raw string) string {
 	}
 	return u.Host
 }
+
