@@ -239,6 +239,16 @@ mcprism rules                # تعداد القواعد المدمجة
 mcprism profiles             # تعداد الملفات الشخصية المدمجة
 ```
 
+### إكمال أوامر الصدفة
+
+ينشئ الأمر `mcprism completion` ملفات الإكمال لـ Bash وZsh وFish وPowerShell. نفّذ الأمر المناسب في الجلسة الحالية:
+
+- Bash أو Zsh: `source <(mcprism completion bash)` / `source <(mcprism completion zsh)`
+- Fish: `mcprism completion fish | source`
+- PowerShell: `mcprism completion powershell | Out-String | Invoke-Expression`
+
+أضف الأمر إلى ملف إعداد الصدفة لتفعيله في الجلسات الجديدة.
+
 <div dir="rtl">
 
 ### الخيارات
