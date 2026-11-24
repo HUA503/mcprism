@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.8.8] - 2026-11-24
+
 ### Added
 
 - Nix flake package for Linux and macOS on x86_64 and aarch64.
@@ -343,6 +345,9 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
+[Unreleased]: https://github.com/HUA503/mcprism/compare/v0.8.8...HEAD
+[0.8.8]: https://github.com/HUA503/mcprism/releases/tag/v0.8.8
+[0.8.7]: https://github.com/HUA503/mcprism/releases/tag/v0.8.7
 [0.2.0]: https://github.com/HUA503/mcprism/releases/tag/v0.2.0
 [0.1.0]: https://github.com/HUA503/mcprism/releases/tag/v0.1.0
 

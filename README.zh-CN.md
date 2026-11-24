@@ -421,7 +421,7 @@ Codex 自动发现会检查系统配置（Unix 上为 `/etc/codex/config.toml`�
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.8.7
+  rev: v0.8.8
   hooks:
     - id: mcprism
 ```
@@ -454,7 +454,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.8.7
+        uses: HUA503/mcprism@v0.8.8
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
