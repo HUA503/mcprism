@@ -14,7 +14,7 @@ mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server �
 2. **源码**：当实现代码就在本地时，读取 JS/TS/Python/Go 的工具 handler，追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及 eval、不安全反序列化和硬编码密钥。
 3. **运行时**：完成 MCP 握手，列出 tools、resources、prompts，并检查工具元数据是否被投毒。它不会调用任何工具。
 
-每个 server 都会得到一份发现清单、一个 0–100 的分数和一个 A–F 的评级。整个工具是一个 Go 二进制，没有运行时依赖。静态扫描完全离线、没有副作用；启动 server 做动态探测必须显式开启（`--dynamic` / `--probe`）。
+每个 server 都会得到一份发现清单、一个 0–100 的分数和一个 A–F 的评级。整个工具是一个 Go 二进制，没有运行时依赖。本地配置和源码扫描完全离线；`registry` 命令会主动连接官方 Registry 获取公开元数据，但不会启动或连接条目中的 server。动态探测必须显式开启（`--dynamic` / `--probe`）。
 
 [![CI](https://github.com/HUA503/mcprism/actions/workflows/ci.yml/badge.svg)](https://github.com/HUA503/mcprism/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/HUA503/mcprism?color=a6e3a1&label=release)](https://github.com/HUA503/mcprism/releases)
@@ -113,7 +113,7 @@ mcprism vet server.py            # 审查单个文件
 - 看 schema。对于没有源码的在线 server，如果名为 command、url、path 之类的字符串参数接受任意值，会按命令执行、SSRF、路径风险报出；用 enum、const、pattern 约束过的参数不报。
 - 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套配置。
 - 风险接受清单。可以带理由和到期时间抑制发现，也可以用 `--baseline` 接受整份旧报告，只让新问题卡住构建；被抑制项仍显示在报告里，过期后自动重新出现。
-- 结果确定。35 条规则映射到 OWASP MCP01–MCP07。静态分析不联网；动态探测是可选的，会启动 server 进程，请在沙箱里运行。探测带有出站防护（不允许重定向到云元数据或 link-local 地址），并且默认只给被拉起的进程一个受限的环境变量集合，而不是整个 shell。
+- 结果确定。35 条规则映射到 OWASP MCP01–MCP07。本地配置和源码静态分析不联网；`registry` 命令只从官方 Registry 获取公开元数据。动态探测是可选的，会启动 server 进程，请在沙箱里运行。探测带有出站防护（不允许重定向到云元数据或 link-local 地址），并且默认只给被拉起的进程一个受限的环境变量集合，而不是整个 shell。
 - 面向人和机器的报告：table、JSON、Markdown、HTML、SARIF、JUnit XML、CycloneDX SBOM、CSV。
 - 一次扫描多个目标：文件、目录（递归）、URL。
 
@@ -122,6 +122,7 @@ mcprism vet server.py            # 审查单个文件
 - 你装了一些 MCP server，想在 agent 运行前知道它们能访问什么。跑 `mcprism scan`。
 - 一个团队共用一组 server，想要一份有记录的统一基线。把 `policy.yml` 放进版本库，在生产机器上跑 `--profile strict`。
 - 你在 CI 里审查变更。跑 `mcprism scan --profile ci`，出现 high 及以上问题就让构建失败，或者把 SARIF 发布到 code scanning。
+- 你准备把 Registry 中的 server 加入客户端前，先用 `mcprism registry search <关键词>` 找到条目，再用 `mcprism registry scan <名称>` 静态检查支持的启动和远程传输配置；不支持的包类型会给出警告。
 
 ## 报告
 
@@ -224,6 +225,10 @@ mcprism vet "uvx some-mcp-server"
 mcprism vet https://mcp.example.com
 mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # 真正运行并列出 tools
+
+# 搜索并静态扫描官方 MCP Registry 中的 server
+mcprism registry search filesystem
+mcprism registry scan io.github.user/server-name
 
 # 参考信息
 mcprism inspect mcp.json     # 列出 server 的 tools/resources/prompts
@@ -502,7 +507,7 @@ flowchart TD
 | JUnit / CycloneDX / CSV 输出 | ✅ | ❌ | ❌ | ❌ |
 | 递归、多目标扫描 | ✅ | 部分 | ❌ | ❌ |
 | SARIF + CI 退出码 | ✅ | ✅ | ❌ | ❌ |
-| 完全离线、不用 LLM | ✅ | ✅ | 部分 | ✅ |
+| 本地扫描离线、不用 LLM | ✅ | ✅ | 部分 | ✅ |
 | 跨平台 | ✅ | 部分 | 部分 | — |
 
 ## 常见问题
@@ -511,7 +516,7 @@ flowchart TD
 不会。它只做 MCP 的 initialize 和列出请求，不会调用工具、不会通过 server 打开文件、也不会发送提示词。
 
 **它会把数据发到别处吗？**
-不会。规则在本地运行，也没有任何遥测。静态分析不连接任何地方；动态扫描（`scan --dynamic` / `vet --probe`）会启动你指定的 server 并连接它，该进程可能执行代码或联网，请在沙箱里运行。探测会拒绝跨 host 重定向、拒绝连接云元数据/link-local 地址，默认也不会把你的 shell 环境传给被拉起的 server。
+没有遥测，也不会上传本地配置或报告。`registry search` 会把搜索词发送给官方 MCP Registry，`registry scan` 会发送指定名称以获取公开元数据；其他静态扫描不会联网。动态扫描（`scan --dynamic` / `vet --probe`）会启动或连接你指定的 server，该进程可能执行代码或联网，请在沙箱里运行。探测会拒绝跨 host 重定向、拒绝连接云元数据/link-local 地址，默认也不会把你的 shell 环境传给被拉起的 server。
 
 **我的 token 会出现在报告里吗？**
 不会。URL 里的账号密码、`--api-key`/`--token` 一类参数、`key=value`、`Bearer` 头，以及已知 token 前缀（AWS、GitHub、Slack、GitLab、OpenAI、JWT）都会在目标字符串和证据里被掩码成 `***`，所有输出格式一致。检测仍基于原始值进行，因此脱敏不会造成漏报。
@@ -528,7 +533,7 @@ flowchart TD
 ## 路线图
 
 - [ ] 随着 MCP 规范演进，增加规则、降低误报
-- [ ] MCP registry / marketplace 扫描
+- [x] MCP Registry 扫描
 - [ ] 策略覆盖之外的用户自定义规则
 - [x] pre-commit hook
 - [x] GitHub Actions 集成和 SARIF 输出
@@ -546,4 +551,5 @@ flowchart TD
 [MIT](LICENSE) © mcprism contributors。
 
 mcprism 是防御工具。它报告风险，但不能证明某个 server 一定安全；报告干净也不代表可以信任一个你并不了解的 server。
+
 
