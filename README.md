@@ -216,9 +216,17 @@ scoop bucket add mcprism https://github.com/HUA503/mcprism
 scoop install mcprism/mcprism
 ```
 
+With Nix flakes, install the v0.8.8 package on Linux or macOS (x86_64 and aarch64):
+
+```sh
+nix profile install github:HUA503/mcprism/v0.8.8
+nix run github:HUA503/mcprism/v0.8.8 -- scan
+```
+
 GoReleaser updates the Scoop manifest during each stable release. Homebrew
 builds from the tagged source and updates its formula during the release flow.
-Nix is on the roadmap.
+The Nix flake builds from the tagged source with a locked nixpkgs input and a
+fixed Go dependency hash.
 
 Release archives from v0.8.4 onward include verifiable build provenance. See
 [SECURITY.md](SECURITY.md) for the optional verification command.
@@ -667,7 +675,7 @@ so only run servers you trust.
 - [ ] Editor integrations (VS Code, JetBrains)
 - [x] Scoop package
 - [x] Homebrew formula
-- [ ] Nix package
+- [x] Nix package
 - [ ] More SAST languages (Rust, Java, C#)
 - [ ] Opt-in multi-hop / inter-procedural taint tracking
 - [ ] Built-in sandbox wrapper for live probes
@@ -686,3 +694,4 @@ layout is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Run
 
 mcprism is a defensive tool. It reports risk; it does not prove a server is
 safe, and a clean report is not a reason to trust a server you do not understand.
+
