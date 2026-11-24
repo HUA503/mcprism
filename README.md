@@ -182,13 +182,20 @@ Batch review across many servers (static mode):
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 ```
 
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+```
+
 ```sh
 # Go
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-Or download a binary from the [releases](https://github.com/HUA503/mcprism/releases)
-page (Linux/macOS/Windows, amd64 and arm64). Homebrew, Scoop and Nix are on the roadmap.
+The Windows installer verifies the release SHA-256 checksum and adds the
+per-user install directory to PATH. You can also download a binary from the
+[releases](https://github.com/HUA503/mcprism/releases) page
+(Linux/macOS amd64 and arm64, Windows amd64). Homebrew, Scoop and Nix are on the roadmap.
 
 ## Quick start
 
