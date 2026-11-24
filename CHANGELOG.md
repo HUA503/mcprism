@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-24
+
 ### Changed
 
 - Updated Bubbles, Bubble Tea and Lipgloss together to compatible releases.

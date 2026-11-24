@@ -489,7 +489,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.8.0
+  rev: v0.8.1
   hooks:
     - id: mcprism
 ```
@@ -524,7 +524,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.8.0
+        uses: HUA503/mcprism@v0.8.1
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
