@@ -6,8 +6,20 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-24
+
+This release makes mcprism easier to install and use in team pipelines, while
+improving scan behavior and keeping dependencies and release workflows current.
+
 ### Added
 
+- Official GitHub Actions integration. It installs a pinned release after
+  verifying SHA-256, scans with the `ci` profile and writes SARIF for code
+  scanning.
+- Native PowerShell installer with checksum verification, Windows ARM64
+  releases, Linux ARMv7 releases and a Scoop bucket.
+- Weekly Dependabot updates and a `govulncheck` CI job for reachable Go
+  vulnerabilities.
 - `scan --project-only` discovers project configs without including global
   client configs.
 
@@ -15,6 +27,10 @@ semantic versioning.
 
 - Batch audits exit with code 1 when findings fail a gate, and command errors
   exit with code 2. Reports remain available when a gate fails.
+- Building from source now requires Go 1.25 to use the patched `x/text`
+  dependency. Prebuilt releases have no Go runtime requirement.
+- GitHub Actions are pinned to verified commit SHAs and use minimal workflow
+  permissions.
 
 ### Fixed
 
@@ -41,6 +57,8 @@ semantic versioning.
   ports remain supported.
 - Literal cloud-metadata and link-local destinations are checked before proxy
   routing as well as at direct socket connection time.
+- The reachable `golang.org/x/text` vulnerability is fixed, and CI now checks
+  Go dependencies for known reachable vulnerabilities.
 
 ## [0.7.0] - 2026-10-12
 

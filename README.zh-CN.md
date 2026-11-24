@@ -392,7 +392,7 @@ mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copil
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.7.0
+  rev: v0.8.0
   hooks:
     - id: mcprism
 ```
@@ -425,9 +425,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@62fda57dd7c2dd2aa1de97072ac037e28c905a2e
+        uses: HUA503/mcprism@v0.8.0
         with:
-          version: v0.7.0
           target: mcp.json
           sarif-file: mcprism.sarif
       - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
@@ -440,6 +439,7 @@ jobs:
 `ci` profile。可通过 `policy`、`suppressions`、`baseline` 或 `fail-on` 设置自定义门禁。
 `sarif-file` 输出可传给上传步骤。上传结果需要 workflow 有
 `security-events: write` 权限。Windows、macOS、Jenkins、GitLab 等场景请使用上面的 CLI 示例。
+Action 固定到 release tag 时会自动使用同版本二进制。需要更强的供应链保护时，可将 Action 固定到完整 commit SHA。
 
 JUnit 输出可以直接用 Jenkins 和 GitLab 的测试报告步骤，CycloneDX 输出可以交给 SBOM 或漏洞跟踪系统。
 
@@ -507,6 +507,7 @@ flowchart TD
 - [ ] MCP registry / marketplace 扫描
 - [ ] 策略覆盖之外的用户自定义规则
 - [x] pre-commit hook
+- [x] GitHub Actions 集成和 SARIF 输出
 - [ ] 编辑器集成（VS Code、JetBrains）
 - [x] Scoop 包
 - [ ] Homebrew、Nix 包

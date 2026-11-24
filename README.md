@@ -489,7 +489,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.7.0
+  rev: v0.8.0
   hooks:
     - id: mcprism
 ```
@@ -524,9 +524,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@62fda57dd7c2dd2aa1de97072ac037e28c905a2e
+        uses: HUA503/mcprism@v0.8.0
         with:
-          version: v0.7.0
           target: mcp.json
           sarif-file: mcprism.sarif
       - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
@@ -539,6 +538,9 @@ The action downloads the selected Linux release, verifies its SHA-256 checksum,
 and runs the `ci` profile by default. Set `policy`, `suppressions`, `baseline`,
 or `fail-on` to use your own gate. Its `sarif-file` output can be passed to the
 upload step. The workflow needs `security-events: write` to publish findings.
+When the action is pinned to a release tag, it uses that matching binary
+version automatically. Pin to a full commit SHA for stricter supply-chain
+protection.
 For Windows, macOS, Jenkins, GitLab, or other runners, use the CLI examples
 above.
 
@@ -636,6 +638,7 @@ so only run servers you trust.
 - [ ] MCP registry / marketplace scanning
 - [ ] User-defined rules beyond policy overrides
 - [x] Pre-commit hook
+- [x] GitHub Actions integration with SARIF output
 - [ ] Editor integrations (VS Code, JetBrains)
 - [x] Scoop package
 - [ ] Homebrew and Nix packages

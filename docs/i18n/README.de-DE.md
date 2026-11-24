@@ -133,7 +133,7 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-Oder laden Sie eine Binärdatei von der Seite der [Veröffentlichungen](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 und arm64, zusätzlich Linux ARMv7). Homebrew, Scoop und Nix stehen auf der Roadmap.
+Oder laden Sie eine Binärdatei von der Seite der [Veröffentlichungen](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 und arm64, zusätzlich Linux ARMv7). Unter Windows installieren Sie mit `scoop bucket add mcprism https://github.com/HUA503/mcprism` und `scoop install mcprism/mcprism`. Homebrew und Nix stehen weiterhin auf der Roadmap.
 
 ## Schnellstart
 
@@ -414,8 +414,11 @@ Nein. mcprism meldet bekannte, beobachtbare Risiken. Es kann nicht beweisen, das
 - [ ] Mehr Regeln und weniger Fehlalarme, während sich die MCP-Spezifikation entwickelt
 - [ ] Scan von MCP-Registries / Marktplätzen
 - [ ] Benutzerdefinierte Regeln über Policy-Überschreibungen hinaus
-- [ ] Pre-Commit-Hook und Editor-Integrationen
-- [ ] Homebrew-, Scoop- und Nix-Pakete
+- [x] Pre-Commit-Hook
+- [ ] Editor-Integrationen (VS Code, JetBrains)
+- [x] GitHub-Actions-Integration mit SARIF-Ausgabe
+- [x] Scoop-Paket
+- [ ] Homebrew- und Nix-Pakete
 
 ## Mitwirken
 

@@ -133,7 +133,7 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-Или скачайте бинарный файл со страницы [релизов](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 и arm64, а также Linux ARMv7). Homebrew, Scoop и Nix — в планах.
+Или скачайте бинарный файл со страницы [релизов](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 и arm64, а также Linux ARMv7). В Windows можно установить через Scoop: `scoop bucket add mcprism https://github.com/HUA503/mcprism`, затем `scoop install mcprism/mcprism`. Homebrew и Nix пока в планах.
 
 ## Быстрый старт
 
@@ -415,8 +415,10 @@ mcprism только перечисляет возможности, поэтом
 - [ ] Сканирование реестров / маркетплейсов MCP
 - [ ] Пользовательские правила сверх переопределений политики
 - [x] Pre-commit hook
+- [x] Интеграция GitHub Actions и вывод SARIF
 - [ ] Интеграции с редакторами (VS Code, JetBrains)
-- [ ] Пакеты Homebrew, Scoop и Nix
+- [x] Пакет Scoop
+- [ ] Пакеты Homebrew и Nix
 
 ## Участие
 

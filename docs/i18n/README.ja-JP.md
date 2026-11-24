@@ -133,7 +133,7 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-または[リリース](https://github.com/HUA503/mcprism/releases)ページからバイナリをダウンロードしてください（Linux/macOS/Windows は amd64 と arm64、さらに Linux ARMv7）。Homebrew、Scoop、Nix はロードマップにあります。
+または[リリース](https://github.com/HUA503/mcprism/releases)ページからバイナリをダウンロードしてください（Linux/macOS/Windows は amd64 と arm64、さらに Linux ARMv7）。Windows では `scoop bucket add mcprism https://github.com/HUA503/mcprism`、`scoop install mcprism/mcprism` でインストールできます。Homebrew と Nix は引き続きロードマップにあります。
 
 ## クイックスタート
 
@@ -415,8 +415,10 @@ mcprism は能力を列挙するだけなので、解析に副作用はありま
 - [ ] MCP レジストリ / マーケットプレイスのスキャン
 - [ ] ポリシー上書きを超えたユーザー定義ルール
 - [x] pre-commit フック
+- [x] GitHub Actions と SARIF 出力
 - [ ] エディタ連携（VS Code、JetBrains）
-- [ ] Homebrew、Scoop、Nix パッケージ
+- [x] Scoop パッケージ
+- [ ] Homebrew、Nix パッケージ
 
 ## コントリビュート
 

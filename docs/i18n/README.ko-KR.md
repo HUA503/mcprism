@@ -133,7 +133,7 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-또는 [릴리스](https://github.com/HUA503/mcprism/releases) 페이지에서 바이너리를 내려받으세요(Linux/macOS/Windows amd64와 arm64, Linux ARMv7 추가 지원). Homebrew, Scoop, Nix는 로드맵에 있습니다.
+또는 [릴리스](https://github.com/HUA503/mcprism/releases) 페이지에서 바이너리를 내려받으세요(Linux/macOS/Windows amd64와 arm64, Linux ARMv7 추가 지원). Windows에서는 `scoop bucket add mcprism https://github.com/HUA503/mcprism` 후 `scoop install mcprism/mcprism`으로 설치할 수 있습니다. Homebrew와 Nix는 계속 로드맵에 있습니다.
 
 ## 빠른 시작
 
@@ -415,8 +415,10 @@ mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. �
 - [ ] MCP 레지스트리 / 마켓플레이스 스캔
 - [ ] 정책 재정의를 넘어선 사용자 정의 규칙
 - [x] pre-commit 훅
+- [x] SARIF 출력을 지원하는 GitHub Actions 연동
 - [ ] 에디터 연동(VS Code, JetBrains)
-- [ ] Homebrew, Scoop, Nix 패키지
+- [x] Scoop 패키지
+- [ ] Homebrew, Nix 패키지
 
 ## 기여하기
 
