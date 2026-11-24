@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,6 +39,9 @@ func Discover(projectDir string, includeGlobal bool) ([]*ClientFile, error) {
 		seen[p.path] = true
 		cf, err := ParseFile(p.path, p.client, p.scope)
 		if err != nil {
+			if errors.Is(err, errNoMCPServersTable) {
+				continue
+			}
 			// A file that exists but cannot be parsed may be a real MCP config the
 			// user expects to be checked. Say so instead of silently skipping it.
 			fmt.Fprintf(os.Stderr, "mcprism: warning: cannot parse MCP config %s: %v\n", p.path, err)
@@ -90,6 +94,13 @@ func globalCandidates() []candPath {
 	// Continue
 	add("continue", "global", filepath.Join(home, ".continue", "config.json"))
 
+	// Codex CLI / IDE use TOML, with CODEX_HOME allowing a custom config dir.
+	codexHome := os.Getenv("CODEX_HOME")
+	if codexHome == "" {
+		codexHome = filepath.Join(home, ".codex")
+	}
+	add("codex", "global", filepath.Join(codexHome, "config.toml"))
+
 	return out
 }
 
@@ -101,6 +112,8 @@ func projectCandidates(dir string) []candPath {
 			candPath{filepath.Join(d, ".mcp.json"), "generic", "project"},
 			candPath{filepath.Join(d, ".cursor", "mcp.json"), "cursor", "project"},
 			candPath{filepath.Join(d, ".vscode", "mcp.json"), "vscode", "project"},
+			candPath{filepath.Join(d, ".codex", "config.toml"), "codex", "project"},
+			candPath{filepath.Join(d, "config.toml"), "codex", "project"},
 		)
 		parent := filepath.Dir(d)
 		if parent == d {

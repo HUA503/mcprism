@@ -55,6 +55,7 @@ mcprism scan
 ```sh
 mcprism scan examples/clean.mcp.json
 mcprism scan examples/vulnerable.mcp.json --format html --output mcprism-report.html
+mcprism scan examples/codex-config.toml
 ```
 
 第一个命令的退出码为 0。第二个命令会先保存报告，再以退出码 1 结束，
@@ -177,11 +178,12 @@ GoReleaser 会在每次正式发布时更新 Scoop 清单和 Homebrew 公式。H
 ## 快速开始
 
 ```sh
-# 自动发现 Claude Desktop、Claude Code、Cursor、VS Code 等客户端的配置
+# 自动发现 Claude、Codex、Cursor、VS Code、Windsurf 等客户端的配置
 mcprism scan
 
 # 扫描指定配置文件
 mcprism scan ~/.claude.json
+mcprism scan ~/.codex/config.toml
 
 # 递归扫描一个目录
 mcprism scan ./configs
@@ -397,7 +399,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 ## 支持的客户端与传输
 
-mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Continue 等工具使用的 JSON/JSONC MCP 配置，支持 `mcpServers` 对象和数组两种形式。它支持全部三种 MCP 传输：stdio、Streamable HTTP，以及旧版 HTTP+SSE。
+mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Continue 等工具使用的 JSON/JSONC MCP 配置，也支持 Codex 的 TOML 配置。它支持 `mcpServers` / `servers` 对象和数组，以及 Codex 的 `[mcp_servers.<name>]` 表。传输层支持 stdio、Streamable HTTP 和旧版 HTTP+SSE。
+
+Codex 全局配置会从 `$CODEX_HOME/config.toml`（未设置时为 `~/.codex/config.toml`）发现；项目配置会检查 `.codex/config.toml` 和 `config.toml`。`bearer_token_env_var` 引用的环境变量仅在显式使用 `--dynamic` 动态探测时读取。
 
 ## CI/CD
 
@@ -405,7 +409,7 @@ mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copil
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.8.4
+  rev: v0.8.5
   hooks:
     - id: mcprism
 ```
@@ -438,7 +442,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.8.4
+        uses: HUA503/mcprism@v0.8.5
         with:
           target: mcp.json
           sarif-file: mcprism.sarif

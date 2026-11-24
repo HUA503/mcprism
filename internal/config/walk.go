@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -28,8 +29,8 @@ func skipDirName(name string) bool {
 }
 
 // WalkDir recursively finds and parses MCP config files under root. It looks
-// for the common config names and any *.mcp.json file, skipping dependency
-// and build directories.
+// for the common config names, Codex TOML config files and any *.mcp.json file,
+// skipping dependency and build directories.
 func WalkDir(root string) ([]*ClientFile, error) {
 	var out []*ClientFile
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -42,11 +43,20 @@ func WalkDir(root string) ([]*ClientFile, error) {
 			}
 			return nil
 		}
-		if !isConfigName(d.Name()) {
+		isCodexConfig := d.Name() == "config.toml" &&
+			(filepath.Dir(p) == root || filepath.Base(filepath.Dir(p)) == ".codex")
+		if !isConfigName(d.Name()) && !isCodexConfig {
 			return nil
 		}
-		cf, err := ParseFile(p, "walk", "project")
+		client := "walk"
+		if filepath.Ext(p) == ".toml" {
+			client = "codex"
+		}
+		cf, err := ParseFile(p, client, "project")
 		if err != nil {
+			if errors.Is(err, errNoMCPServersTable) {
+				return nil
+			}
 			return err
 		}
 		if len(cf.Servers) > 0 {

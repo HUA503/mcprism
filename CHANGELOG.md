@@ -6,6 +6,13 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.8.5] - 2026-11-24
+
+### Added
+
+- Codex CLI / IDE MCP configuration discovery and TOML scanning.
+- Add a Codex TOML example for a local server and an authenticated remote server.
+
 ## [0.8.4] - 2026-11-24
 
 ### Added

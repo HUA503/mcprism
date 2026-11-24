@@ -72,6 +72,7 @@ generated HTML report in your browser. Both scans run offline.
 ```sh
 mcprism scan examples/clean.mcp.json
 mcprism scan examples/vulnerable.mcp.json --format html --output mcprism-report.html
+mcprism scan examples/codex-config.toml
 ```
 
 The clean example exits with code 0. The second scan saves the report and
@@ -225,11 +226,12 @@ Release archives from v0.8.4 onward include verifiable build provenance. See
 ## Quick start
 
 ```sh
-# Auto-discover configs for Claude Desktop, Claude Code, Cursor, VS Code, ...
+# Auto-discover configs for Claude, Codex, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # A specific config file
 mcprism scan ~/.claude.json
+mcprism scan ~/.codex/config.toml
 
 # A directory, searched recursively
 mcprism scan ./configs
@@ -495,8 +497,13 @@ The full list with the OWASP crosswalk is in [docs/RULES.md](docs/RULES.md).
 
 mcprism reads the JSON/JSONC MCP config used by Claude Desktop, Claude Code,
 Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Continue and similar
-tools, in both the `mcpServers` object and array forms. It speaks all three MCP
-transports: stdio, Streamable HTTP, and the legacy HTTP+SSE.
+tools, plus Codex's TOML config. It understands `mcpServers` / `servers` JSON
+objects and arrays, and Codex's `[mcp_servers.<name>]` tables. It speaks all
+three MCP transports: stdio, Streamable HTTP, and the legacy HTTP+SSE.
+Codex global discovery checks `$CODEX_HOME/config.toml` (or
+`~/.codex/config.toml`); project discovery checks `.codex/config.toml` and
+`config.toml`. Values referenced by Codex's `bearer_token_env_var` are only
+read when you explicitly enable a live probe with `--dynamic`.
 
 ## CI/CD
 
@@ -505,7 +512,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.8.4
+  rev: v0.8.5
   hooks:
     - id: mcprism
 ```
@@ -540,7 +547,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.8.4
+        uses: HUA503/mcprism@v0.8.5
         with:
           target: mcp.json
           sarif-file: mcprism.sarif

@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -62,7 +63,7 @@ func newHTTPTransport(ctx context.Context, srv *config.Server, legacy bool) (tra
 	if legacy {
 		t := &legacySSETransport{
 			url:         srv.URL,
-			headers:     srv.Headers,
+			headers:     resolveHeaderEnv(srv.Headers),
 			client:      streamingHTTPClient(),
 			pending:     map[int64]chan callResult{},
 			closed:      make(chan struct{}),
@@ -75,9 +76,22 @@ func newHTTPTransport(ctx context.Context, srv *config.Server, legacy bool) (tra
 	}
 	return &httpTransport{
 		url:     srv.URL,
-		headers: srv.Headers,
+		headers: resolveHeaderEnv(srv.Headers),
 		client:  defaultHTTPClient(),
 	}, nil
+}
+
+// resolveHeaderEnv expands explicit ${NAME} references only when a caller
+// opts into a live probe. Static scans never read or transmit these values.
+func resolveHeaderEnv(headers map[string]string) map[string]string {
+	if len(headers) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(headers))
+	for key, value := range headers {
+		out[key] = os.Expand(value, os.Getenv)
+	}
+	return out
 }
 
 // ---------- Streamable HTTP ----------

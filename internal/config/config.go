@@ -1,8 +1,7 @@
 // Package config 定义 MCP server 配置模型，并负责解析各类 MCP 客户端配置文件。
 //
 // mcprism 同时理解多种主流 MCP 客户端的配置格式（Claude Desktop、Claude Code、
-// Cursor、VS Code/Copilot、Windsurf、Cline 等），它们的共同点是使用一个
-// "server 名称 -> server 定义" 的映射，根键通常为 mcpServers 或 servers。
+// Codex、Cursor、VS Code/Copilot、Windsurf、Cline 等），包括 JSON 和 TOML。
 package config
 
 import (
@@ -10,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -86,7 +86,12 @@ func ParseFile(path, client, scope string) (*ClientFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	servers, err := ParseBytes(data)
+	var servers []*Server
+	if strings.EqualFold(filepath.Ext(path), ".toml") {
+		servers, err = ParseCodexTOML(data)
+	} else {
+		servers, err = ParseBytes(data)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
