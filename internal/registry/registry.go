@@ -118,7 +118,7 @@ var client = &http.Client{
 // Search returns the latest registry versions matching query. The official
 // registry requires at least three non-space Unicode characters.
 func Search(ctx context.Context, query string, limit int) ([]Entry, error) {
-	entries, _, err := SearchPage(ctx, query, limit)
+	entries, _, err := SearchPage(ctx, query, limit, "")
 	return entries, err
 }
 
@@ -155,8 +155,6 @@ func SearchPage(ctx context.Context, query string, limit int, cursor string) ([]
 		return nil, "", err
 	}
 	return result.Servers, result.Metadata.NextCursor, nil
-}
-
 }
 
 // SearchAll follows Registry cursors until every matching page has been read.
