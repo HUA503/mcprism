@@ -473,7 +473,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.6.1
+  rev: v0.7.0
   hooks:
     - id: mcprism
 ```

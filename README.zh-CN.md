@@ -379,7 +379,7 @@ mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copil
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.6.1
+  rev: v0.7.0
   hooks:
     - id: mcprism
 ```
