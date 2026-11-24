@@ -6,6 +6,10 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Changed
+
+- Updated Bubbles, Bubble Tea and Lipgloss together to compatible releases.
+
 ## [0.8.0] - 2026-11-24
 
 This release makes mcprism easier to install and use in team pipelines, while
