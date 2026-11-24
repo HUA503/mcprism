@@ -237,6 +237,9 @@ func getJSON(parent context.Context, target string, out any) error {
 // Unsupported package formats are returned as warnings so partial coverage is
 // visible to the caller.
 func AuditServers(entry Entry) ([]*config.Server, []string, error) {
+	if strings.TrimSpace(entry.Server.Name) == "" || strings.TrimSpace(entry.Server.Version) == "" {
+		return nil, nil, errors.New("registry entry is missing its name or version")
+	}
 	baseSource := fmt.Sprintf("MCP Registry %s@%s", entry.Server.Name, entry.Server.Version)
 	if entry.Meta.Official.Status == "deprecated" {
 		baseSource += " (deprecated)"
