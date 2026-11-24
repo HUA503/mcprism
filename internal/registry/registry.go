@@ -428,4 +428,3 @@ func renderValue(value string, variables map[string]Input) string {
 		return "${" + name + "}"
 	})
 }
-
