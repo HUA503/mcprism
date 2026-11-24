@@ -199,6 +199,16 @@ mcprism rules                # перечислить встроенные пр�
 mcprism profiles             # перечислить встроенные профили
 ```
 
+### Автодополнение командной оболочки
+
+`mcprism completion` создаёт скрипты для Bash, Zsh, Fish и PowerShell. Выполните подходящую команду в текущем сеансе:
+
+- Bash или Zsh: `source <(mcprism completion bash)` / `source <(mcprism completion zsh)`
+- Fish: `mcprism completion fish | source`
+- PowerShell: `mcprism completion powershell | Out-String | Invoke-Expression`
+
+Добавьте команду в профиль оболочки, чтобы автодополнение работало в новых сеансах.
+
 ### Флаги
 
 | Флаг | Описание |
