@@ -15,17 +15,19 @@ func TestRegistryAuditRequireComplete(t *testing.T) {
 		Remotes: []registry.Transport{{Type: "streamable-http", URL: "https://example.com/mcp"}},
 	}}
 	cases := []struct {
-		name        string
-		more        bool
-		unsupported bool
-		missingName bool
-		require     bool
-		wantError   bool
+		name           string
+		more           bool
+		unsupported    bool
+		missingName    bool
+		missingVersion bool
+		require        bool
+		wantError      bool
 	}{
 		{name: "complete", require: true},
 		{name: "additional page", more: true, require: true, wantError: true},
 		{name: "unsupported transport", unsupported: true, require: true, wantError: true},
-		{name: "missing identity", missingName: true, require: true, wantError: true},
+		{name: "missing name", missingName: true, require: true, wantError: true},
+		{name: "missing version", missingVersion: true, require: true, wantError: true},
 		{name: "optional gate", more: true},
 	}
 	for _, tc := range cases {
@@ -35,9 +37,13 @@ func TestRegistryAuditRequireComplete(t *testing.T) {
 				e.Server.Remotes = append(append([]registry.Transport(nil), e.Server.Remotes...), registry.Transport{Type: "unknown"})
 			}
 			cmd := registryAuditCmdWithSearch(func(context.Context, string, int) ([]registry.Entry, bool, error) {
-				if tc.missingName {
+				if tc.missingName || tc.missingVersion {
 					bad := e
-					bad.Server.Name = ""
+					if tc.missingName {
+						bad.Server.Name = ""
+					} else {
+						bad.Server.Version = ""
+					}
 					return []registry.Entry{e, bad}, tc.more, nil
 				}
 				return []registry.Entry{e}, tc.more, nil
