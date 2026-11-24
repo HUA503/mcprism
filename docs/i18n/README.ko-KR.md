@@ -414,7 +414,8 @@ mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. �
 - [ ] MCP 사양이 발전함에 따라 더 많은 규칙과 더 적은 거짓 양성
 - [ ] MCP 레지스트리 / 마켓플레이스 스캔
 - [ ] 정책 재정의를 넘어선 사용자 정의 규칙
-- [ ] pre-commit 훅과 에디터 연동
+- [x] pre-commit 훅
+- [ ] 에디터 연동(VS Code, JetBrains)
 - [ ] Homebrew, Scoop, Nix 패키지
 
 ## 기여하기

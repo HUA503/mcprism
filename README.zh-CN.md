@@ -476,7 +476,8 @@ flowchart TD
 - [ ] 随着 MCP 规范演进，增加规则、降低误报
 - [ ] MCP registry / marketplace 扫描
 - [ ] 策略覆盖之外的用户自定义规则
-- [ ] pre-commit hook 和编辑器集成
+- [x] pre-commit hook
+- [ ] 编辑器集成（VS Code、JetBrains）
 - [ ] Homebrew、Scoop、Nix 包
 
 ## 贡献

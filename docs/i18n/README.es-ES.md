@@ -414,7 +414,8 @@ No. mcprism notifica riesgos conocidos y observables. No puede probar que un ser
 - [ ] Más reglas y menos falsos positivos según evolucione la especificación MCP
 - [ ] Escaneo de registros / mercados de MCP
 - [ ] Reglas definidas por el usuario más allá de las sobrescrituras de política
-- [ ] Hook pre-commit e integraciones de editor
+- [x] Hook de pre-commit
+- [ ] Integraciones de editor (VS Code, JetBrains)
 - [ ] Paquetes Homebrew, Scoop y Nix
 
 ## Contribuir

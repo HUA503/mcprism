@@ -414,7 +414,8 @@ Non. mcprism signale les risques connus et observables. Il ne peut pas prouver q
 - [ ] Plus de règles et moins de faux positifs au fil de l'évolution de la spécification MCP
 - [ ] Analyse des registres / places de marché MCP
 - [ ] Règles définies par l'utilisateur au-delà des surcharges de politique
-- [ ] Crochet pre-commit et intégrations éditeur
+- [x] Hook pre-commit
+- [ ] Intégrations d’éditeurs (VS Code, JetBrains)
 - [ ] Paquets Homebrew, Scoop et Nix
 
 ## Contribuer
