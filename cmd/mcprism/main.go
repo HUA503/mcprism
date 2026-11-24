@@ -434,4 +434,3 @@ func hostFromURL(raw string) string {
 	}
 	return u.Host
 }
-
