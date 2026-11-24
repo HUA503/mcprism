@@ -286,7 +286,7 @@ mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
 
 # Batch-audit up to 20 matching entries with one combined report
-mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
+mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
 
 # Reference
 mcprism inspect mcp.json     # list a server's tools/resources/prompts
