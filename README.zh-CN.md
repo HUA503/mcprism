@@ -122,7 +122,7 @@ mcprism vet server.py            # 审查单个文件
 - 你装了一些 MCP server，想在 agent 运行前知道它们能访问什么。跑 `mcprism scan`。
 - 一个团队共用一组 server，想要一份有记录的统一基线。把 `policy.yml` 放进版本库，在生产机器上跑 `--profile strict`。
 - 你在 CI 里审查变更。跑 `mcprism scan --profile ci`，出现 high 及以上问题就让构建失败，或者把 SARIF 发布到 code scanning。
-- 你准备把 Registry 中的 server 加入客户端前，先用 `mcprism registry search <关键词>` 找到条目，再用 `mcprism registry scan <名称>` 静态检查支持的启动和远程传输配置；不支持的包类型会给出警告。
+- 你准备把 Registry 中的 server 加入客户端前，可以用 `mcprism registry scan <名称>` 检查单个条目，也可以用 `mcprism registry audit <关键词>` 批量审查匹配条目。批量审计会对支持的元数据应用策略，不会启动 server。
 
 ## 报告
 
@@ -226,9 +226,12 @@ mcprism vet https://mcp.example.com
 mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # 真正运行并列出 tools
 
-# 搜索并静态扫描官方 MCP Registry 中的 server
+# 搜索并静态扫描官方 MCP Registry 中的单个 server
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
+
+# 批量审计最多 20 个匹配条目，并生成一份合并报告
+mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
 
 # 参考信息
 mcprism inspect mcp.json     # 列出 server 的 tools/resources/prompts
@@ -516,7 +519,7 @@ flowchart TD
 不会。它只做 MCP 的 initialize 和列出请求，不会调用工具、不会通过 server 打开文件、也不会发送提示词。
 
 **它会把数据发到别处吗？**
-没有遥测，也不会上传本地配置或报告。`registry search` 会把搜索词发送给官方 MCP Registry，`registry scan` 会发送指定名称以获取公开元数据；其他静态扫描不会联网。动态扫描（`scan --dynamic` / `vet --probe`）会启动或连接你指定的 server，该进程可能执行代码或联网，请在沙箱里运行。探测会拒绝跨 host 重定向、拒绝连接云元数据/link-local 地址，默认也不会把你的 shell 环境传给被拉起的 server。
+没有遥测，也不会上传本地配置或报告。`registry search` 和 `registry audit` 会把搜索词发送给官方 MCP Registry，`registry scan` 会发送指定名称以获取公开元数据；其他静态扫描不会联网。动态扫描（`scan --dynamic` / `vet --probe`）会启动或连接你指定的 server，该进程可能执行代码或联网，请在沙箱里运行。探测会拒绝跨 host 重定向、拒绝连接云元数据/link-local 地址，默认也不会把你的 shell 环境传给被拉起的 server。
 
 **我的 token 会出现在报告里吗？**
 不会。URL 里的账号密码、`--api-key`/`--token` 一类参数、`key=value`、`Bearer` 头，以及已知 token 前缀（AWS、GitHub、Slack、GitLab、OpenAI、JWT）都会在目标字符串和证据里被掩码成 `***`，所有输出格式一致。检测仍基于原始值进行，因此脱敏不会造成漏报。
