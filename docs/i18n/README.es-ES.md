@@ -133,7 +133,14 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-O descarga un binario desde la página de [versiones](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 y arm64, además de Linux ARMv7). En Windows, instala con Scoop: `scoop bucket add mcprism https://github.com/HUA503/mcprism` y `scoop install mcprism/mcprism`. Homebrew y Nix siguen en la hoja de ruta.
+Instalación con Homebrew (se compila desde el código fuente):
+
+```sh
+brew tap HUA503/mcprism https://github.com/HUA503/mcprism
+brew install HUA503/mcprism/mcprism
+```
+
+O descarga un binario desde la página de [versiones](https://github.com/HUA503/mcprism/releases) (Linux/macOS/Windows, amd64 y arm64, además de Linux ARMv7). En Windows, instala con Scoop: `scoop bucket add mcprism https://github.com/HUA503/mcprism` y `scoop install mcprism/mcprism`. Nix sigue en la hoja de ruta.
 
 En Linux y macOS, si no se puede escribir en `/usr/local/bin`, el instalador usa `~/.local/bin`. Si indica que ese directorio no está en PATH, añádelo o ejecuta directamente `~/.local/bin/mcprism scan`.
 
@@ -420,7 +427,8 @@ No. mcprism notifica riesgos conocidos y observables. No puede probar que un ser
 - [x] Integración de GitHub Actions y salida SARIF
 - [ ] Integraciones de editor (VS Code, JetBrains)
 - [x] Paquete Scoop
-- [ ] Paquetes Homebrew y Nix
+- [x] Fórmula de Homebrew
+- [ ] Paquete Nix
 
 ## Contribuir
 

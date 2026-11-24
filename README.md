@@ -192,6 +192,14 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
+Homebrew builds mcprism from source and keeps the formula current with each
+stable release:
+
+```sh
+brew tap HUA503/mcprism https://github.com/HUA503/mcprism
+brew install HUA503/mcprism/mcprism
+```
+
 The Windows installer verifies the release SHA-256 checksum and adds the
 per-user install directory to PATH. You can also download a binary from the
 [releases](https://github.com/HUA503/mcprism/releases) page
@@ -207,8 +215,9 @@ scoop bucket add mcprism https://github.com/HUA503/mcprism
 scoop install mcprism/mcprism
 ```
 
-GoReleaser updates the Scoop manifest during each stable release. Homebrew and
-Nix are on the roadmap.
+GoReleaser updates the Scoop manifest during each stable release. Homebrew
+builds from the tagged source and updates its formula during the release flow.
+Nix is on the roadmap.
 
 ## Quick start
 
@@ -645,7 +654,8 @@ so only run servers you trust.
 - [x] GitHub Actions integration with SARIF output
 - [ ] Editor integrations (VS Code, JetBrains)
 - [x] Scoop package
-- [ ] Homebrew and Nix packages
+- [x] Homebrew formula
+- [ ] Nix package
 - [ ] More SAST languages (Rust, Java, C#)
 - [ ] Opt-in multi-hop / inter-procedural taint tracking
 - [ ] Built-in sandbox wrapper for live probes

@@ -24,3 +24,23 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update Homebrew formula
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Skipping Homebrew formula update for prerelease ${RELEASE_TAG}"
+            exit 0
+          fi
+          git fetch origin main
+          git checkout -B main origin/main
+          bash ./scripts/update-homebrew-formula.sh "$RELEASE_TAG"
+          if git diff --quiet -- Formula/mcprism.rb; then
+            echo "Homebrew formula is already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/mcprism.rb
+          git commit -m "Homebrew formula update for mcprism ${RELEASE_TAG}"
+          git push origin main

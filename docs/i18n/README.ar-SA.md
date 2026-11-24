@@ -169,9 +169,16 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
+للتثبيت عبر Homebrew (يُبنى من المصدر):
+
+```sh
+brew tap HUA503/mcprism https://github.com/HUA503/mcprism
+brew install HUA503/mcprism/mcprism
+```
+
 <div dir="rtl">
 
-أو نزّل ملفًا ثنائيًا من صفحة <a href="https://github.com/HUA503/mcprism/releases">الإصدارات</a> (Linux/macOS/Windows بمعماريتي amd64 وarm64، إضافة إلى Linux ARMv7). على Windows، ثبّت عبر Scoop باستخدام `scoop bucket add mcprism https://github.com/HUA503/mcprism` ثم `scoop install mcprism/mcprism`. ما زال Homebrew وNix ضمن خارطة الطريق.
+أو نزّل ملفًا ثنائيًا من صفحة <a href="https://github.com/HUA503/mcprism/releases">الإصدارات</a> (Linux/macOS/Windows بمعماريتي amd64 وarm64، إضافة إلى Linux ARMv7). على Windows، ثبّت عبر Scoop باستخدام `scoop bucket add mcprism https://github.com/HUA503/mcprism` ثم `scoop install mcprism/mcprism`. ما زال Nix ضمن خارطة الطريق.
 
 على Linux وmacOS، إذا تعذرت الكتابة إلى `/usr/local/bin`، يثبّت البرنامج في `~/.local/bin`. إذا لم يكن هذا الدليل ضمن PATH، فأضفه إليه أو شغّل `~/.local/bin/mcprism scan` مباشرةً.
 
@@ -514,7 +521,8 @@ flowchart TD
 - [x] تكامل GitHub Actions وإخراج SARIF
 - [ ] تكامل المحررات (VS Code وJetBrains)
 - [x] حزمة Scoop
-- [ ] حزمتا Homebrew وNix
+- [x] صيغة Homebrew
+- [ ] حزمة Nix
 
 ## المساهمة
 

@@ -151,6 +151,13 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
+Homebrew 会从源码构建 mcprism，并在每次正式发布时自动更新公式：
+
+```sh
+brew tap HUA503/mcprism https://github.com/HUA503/mcprism
+brew install HUA503/mcprism/mcprism
+```
+
 PowerShell 安装脚本会校验发布包的 SHA-256，并将用户级安装目录加入 PATH。
 Windows 用户也可以通过 [Scoop](https://scoop.sh) 安装：
 
@@ -163,7 +170,7 @@ scoop bucket add mcprism https://github.com/HUA503/mcprism
 scoop install mcprism/mcprism
 ```
 
-GoReleaser 会在每次正式发布时更新 Scoop 清单。也可以从 [releases](https://github.com/HUA503/mcprism/releases) 下载二进制（Linux/macOS/Windows 支持 amd64 和 arm64，Linux 另支持 ARMv7）。Homebrew 和 Nix 在计划中。
+GoReleaser 会在每次正式发布时更新 Scoop 清单和 Homebrew 公式。Homebrew 从带校验值的源码包构建。也可以从 [releases](https://github.com/HUA503/mcprism/releases) 下载二进制（Linux/macOS/Windows 支持 amd64 和 arm64，Linux 另支持 ARMv7）。Nix 仍在计划中。
 
 ## 快速开始
 
@@ -514,7 +521,8 @@ flowchart TD
 - [x] GitHub Actions 集成和 SARIF 输出
 - [ ] 编辑器集成（VS Code、JetBrains）
 - [x] Scoop 包
-- [ ] Homebrew、Nix 包
+- [x] Homebrew 公式
+- [ ] Nix 包
 
 ## 贡献
 

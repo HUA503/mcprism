@@ -133,7 +133,14 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-または[リリース](https://github.com/HUA503/mcprism/releases)ページからバイナリをダウンロードしてください（Linux/macOS/Windows は amd64 と arm64、さらに Linux ARMv7）。Windows では `scoop bucket add mcprism https://github.com/HUA503/mcprism`、`scoop install mcprism/mcprism` でインストールできます。Homebrew と Nix は引き続きロードマップにあります。
+Homebrewでインストール（ソースからビルド）：
+
+```sh
+brew tap HUA503/mcprism https://github.com/HUA503/mcprism
+brew install HUA503/mcprism/mcprism
+```
+
+または[リリース](https://github.com/HUA503/mcprism/releases)ページからバイナリをダウンロードしてください（Linux/macOS/Windows は amd64 と arm64、さらに Linux ARMv7）。Windows では `scoop bucket add mcprism https://github.com/HUA503/mcprism`、`scoop install mcprism/mcprism` でインストールできます。Nix は引き続きロードマップにあります。
 
 Linux と macOS で `/usr/local/bin` に書き込めない場合、インストーラは `~/.local/bin` にインストールします。このディレクトリが PATH にないというメッセージが表示されたら、PATH に追加するか、`~/.local/bin/mcprism scan` を直接実行してください。
 
@@ -420,7 +427,8 @@ mcprism は能力を列挙するだけなので、解析に副作用はありま
 - [x] GitHub Actions と SARIF 出力
 - [ ] エディタ連携（VS Code、JetBrains）
 - [x] Scoop パッケージ
-- [ ] Homebrew、Nix パッケージ
+- [x] Homebrew formula
+- [ ] Nix パッケージ
 
 ## コントリビュート
 

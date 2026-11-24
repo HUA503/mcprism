@@ -133,7 +133,14 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-또는 [릴리스](https://github.com/HUA503/mcprism/releases) 페이지에서 바이너리를 내려받으세요(Linux/macOS/Windows amd64와 arm64, Linux ARMv7 추가 지원). Windows에서는 `scoop bucket add mcprism https://github.com/HUA503/mcprism` 후 `scoop install mcprism/mcprism`으로 설치할 수 있습니다. Homebrew와 Nix는 계속 로드맵에 있습니다.
+Homebrew 설치(소스에서 빌드):
+
+```sh
+brew tap HUA503/mcprism https://github.com/HUA503/mcprism
+brew install HUA503/mcprism/mcprism
+```
+
+또는 [릴리스](https://github.com/HUA503/mcprism/releases) 페이지에서 바이너리를 내려받으세요(Linux/macOS/Windows amd64와 arm64, Linux ARMv7 추가 지원). Windows에서는 `scoop bucket add mcprism https://github.com/HUA503/mcprism` 후 `scoop install mcprism/mcprism`으로 설치할 수 있습니다. Nix는 계속 로드맵에 있습니다.
 
 Linux와 macOS에서 `/usr/local/bin`에 쓸 수 없으면 설치 프로그램은 `~/.local/bin`에 설치합니다. 이 디렉터리가 PATH에 없다는 안내가 나오면 PATH에 추가하거나 `~/.local/bin/mcprism scan`을 직접 실행하세요.
 
@@ -420,7 +427,8 @@ mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. �
 - [x] SARIF 출력을 지원하는 GitHub Actions 연동
 - [ ] 에디터 연동(VS Code, JetBrains)
 - [x] Scoop 패키지
-- [ ] Homebrew, Nix 패키지
+- [x] Homebrew formula
+- [ ] Nix 패키지
 
 ## 기여하기
 

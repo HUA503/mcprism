@@ -6,6 +6,10 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Homebrew formula that builds from source and updates with each stable release.
+
 ### Fixed
 
 - The Unix installer warns when its install directory is missing from PATH.
