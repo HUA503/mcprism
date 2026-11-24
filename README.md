@@ -216,11 +216,11 @@ scoop bucket add mcprism https://github.com/HUA503/mcprism
 scoop install mcprism/mcprism
 ```
 
-With Nix flakes, install the v0.8.8 package on Linux or macOS (x86_64 and aarch64):
+With Nix flakes, install the latest package from `main` on Linux or macOS (x86_64 and aarch64):
 
 ```sh
-nix profile install github:HUA503/mcprism/v0.8.8
-nix run github:HUA503/mcprism/v0.8.8 -- scan
+nix profile install github:HUA503/mcprism
+nix run github:HUA503/mcprism -- scan
 ```
 
 GoReleaser updates the Scoop manifest during each stable release. Homebrew
