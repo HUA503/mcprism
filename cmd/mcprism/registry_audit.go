@@ -19,7 +19,9 @@ func registryAuditCmd() *cobra.Command {
 		Long: `Search the official MCP Registry, then apply mcprism's static rules and
 policy to supported package and remote transport metadata from the matching
 entries. The command never launches packages or connects to MCP servers.
-Unsupported formats and deprecated entries are reported as warnings.`,
+Only the first page of up to --limit results is audited; further matches may
+exist. Unsupported formats and skipped entries are reported on stderr and may
+not appear in the report. Review warnings before interpreting the results.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			entries, err := registry.Search(context.Background(), args[0], limit)
