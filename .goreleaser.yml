@@ -25,6 +25,23 @@ builds:
     ldflags:
       - -s -w
 
+  - id: mcprism-linux-armv7
+    main: ./cmd/mcprism
+    binary: mcprism
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - arm
+    goarm:
+      - "7"
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+
 archives:
   - id: default
     name_template: "mcprism_{{ .Os }}_{{ .Arch }}"

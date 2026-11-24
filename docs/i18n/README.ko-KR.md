@@ -133,7 +133,7 @@ irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 go install github.com/HUA503/mcprism/cmd/mcprism@latest
 ```
 
-또는 [릴리스](https://github.com/HUA503/mcprism/releases) 페이지에서 바이너리를 내려받으세요(Linux/macOS/Windows amd64와 arm64). Homebrew, Scoop, Nix는 로드맵에 있습니다.
+또는 [릴리스](https://github.com/HUA503/mcprism/releases) 페이지에서 바이너리를 내려받으세요(Linux/macOS/Windows amd64와 arm64, Linux ARMv7 추가 지원). Homebrew, Scoop, Nix는 로드맵에 있습니다.
 
 ## 빠른 시작
 

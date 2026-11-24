@@ -171,7 +171,7 @@ go install github.com/HUA503/mcprism/cmd/mcprism@latest
 
 <div dir="rtl">
 
-أو نزّل ملفًا ثنائيًا من صفحة <a href="https://github.com/HUA503/mcprism/releases">الإصدارات</a> (Linux/macOS/Windows بمعماريتي amd64 وarm64). توفير عبر Homebrew وScoop وNix مدرج في خارطة الطريق.
+أو نزّل ملفًا ثنائيًا من صفحة <a href="https://github.com/HUA503/mcprism/releases">الإصدارات</a> (Linux/macOS/Windows بمعماريتي amd64 وarm64، إضافة إلى Linux ARMv7). توفير عبر Homebrew وScoop وNix مدرج في خارطة الطريق.
 
 ## بداية سريعة
 

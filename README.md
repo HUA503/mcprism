@@ -195,7 +195,7 @@ go install github.com/HUA503/mcprism/cmd/mcprism@latest
 The Windows installer verifies the release SHA-256 checksum and adds the
 per-user install directory to PATH. You can also download a binary from the
 [releases](https://github.com/HUA503/mcprism/releases) page
-(Linux/macOS/Windows, amd64 and arm64). Homebrew, Scoop and Nix are on the roadmap.
+(Linux/macOS/Windows, amd64 and arm64, plus Linux ARMv7). Homebrew, Scoop and Nix are on the roadmap.
 
 ## Quick start
 
