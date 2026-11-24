@@ -103,7 +103,7 @@ mcprism vet server.py            # 파일 하나 검사
 - MCP 서버를 설치했고 에이전트가 실행하기 전에 무엇에 접근할 수 있는지 알고 싶다. `mcprism scan`을 실행하세요.
 - 팀이 서버 묶음을 공유하고 문서화된 기준선 하나를 원한다. `policy.yml`을 버전 관리에 두고 프로덕션 머신에서 `--profile strict`를 실행하세요.
 - CI에서 변경 사항을 검토한다. `mcprism scan --profile ci`를 실행해 high 이상에서 빌드를 실패시키거나 SARIF를 코드 스캐닝에 게시하세요.
-- MCP Registry의 서버를 클라이언트에 추가하기 전에 공식 카탈로그에서 찾고 공개된 실행·연결 정보를 확인하려는 경우. `mcprism registry search <검색어>` 다음에 `mcprism registry scan <이름>`을 실행하세요.
+- MCP Registry 서버를 클라이언트에 추가하기 전에 공식 카탈로그에서 찾아 공개된 실행·연결 정보를 확인하세요. `mcprism registry search <검색어>`로 찾고 `mcprism registry scan <이름>`으로 단일 항목을 확인할 수 있습니다. `mcprism registry audit <검색어>`는 일치하는 여러 항목을 한 번에 정적으로 감사하며 서버를 실행하거나 연결하지 않습니다.
 
 ## 보고서
 
@@ -189,9 +189,10 @@ mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # 실제로 시작해 도구 나열
 
 # 참조
-# 공식 MCP Registry에서 검색하고 서버 공개 메타데이터를 정적으로 검사
+# 공식 MCP Registry 검색 및 공개 메타데이터 정적 감사
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
+mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
 
 mcprism inspect mcp.json     # 서버의 도구/리소스/프롬프트 나열
 mcprism rules                # 내장 규칙 나열
@@ -423,7 +424,7 @@ mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. �
 아니요. MCP 초기화와 나열 호출만 수행합니다. 도구를 호출하지 않고 서버를 통해 파일을 열지 않으며 프롬프트를 보내지 않습니다.
 
 **데이터를 어디론가 보내나요?**
-원격 측정은 없으며 로컬 구성이나 보고서를 업로드하지 않습니다. Registry 명령은 검색어 또는 서버 이름을 공식 MCP Registry에 보내 공개 메타데이터를 가져옵니다. 그 밖의 정적 스캔은 연결하지 않습니다. 라이브 스캔(`scan --dynamic` / `vet --probe`)은 지정한 서버에 연결합니다.
+원격 측정은 없으며 로컬 구성이나 보고서를 업로드하지 않습니다. Registry 명령은 검색어 또는 서버 이름을 공식 MCP Registry에 보내 공개 메타데이터를 가져옵니다. `registry audit`는 검색어를 보내 일치하는 항목의 공개 메타데이터를 한꺼번에 가져옵니다. 그 밖의 정적 스캔은 연결하지 않습니다. 라이브 스캔(`scan --dynamic` / `vet --probe`)은 지정한 서버에 연결합니다.
 
 **mcp-scan, mcp-audit과의 차이는?**
 그것들은 Python이나 Node로 돌고 구성이나 포이즈닝에 집중합니다. mcprism은 Go 단일 바이너리이고 기능 조합을 모델링하며 정책 as 코드를 실행하고 SARIF 외에 JUnit, CycloneDX, CSV를 내보냅니다. [비교 표](#비교)를 보세요.
