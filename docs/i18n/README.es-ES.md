@@ -103,7 +103,7 @@ mcprism vet server.py            # revisar un archivo
 - Has instalado servidores MCP y quieres saber a qué acceden antes de que un agente los inicie. Ejecuta `mcprism scan`.
 - Un equipo comparte un conjunto de servidores y quiere una línea base documentada. Mantén un `policy.yml` en control de versiones y ejecuta `--profile strict` en las máquinas de producción.
 - Revisas cambios en CI. Ejecuta `mcprism scan --profile ci` para que el build falle a partir de high, o publica el SARIF en el análisis de código.
-- Antes de añadir un servidor del MCP Registry a un cliente, para buscarlo en el catálogo oficial y revisar sus datos públicos de inicio y conexión. Ejecuta `mcprism registry search <término>` y después `mcprism registry scan <nombre>`.
+- Antes de añadir un servidor del MCP Registry a un cliente, búscalo en el catálogo oficial. `mcprism registry search <término>` encuentra entradas y `mcprism registry scan <nombre>` revisa una. `mcprism registry audit <término>` analiza de forma estática varias coincidencias en un único informe, sin iniciar ni conectarse a los servidores.
 
 ## Informe
 
@@ -189,9 +189,10 @@ mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # iniciar de verdad y listar herramientas
 
 # Referencia
-# Buscar en el MCP Registry oficial y analizar metadatos públicos del servidor
+# Buscar y auditar estáticamente metadatos del MCP Registry oficial
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
+mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
 
 mcprism inspect mcp.json     # listar herramientas/recursos/indicaciones de un servidor
 mcprism rules                # listar las reglas integradas
@@ -423,7 +424,7 @@ Según las descripciones públicas de los proyectos (las funciones pueden cambia
 No. Solo hace la inicialización MCP y las llamadas de listado. No invoca herramientas, no abre archivos a través de un servidor y no envía indicaciones.
 
 **¿Envía datos a algún sitio?**
-No hay telemetría y no se suben las configuraciones ni los informes locales. Los comandos Registry envían el término de búsqueda o el nombre del servidor al MCP Registry oficial para obtener metadatos públicos. Los demás análisis estáticos no se conectan. El análisis en vivo (`scan --dynamic` / `vet --probe`) se conecta al servidor indicado.
+No hay telemetría y no se suben las configuraciones ni los informes locales. Los comandos Registry envían el término de búsqueda o el nombre del servidor al MCP Registry oficial para obtener metadatos públicos. `registry audit` envía el término y obtiene metadatos públicos de varias coincidencias. Los demás análisis estáticos no se conectan. El análisis en vivo (`scan --dynamic` / `vet --probe`) se conecta al servidor indicado.
 
 **¿En qué se diferencia de mcp-scan o mcp-audit?**
 Esos corren en Python o Node y se centran en la configuración o el envenenamiento. mcprism es un único binario Go, modela combinaciones de capacidades, aplica una política como código y emite JUnit, CycloneDX y CSV además de SARIF. Ver la [tabla comparativa](#comparación).
