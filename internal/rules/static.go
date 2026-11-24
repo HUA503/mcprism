@@ -341,4 +341,3 @@ func envHasToken(env map[string]string) bool {
 	}
 	return false
 }
-
