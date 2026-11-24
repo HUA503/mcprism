@@ -500,10 +500,12 @@ Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Continue and similar
 tools, plus Codex's TOML config. It understands `mcpServers` / `servers` JSON
 objects and arrays, and Codex's `[mcp_servers.<name>]` tables. It speaks all
 three MCP transports: stdio, Streamable HTTP, and the legacy HTTP+SSE.
-Codex global discovery checks `$CODEX_HOME/config.toml` (or
-`~/.codex/config.toml`); project discovery checks `.codex/config.toml` and
-`config.toml`. Values referenced by Codex's `bearer_token_env_var` are only
-read when you explicitly enable a live probe with `--dynamic`.
+Codex discovery checks the system config (`/etc/codex/config.toml` on Unix or
+`%ProgramData%/OpenAI/Codex/config.toml` on Windows), the user config
+(`$CODEX_HOME/config.toml` or `~/.codex/config.toml`), and project configs
+(`.codex/config.toml` and `config.toml`). Values referenced by Codex's
+`bearer_token_env_var` are only read when you explicitly enable a live probe
+with `--dynamic`.
 
 ## CI/CD
 
@@ -512,7 +514,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.8.6
+  rev: v0.8.7
   hooks:
     - id: mcprism
 ```
@@ -547,7 +549,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.8.6
+        uses: HUA503/mcprism@v0.8.7
         with:
           target: mcp.json
           sarif-file: mcprism.sarif

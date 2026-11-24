@@ -101,6 +101,21 @@ func globalCandidates() []candPath {
 	}
 	add("codex", "global", filepath.Join(codexHome, "config.toml"))
 
+	// Codex can also receive MCP servers from system-managed configuration.
+	if runtime.GOOS == "windows" {
+		programData := os.Getenv("ProgramData")
+		if programData == "" {
+			systemDrive := os.Getenv("SystemDrive")
+			if systemDrive == "" {
+				systemDrive = `C:`
+			}
+			programData = filepath.Join(systemDrive+string(filepath.Separator), "ProgramData")
+		}
+		add("codex", "system", filepath.Join(programData, "OpenAI", "Codex", "config.toml"))
+	} else {
+		add("codex", "system", filepath.Join(string(filepath.Separator), "etc", "codex", "config.toml"))
+	}
+
 	return out
 }
 

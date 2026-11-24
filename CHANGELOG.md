@@ -6,6 +6,12 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.8.7] - 2026-11-24
+
+### Added
+
+- Auto-discover system-managed Codex MCP configuration on Unix and Windows.
+
 ## [0.8.6] - 2026-11-24
 
 ### Fixed

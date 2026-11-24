@@ -401,7 +401,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Continue 等工具使用的 JSON/JSONC MCP 配置，也支持 Codex 的 TOML 配置。它支持 `mcpServers` / `servers` 对象和数组，以及 Codex 的 `[mcp_servers.<name>]` 表。传输层支持 stdio、Streamable HTTP 和旧版 HTTP+SSE。
 
-Codex 全局配置会从 `$CODEX_HOME/config.toml`（未设置时为 `~/.codex/config.toml`）发现；项目配置会检查 `.codex/config.toml` 和 `config.toml`。`bearer_token_env_var` 引用的环境变量仅在显式使用 `--dynamic` 动态探测时读取。
+Codex 自动发现会检查系统配置（Unix 上为 `/etc/codex/config.toml`，Windows 上为 `%ProgramData%/OpenAI/Codex/config.toml`）、用户配置（`$CODEX_HOME/config.toml`，未设置时为 `~/.codex/config.toml`），以及项目配置（`.codex/config.toml` 和 `config.toml`）。`bearer_token_env_var` 引用的环境变量仅在显式使用 `--dynamic` 动态探测时读取。
 
 ## CI/CD
 
@@ -409,7 +409,7 @@ Codex 全局配置会从 `$CODEX_HOME/config.toml`（未设置时为 `~/.codex/c
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.8.6
+  rev: v0.8.7
   hooks:
     - id: mcprism
 ```
@@ -442,7 +442,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.8.6
+        uses: HUA503/mcprism@v0.8.7
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
