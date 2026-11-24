@@ -187,11 +187,12 @@ brew install HUA503/mcprism/mcprism
 </div>
 
 ```sh
-# يكتشف تلقائيًا تكوينات Claude Desktop وClaude Code وCursor وVS Code وغيرها
+# يكتشف تلقائيًا تكوينات Claude وCodex وCursor وVS Code وWindsurf وغيرها
 mcprism scan
 
 # ملف تكوين محدد
 mcprism scan ~/.claude.json
+mcprism scan ~/.codex/config.toml
 
 # دليل، يُفحص بشكل متكرر
 mcprism scan ./configs

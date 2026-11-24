@@ -147,11 +147,12 @@ Linux と macOS で `/usr/local/bin` に書き込めない場合、インスト�
 ## クイックスタート
 
 ```sh
-# Claude Desktop、Claude Code、Cursor、VS Code などの設定を自動検出
+# Claude、Codex、Cursor、VS Code、Windsurf などの設定を自動検出
 mcprism scan
 
 # 特定の設定ファイル
 mcprism scan ~/.claude.json
+mcprism scan ~/.codex/config.toml
 
 # ディレクトリを再帰的にスキャン
 mcprism scan ./configs

@@ -147,11 +147,12 @@ Unter Linux und macOS wird bei fehlenden Schreibrechten für `/usr/local/bin` na
 ## Schnellstart
 
 ```sh
-# Findet automatisch die Konfigurationen von Claude Desktop, Claude Code, Cursor, VS Code, ...
+# Findet automatisch die Konfigurationen von Claude, Codex, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # Eine bestimmte Konfigurationsdatei
 mcprism scan ~/.claude.json
+mcprism scan ~/.codex/config.toml
 
 # Ein Verzeichnis, rekursiv gescannt
 mcprism scan ./configs

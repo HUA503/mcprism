@@ -147,11 +147,12 @@ brew install HUA503/mcprism/mcprism
 ## Быстрый старт
 
 ```sh
-# Автоматически находит конфигурации Claude Desktop, Claude Code, Cursor, VS Code, ...
+# Автоматически находит конфигурации Claude, Codex, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # Конкретный файл конфигурации
 mcprism scan ~/.claude.json
+mcprism scan ~/.codex/config.toml
 
 # Каталог, сканируется рекурсивно
 mcprism scan ./configs

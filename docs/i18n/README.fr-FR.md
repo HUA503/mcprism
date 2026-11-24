@@ -147,11 +147,12 @@ Sous Linux et macOS, si `/usr/local/bin` n'est pas accessible en écriture, l'in
 ## Démarrage rapide
 
 ```sh
-# Détecte automatiquement les configurations de Claude Desktop, Claude Code, Cursor, VS Code, ...
+# Détecte automatiquement les configurations de Claude, Codex, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # Un fichier de configuration précis
 mcprism scan ~/.claude.json
+mcprism scan ~/.codex/config.toml
 
 # Un répertoire, analysé récursivement
 mcprism scan ./configs

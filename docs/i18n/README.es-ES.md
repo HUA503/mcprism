@@ -147,11 +147,12 @@ En Linux y macOS, si no se puede escribir en `/usr/local/bin`, el instalador usa
 ## Inicio rápido
 
 ```sh
-# Detecta automáticamente las configuraciones de Claude Desktop, Claude Code, Cursor, VS Code, ...
+# Detecta automáticamente las configuraciones de Claude, Codex, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # Un archivo de configuración concreto
 mcprism scan ~/.claude.json
+mcprism scan ~/.codex/config.toml
 
 # Un directorio, escaneado de forma recursiva
 mcprism scan ./configs

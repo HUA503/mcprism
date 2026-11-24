@@ -147,11 +147,12 @@ Linux와 macOS에서 `/usr/local/bin`에 쓸 수 없으면 설치 프로그램�
 ## 빠른 시작
 
 ```sh
-# Claude Desktop, Claude Code, Cursor, VS Code 등의 구성 자동 검색
+# Claude, Codex, Cursor, VS Code, Windsurf 등의 구성 자동 검색
 mcprism scan
 
 # 특정 구성 파일
 mcprism scan ~/.claude.json
+mcprism scan ~/.codex/config.toml
 
 # 디렉터리를 재귀적으로 스캔
 mcprism scan ./configs
