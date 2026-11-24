@@ -15,7 +15,7 @@ servers. It looks at a server from three angles:
    cleartext transport, credentials in config, cloud metadata and private
    network targets.
 2. **Source code** — when the implementation is on disk, it reads the
-   JS/TS/Python tool handlers and traces arguments an agent can control into
+   JS/TS/Python/Go tool handlers and traces arguments an agent can control into
    dangerous sinks: process execution, outbound requests (SSRF) and filesystem
    paths, along with eval, unsafe deserialization and hardcoded secrets.
 3. **Runtime** — it performs the MCP handshake to list tools, resources and

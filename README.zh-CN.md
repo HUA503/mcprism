@@ -11,7 +11,7 @@
 mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server 的安全扫描器。它从三个角度审查一个 server：
 
 1. **配置**：客户端如何启动或连接它——版本是否固定、是否明文传输、配置里有没有凭据、是否指向云元数据或内网。
-2. **源码**：当实现代码就在本地时，读取 JS/TS/Python 的工具 handler，追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及 eval、不安全反序列化和硬编码密钥。
+2. **源码**：当实现代码就在本地时，读取 JS/TS/Python/Go 的工具 handler，追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及 eval、不安全反序列化和硬编码密钥。
 3. **运行时**：完成 MCP 握手，列出 tools、resources、prompts，并检查工具元数据是否被投毒。它不会调用任何工具。
 
 每个 server 都会得到一份发现清单、一个 0–100 的分数和一个 A–F 的评级。整个工具是一个 Go 二进制，没有运行时依赖。静态扫描完全离线、没有副作用；启动 server 做动态探测必须显式开启（`--dynamic` / `--probe`）。
