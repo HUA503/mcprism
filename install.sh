@@ -122,7 +122,7 @@ main() {
       ;;
     *)
       echo "The install directory is not on PATH: ${install_dir}"
-      echo "Add it to PATH, or run the binary by its full path."
+      echo "Run '${install_dir}/${BINARY} scan', or add the directory to PATH."
       ;;
   esac
 }

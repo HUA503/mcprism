@@ -200,7 +200,7 @@ per-user install directory to PATH. You can also download a binary from the
 
 On Linux and macOS, the installer uses `~/.local/bin` when `/usr/local/bin` is
 not writable. If it reports that the directory is not on PATH, add that
-directory to PATH or run `~/.local/bin/mcprism` directly.
+directory to PATH or run `~/.local/bin/mcprism scan` directly.
 
 ```powershell
 scoop bucket add mcprism https://github.com/HUA503/mcprism

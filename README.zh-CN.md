@@ -156,7 +156,7 @@ Windows 用户也可以通过 [Scoop](https://scoop.sh) 安装：
 
 在 Linux 和 macOS 上，如果 `/usr/local/bin` 不可写，安装脚本会改装到
 `~/.local/bin`。如果提示该目录不在 PATH 中，请将它加入 PATH，或直接运行
-`~/.local/bin/mcprism`。
+`~/.local/bin/mcprism scan`。
 
 ```powershell
 scoop bucket add mcprism https://github.com/HUA503/mcprism
