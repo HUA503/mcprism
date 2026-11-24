@@ -411,12 +411,35 @@ mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copil
 通过 SARIF 把结果发布到 GitHub code scanning：
 
 ```yaml
-- name: 扫描并上传
-  run: mcprism scan mcp.json -f sarif -o mcp.sarif
-- uses: github/codeql-action/upload-sarif@v3
-  with:
-    sarif_file: mcp.sarif
+name: MCP 安全检查
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: mcprism
+        uses: HUA503/mcprism@main # 正式使用时固定到 release tag 或 commit SHA
+        with:
+          version: v0.7.0
+          target: mcp.json
+          sarif-file: mcprism.sarif
+      - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
+        if: always() && hashFiles('mcprism.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          sarif_file: mcprism.sarif
 ```
+
+该 Action 会下载指定的 Linux release、验证 SHA-256 校验和，并默认使用
+`ci` profile。可通过 `policy`、`suppressions`、`baseline` 或 `fail-on` 设置自定义门禁。
+`sarif-file` 输出可传给上传步骤。上传结果需要 workflow 有
+`security-events: write` 权限。Windows、macOS、Jenkins、GitLab 等场景请使用上面的 CLI 示例。
 
 JUnit 输出可以直接用 Jenkins 和 GitLab 的测试报告步骤，CycloneDX 输出可以交给 SBOM 或漏洞跟踪系统。
 

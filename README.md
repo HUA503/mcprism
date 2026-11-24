@@ -510,12 +510,37 @@ Block risky servers in a pipeline with the `ci` profile:
 Publish to GitHub code scanning via SARIF:
 
 ```yaml
-- name: Scan & upload
-  run: mcprism scan mcp.json -f sarif -o mcp.sarif
-- uses: github/codeql-action/upload-sarif@v3
-  with:
-    sarif_file: mcp.sarif
+name: MCP security
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: mcprism
+        uses: HUA503/mcprism@main # pin to a release tag or commit SHA in production
+        with:
+          version: v0.7.0
+          target: mcp.json
+          sarif-file: mcprism.sarif
+      - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
+        if: always() && hashFiles('mcprism.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          sarif_file: mcprism.sarif
 ```
+
+The action downloads the selected Linux release, verifies its SHA-256 checksum,
+and runs the `ci` profile by default. Set `policy`, `suppressions`, `baseline`,
+or `fail-on` to use your own gate. Its `sarif-file` output can be passed to the
+upload step. The workflow needs `security-events: write` to publish findings.
+For Windows, macOS, Jenkins, GitLab, or other runners, use the CLI examples
+above.
 
 JUnit output works with the test report steps in Jenkins and GitLab, and
 CycloneDX output can be handed to an SBOM or vulnerability tracker.

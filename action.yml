@@ -1,0 +1,60 @@
+name: mcprism MCP security scan
+description: Scan MCP configs with mcprism and write a SARIF report for GitHub code scanning.
+author: HUA503
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  version:
+    description: mcprism release tag. Defaults to the action's tag when the action is pinned to a release.
+    required: false
+  target:
+    description: MCP config file or directory to scan.
+    required: false
+    default: .
+  profile:
+    description: Built-in mcprism profile.
+    required: false
+    default: ci
+  policy:
+    description: Optional path to a custom policy YAML file.
+    required: false
+  suppressions:
+    description: Optional path to a suppressions YAML file.
+    required: false
+  baseline:
+    description: Optional JSON baseline report. When set, only new findings fail the scan.
+    required: false
+  fail-on:
+    description: Optional severity threshold that fails the scan.
+    required: false
+  sarif-file:
+    description: SARIF report path relative to the workspace.
+    required: false
+    default: mcprism.sarif
+
+outputs:
+  sarif-file:
+    description: Path to the generated SARIF report, relative to the workspace.
+    value: ${{ steps.scan.outputs.sarif-file }}
+  version:
+    description: mcprism release version used for the scan.
+    value: ${{ steps.scan.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - id: scan
+      shell: bash
+      env:
+        MC_PRISM_VERSION: ${{ inputs.version }}
+        MC_PRISM_ACTION_REF: ${{ github.action_ref }}
+        MC_PRISM_TARGET: ${{ inputs.target }}
+        MC_PRISM_PROFILE: ${{ inputs.profile }}
+        MC_PRISM_POLICY: ${{ inputs.policy }}
+        MC_PRISM_SUPPRESSIONS: ${{ inputs.suppressions }}
+        MC_PRISM_BASELINE: ${{ inputs.baseline }}
+        MC_PRISM_FAIL_ON: ${{ inputs['fail-on'] }}
+        MC_PRISM_SARIF_FILE: ${{ inputs.sarif-file }}
+      run: bash "$GITHUB_ACTION_PATH/action-entrypoint.sh"
