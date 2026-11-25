@@ -212,7 +212,7 @@ func pyTaintedNames(lines []srcLine, seeds []string) []string {
 			set[name] = true
 		}
 	}
-	assign := regexp.MustCompile(`^\s*([A-Za-z_]\w*)(?:\s*:[^=]+)?\s*=(?!=)\s*(.*)$`)
+	assign := regexp.MustCompile(`^\s*([A-Za-z_]\w*)(?:\s*:[^=]+)?\s*=\s*(.*)$`)
 	for changed := true; changed; {
 		changed = false
 		params := make([]string, 0, len(set))
@@ -221,7 +221,7 @@ func pyTaintedNames(lines []srcLine, seeds []string) []string {
 		}
 		for _, line := range maskedPythonLines(lines) {
 			m := assign.FindStringSubmatch(line.text)
-			if m == nil || set[m[1]] || !pyControllable(m[2], params) {
+			if m == nil || strings.HasPrefix(strings.TrimSpace(m[2]), "=") || set[m[1]] || !pyControllable(m[2], params) {
 				continue
 			}
 			set[m[1]] = true
