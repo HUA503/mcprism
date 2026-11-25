@@ -26,6 +26,12 @@ inputs:
   baseline:
     description: Optional JSON baseline report. When set, only new findings fail the scan.
     required: false
+  inventory-target:
+    description: Optional MCP config file or server URL for tool inventory verification. This connects to the target and may launch a stdio process; use a dedicated runner without secrets.
+    required: false
+  inventory-baseline:
+    description: Optional lock file created by `mcprism inventory save`. Requires inventory-target.
+    required: false
   fail-on:
     description: Optional severity threshold that fails the scan.
     required: false
@@ -41,6 +47,9 @@ outputs:
   version:
     description: mcprism release version used for the scan.
     value: ${{ steps.scan.outputs.version }}
+  inventory-status:
+    description: Tool inventory verification result: passed, drift, error, or skipped.
+    value: ${{ steps.scan.outputs.inventory-status }}
 
 runs:
   using: composite
@@ -55,6 +64,8 @@ runs:
         MC_PRISM_POLICY: ${{ inputs.policy }}
         MC_PRISM_SUPPRESSIONS: ${{ inputs.suppressions }}
         MC_PRISM_BASELINE: ${{ inputs.baseline }}
+        MC_PRISM_INVENTORY_TARGET: ${{ inputs['inventory-target'] }}
+        MC_PRISM_INVENTORY_BASELINE: ${{ inputs['inventory-baseline'] }}
         MC_PRISM_FAIL_ON: ${{ inputs['fail-on'] }}
         MC_PRISM_SARIF_FILE: ${{ inputs.sarif-file }}
       run: bash "$GITHUB_ACTION_PATH/action-entrypoint.sh"
