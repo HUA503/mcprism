@@ -192,7 +192,10 @@ mcprism vet --probe -- npx -y some-mcp-server   # 실제로 시작해 도구 나
 # 공식 MCP Registry 검색 및 공개 메타데이터 정적 감사
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
-mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
+mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
+```
+
+`--all`을 추가하면 검색 결과의 모든 페이지를 따라갑니다. 일부 항목을 감사하지 못했을 때 실패하게 하려면 `--require-complete`을 추가하세요. 공개 메타데이터만 감사하며 서버를 실행하지 않습니다.
 
 mcprism inspect mcp.json     # 서버의 도구/리소스/프롬프트 나열
 mcprism rules                # 내장 규칙 나열
