@@ -192,7 +192,10 @@ mcprism vet --probe -- npx -y some-mcp-server   # lancer réellement et lister l
 # Rechercher et auditer statiquement les métadonnées du MCP Registry officiel
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
-mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
+mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
+```
+
+Ajoutez `--all` pour parcourir toutes les pages de résultats. Ajoutez `--require-complete` pour faire échouer la commande si l’audit est partiel. Seules les métadonnées publiques sont examinées ; les serveurs ne sont pas démarrés.
 
 mcprism inspect mcp.json     # lister les outils/ressources/invites d'un serveur
 mcprism rules                # lister les règles intégrées
