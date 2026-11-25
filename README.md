@@ -192,13 +192,13 @@ below, with no network needed.
 ## Report
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png?v=0.9.2" alt="mcprism HTML report for a live server" width="86%">
+  <img src="assets/screenshot-dynamic.png?v=0.14.0" alt="mcprism HTML report for a live server" width="86%">
 </p>
 
 Batch review across many servers (static mode):
 
 <p align="center">
-  <img src="assets/screenshot-static.png?v=0.9.2" alt="mcprism HTML report across many servers" width="70%">
+  <img src="assets/screenshot-static.png?v=0.14.0" alt="mcprism HTML report across many servers" width="70%">
 </p>
 
 ## Install
