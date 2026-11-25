@@ -51,7 +51,8 @@ func WalkDir(root string) ([]*ClientFile, error) {
 			(filepath.Base(filepath.Dir(p)) == ".gemini" ||
 				(filepath.Base(root) == ".gemini" && filepath.Clean(filepath.Dir(p)) == filepath.Clean(root)))
 		isOpenCodeConfig := d.Name() == "opencode.json" || d.Name() == "opencode.jsonc"
-		if !isConfigName(d.Name()) && !isCodexConfig && !isGeminiConfig && !isOpenCodeConfig {
+		isRooCodeConfig := d.Name() == "mcp.json" && filepath.Base(filepath.Dir(p)) == ".roo"
+		if !isConfigName(d.Name()) && !isCodexConfig && !isGeminiConfig && !isOpenCodeConfig && !isRooCodeConfig {
 			return nil
 		}
 		client := "walk"
@@ -61,6 +62,8 @@ func WalkDir(root string) ([]*ClientFile, error) {
 			client = "gemini-cli"
 		} else if isOpenCodeConfig {
 			client = "opencode"
+		} else if isRooCodeConfig {
+			client = "roo-code"
 		}
 		cf, err := ParseFile(p, client, "project")
 		if err != nil {

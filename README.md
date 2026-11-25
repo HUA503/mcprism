@@ -262,7 +262,7 @@ Release archives from v0.8.4 onward include verifiable build provenance. See
 ## Quick start
 
 ```sh
-# Auto-discover configs for Claude, Codex, Gemini CLI, OpenCode, Cursor, ...
+# Auto-discover configs for Claude, Codex, Gemini CLI, OpenCode, Roo Code, ...
 mcprism scan
 
 # A specific config file
@@ -560,8 +560,8 @@ The full list with the OWASP crosswalk is in [docs/RULES.md](docs/RULES.md).
 ## Supported clients & transports
 
 mcprism reads the JSON/JSONC MCP config used by Claude Desktop, Claude Code,
-Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Continue and similar
-tools, Gemini CLI's `~/.gemini/settings.json` and `.gemini/settings.json`, plus
+Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Roo Code, Continue and
+similar tools, Gemini CLI's `~/.gemini/settings.json` and `.gemini/settings.json`, plus
 Codex's TOML config. OpenCode uses `mcp.servers` in `opencode.json` or
 `opencode.jsonc`; local command arrays, environment maps, and remote URLs are
 normalized for the same checks. It understands `mcpServers` / `servers` JSON
@@ -587,6 +587,10 @@ OpenCode discovery checks user configs in `~/.config/opencode/`, project
 configs named `opencode.json(c)` or `.opencode/opencode.json(c)`, and system
 configs under `/etc/opencode/` (Linux), `/Library/Application Support/opencode/`
 (macOS), or `%ProgramData%/opencode/` (Windows).
+
+Roo Code project discovery checks `.roo/mcp.json`; directory scans also label
+this path as a Roo Code config. Global extension settings are discovered from
+VS Code-compatible editor storage.
 
 Cline CLI discovery checks `~/.cline/data/settings/cline_mcp_settings.json`.
 Set `CLINE_MCP_SETTINGS_PATH` when Cline uses a custom settings path. The

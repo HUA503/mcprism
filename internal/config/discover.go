@@ -197,6 +197,7 @@ func projectCandidates(dir string) []candPath {
 			candPath{filepath.Join(d, ".mcp.json"), "generic", "project"},
 			candPath{filepath.Join(d, ".cursor", "mcp.json"), "cursor", "project"},
 			candPath{filepath.Join(d, ".vscode", "mcp.json"), "vscode", "project"},
+			candPath{filepath.Join(d, ".roo", "mcp.json"), "roo-code", "project"},
 			candPath{filepath.Join(d, ".gemini", "settings.json"), "gemini-cli", "project"},
 			candPath{filepath.Join(d, "opencode.json"), "opencode", "project"},
 			candPath{filepath.Join(d, "opencode.jsonc"), "opencode", "project"},

@@ -164,7 +164,7 @@ Unter Linux und macOS wird bei fehlenden Schreibrechten für `/usr/local/bin` na
 ## Schnellstart
 
 ```sh
-# Findet automatisch die Konfigurationen von Claude, Codex, Gemini CLI, OpenCode, Cursor, VS Code, Windsurf, ...
+# Findet automatisch die Konfigurationen von Claude, Codex, Gemini CLI, OpenCode, Roo Code, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # Eine bestimmte Konfigurationsdatei
