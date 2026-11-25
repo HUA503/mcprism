@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
-## [Unreleased]
+## [0.11.0] - 2026-11-25
 
 ### Added
 
@@ -422,7 +422,7 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
-[Unreleased]: https://github.com/HUA503/mcprism/compare/v0.10.2...HEAD
+[0.11.0]: https://github.com/HUA503/mcprism/compare/v0.10.2...v0.11.0
 [0.10.2]: https://github.com/HUA503/mcprism/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/HUA503/mcprism/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/HUA503/mcprism/compare/v0.9.2...v0.10.0
