@@ -113,6 +113,7 @@ mcprism vet server.py            # 审查单个文件
 - 看 schema。对于没有源码的在线 server，如果名为 command、url、path 之类的字符串参数接受任意值，会按命令执行、SSRF、路径风险报出；用 enum、const、pattern 约束过的参数不报。
 - 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套配置。
 - 风险接受清单。可以带理由和到期时间抑制发现，也可以用 `--baseline` 接受整份旧报告，只让新问题卡住构建；被抑制项仍显示在报告里，过期后自动重新出现。
+- 工具清单锁。保存工具名称和 SHA-256 指纹；之后若 server 新增、删除或修改工具定义，命令会报出差异并返回失败。锁文件不保存工具描述或 schema。保存和验证时会连接 server 来枚举工具，但不会调用工具。
 - 结果确定。35 条规则映射到 OWASP MCP01–MCP07。本地配置和源码静态分析不联网；`registry` 命令只从官方 Registry 获取公开元数据。动态探测是可选的，会启动 server 进程，请在沙箱里运行。探测带有出站防护（不允许重定向到云元数据或 link-local 地址），并且默认只给被拉起的进程一个受限的环境变量集合，而不是整个 shell。
 - 面向人和机器的报告：table、JSON、Markdown、HTML、SARIF、JUnit XML、CycloneDX SBOM、CSV。
 - 一次扫描多个目标：文件、目录（递归）、URL。
@@ -237,9 +238,15 @@ mcprism registry audit filesystem --all --limit 100 --require-complete --format 
 mcprism inspect mcp.json     # 列出 server 的 tools/resources/prompts
 mcprism rules                # 列出内置规则
 mcprism profiles             # 列出内置基线
+
+# 锁定一个已审查服务器的工具定义，并检测后续变化
+mcprism inventory save one-server.json --output server.tools.lock.json
+mcprism inventory verify one-server.json --baseline server.tools.lock.json
 ```
 
 Registry 批量审计默认只检查一页（最多 100 条）。加上 `--all` 会继续按游标分页并审计所有匹配项；`--require-complete` 会在仍有配置无法审计时返回非零状态。解读报告前请检查标准错误输出中的警告，因为这些警告可能不会写入报告。
+
+`inventory save` 和 `inventory verify` 会连接远程服务或启动 stdio 进程来枚举工具，但不会调用工具。先审查目标；不可信服务请在沙箱中运行。锁文件只保存工具名和哈希，不保存描述、schema 或配置值。首次审查通过后保存，升级后运行 verify；发现工具新增、删除或定义变化时退出码为 1。只有审阅变更后才用 `--force` 覆盖锁。
 
 ### Shell 自动补全
 

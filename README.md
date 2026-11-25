@@ -147,6 +147,10 @@ below, with no network needed.
 - Accepted-risk register. Suppress findings with a reason and an expiry, or
   accept a whole `--baseline` report so only new problems fail the build.
   Suppressed items stay visible in the report, and expired ones come back.
+- Tool inventory locks. Save tool names and SHA-256 fingerprints, then fail if a
+  reviewed server adds, removes or changes a tool definition. The lock does not
+  contain descriptions or schemas. Saving and verifying connect to the server to
+  enumerate tools; they never call a tool.
 - Deterministic. 35 rules mapped to OWASP MCP01–MCP07. Config and source scans
   never touch the network; registry commands only fetch public metadata from
   the official registry. Live probing is opt-in and starts the server, so run
@@ -292,6 +296,10 @@ mcprism registry audit filesystem --all --limit 100 --require-complete --format 
 mcprism inspect mcp.json     # list a server's tools/resources/prompts
 mcprism rules                # list built-in rules
 mcprism profiles             # list built-in profiles
+
+# Lock one reviewed server's tool definitions and detect later drift
+mcprism inventory save one-server.json --output server.tools.lock.json
+mcprism inventory verify one-server.json --baseline server.tools.lock.json
 ```
 
 By default, Registry batch audit checks one page (up to 100 results). Add `--all`
