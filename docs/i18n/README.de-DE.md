@@ -107,7 +107,7 @@ mcprism vet server.py            # eine Datei prüfen
 - Policy als Code. Regeln ein-/ausschalten, Schweregrade ändern, Pakete/Befehle/Domains erlauben oder ablehnen und Netzwerkisolation verlangen. Die eingebauten Profile bieten die Baselines `default`, `strict` und `ci`.
 - Risikoakzeptanz-Register. Befunde mit Grund und Ablaufdatum unterdrücken. Unterdrückte Einträge bleiben im Bericht sichtbar und kehren nach Ablauf zurück.
 - Tool-Inventar sperren. Speichern Sie Namen und SHA-256-Fingerprints geprüfter Tools; hinzugefügte, entfernte oder geänderte Definitionen lassen die Prüfung fehlschlagen. Die Sperrdatei enthält weder Beschreibungen noch Schemas. Speichern und Prüfen verbinden sich zum Auflisten der Tools mit dem Server, rufen aber kein Tool auf.
-- Deterministisch. 35 Regeln sind OWASP MCP01–MCP07 zugeordnet. Lokale Konfigurations- und Quellcodeprüfungen laufen offline; Registry-Befehle rufen öffentliche Metadaten aus der offiziellen Registry ab. Es gibt keine Telemetrie.
+- Deterministisch. 35 Regeln sind OWASP MCP01–MCP07 zugeordnet. Die Prüfung von Tool-Metadaten erkennt außerdem gängige chinesischsprachige Prompt-Injection-Muster in vereinfachter und traditioneller Schrift. Lokale Konfigurations- und Quellcodeprüfungen laufen offline; Registry-Befehle rufen öffentliche Metadaten aus der offiziellen Registry ab. Es gibt keine Telemetrie.
 - Berichte für Menschen und Maschinen: table, JSON, Markdown, HTML, SARIF, JUnit XML, CycloneDX-SBOM und CSV.
 - Mehrere Ziele auf einmal scannen: Dateien, Verzeichnisse (rekursiv) und URLs.
 
@@ -250,7 +250,7 @@ Fügen Sie den Befehl zum Shell-Profil hinzu, damit er in neuen Sitzungen verfü
 Scan zweier lokaler Server im statischen Modus:
 
 ```text
-◆ mcprism   v0.2.0 · 2026-09-29
+◆ mcprism   v0.20.0 · 2026-11-25
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -309,7 +309,9 @@ Er erkennt gängige SDKs und Frameworks:
 - JavaScript/TypeScript: den `McpServer` des `@modelcontextprotocol/sdk`, das niedrigstufige `Server.setRequestHandler` und verschiedene `.tool(...)`-Registrierungen.
 - Python: den `@mcp.tool()`-Dekorator von `FastMCP` und den niedrigstufigen `call_tool`-Handler.
 
-Für jedes Tool behandelt er die Handler-Argumente als von einem Angreifer gesteuert und verfolgt sie einen Schritt bis zu einer Senke. Befunde nennen Datei und Zeile, zeigen den Code und erklären die Korrektur:
+Für jedes Tool behandelt er die Handler-Argumente als von einem Angreifer steuerbar und verfolgt sie mit heuristischer Analyse bis zu einer Senke. Befunde nennen Datei und Zeile, zeigen den Code und erklären die Korrektur:
+
+Python und Go verfolgen außerdem lokale Aliase und über eindeutige Helper-Aufrufe übergebene Argumente innerhalb derselben Datei. JavaScript/TypeScript wird weiterhin nur innerhalb des jeweiligen Handlers analysiert.
 
 | Regel | Senke | Standard |
 |---|---|---|
