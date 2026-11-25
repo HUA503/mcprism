@@ -8,6 +8,11 @@
 
 **Check MCP server security risks before connecting it to your AI.**
 
+If you use MCP servers with Claude, Cursor, VS Code or another AI client,
+mcprism reviews their configuration and local source, and can inspect live tool
+metadata when you opt in. If you do not use MCP servers, you probably do not
+need mcprism yet.
+
 mcprism is a security scanner for [Model Context Protocol](https://modelcontextprotocol.io/)
 servers. It looks at a server from three angles:
 
