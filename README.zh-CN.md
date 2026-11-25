@@ -401,10 +401,10 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-引擎基于模式匹配加一层 taint 追踪，不使用第三方解析器，因此二进制保持小巧、自包含。它针对大多数 MCP server 漏洞里那种从 handler 直接到 sink 的短路径。请注意下面这些已知边界，不要把"没报问题"理解成"证明安全"：
+引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。Python 和 Go 会追踪本地变量别名，以及同一文件中经明确 helper 参数传递的 taint；JavaScript/TypeScript 仍只在 handler 内分析。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
 
-- taint 只在单个 handler 内追踪一跳。经过多个变量赋值、helper 函数、解构/导入别名（`import { exec as run }`、`child_process["ex"+"ec"]`）或跨函数流转的值不会被跟踪。
-- Go 分析目前没有用 `go/parser` 构建 AST，JS/Python 也没有用 tree-sitter，特殊排版或生成代码可能漏检。
+- 目前不会跨文件、对象属性、返回值、动态分派或解构/导入别名追踪（例如 `import { exec as run }`、`child_process["ex"+"ec"]`）。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
+- Go 使用标准库 `go/parser` 定位 helper 函数边界，但尚未构建全程序数据流图；JS/Python 没有使用 tree-sitter。
 - 只分析 JavaScript/TypeScript、Python、Go；其他语言写的 server 只做配置和元数据层面的检查。
 
 对高风险 server，请配合完整数据流分析工具和人工复核一起使用。规则细节和更多示例见 [docs/SAST.md](docs/SAST.md)。
@@ -418,7 +418,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - 配置中的凭据。可识别的凭据格式（AWS、Google、GitHub、Slack、Stripe、GitLab、OpenAI、JWT 等）会按类型标出；看起来像生成密钥的高熵值会作为疑似密钥标出。占位符和 `${ENV_VAR}` 引用不会被标记。
 - 明文传输和关闭 TLS（`http://`、`NODE_TLS_REJECT_UNAUTHORIZED=0`）。
 - 权限过宽。文件系统 server 挂载到 `/` 或用户主目录；sandbox 或权限检查被关闭。
-- 工具投毒。工具名称、描述和 schema 中的注入指令、零宽/双向 Unicode、Unicode Tags、西里尔/希腊同形字（匹配前先做 NFKC 规范化）、隐藏 HTML/Markdown、编码块。正常的指导性说明不会被报；只有指令性措辞与隐藏或同形字符同时出现时才报 MCP205。resource 和 prompt 模板的元数据也会做同样检查。
+- 工具投毒。工具名称、描述和 schema 中常见的中英文注入指令、零宽/双向 Unicode、Unicode Tags、西里尔/希腊同形字（匹配前先做 NFKC 规范化）、隐藏 HTML/Markdown、编码块。中文检测基于明确短语特征，不做语义理解；隐晦改写仍可能漏报。正常的指导性说明不会被报；只有指令性措辞与隐藏或同形字符同时出现时才报 MCP205。resource 和 prompt 模板的元数据也会做同样检查。
 - 自由格式 schema 参数。对于没有源码的在线 server，会按参数名把接受任意字符串的命令、URL（SSRF）、路径参数标为风险。
 - 危险能力组合，比如 shell 加联网、读文件加联网、写文件加 shell。
 - 网络目标。云元数据端点（`169.254.169.254`）和私有/回环地址段。
@@ -465,7 +465,7 @@ Roo Code 配置。全局扩展配置也会从 VS Code 兼容编辑器的存储�
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.17.0
+  rev: v0.19.0
   hooks:
     - id: mcprism
 ```
@@ -498,7 +498,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.17.0
+        uses: HUA503/mcprism@v0.19.0
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
@@ -599,7 +599,7 @@ flowchart TD
 - [x] Homebrew 公式
 - [x] Nix 包
 - [ ] 支持更多 SAST 语言（Rust、Java、C#）
-- [ ] 可选的多跳/跨函数污点追踪
+- [ ] 跨文件、对象流转和 JavaScript 跨函数污点追踪
 - [ ] 为实时探测提供内置沙箱封装
 
 ## 贡献

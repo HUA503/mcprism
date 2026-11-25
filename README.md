@@ -443,9 +443,10 @@ It recognizes the common SDKs and frameworks:
   handler.
 - Go: mcp-go `server.AddTool` / `mcp.AddTool` callbacks.
 
-For each tool it treats the handler arguments as attacker-controlled data and
-follows them one hop into a sink. Findings name the file and line, show the
-code, and say how to fix it:
+For each tool it treats handler arguments as attacker-controlled data. Python
+and Go analysis follows local aliases and same-file helper arguments; JavaScript
+and TypeScript analysis currently follows values within the handler. Findings
+name the file and line, show the code, and say how to fix it:
 
 | Rule | Sink | Default |
 |---|---|---|
@@ -489,17 +490,18 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-The engine is pattern-based with one level of taint tracking and no third-party
-parser, so the binary stays small and self-contained. It targets the short,
-direct handler-to-sink paths behind most MCP server bugs. Be aware of the
-known limits so you do not read a clean report as a proof of safety:
-
-- Taint is tracked a single hop inside one handler. A value copied through
-  several variables, a helper function, a destructuring/import alias
-  (`import { exec as run }`, `child_process["ex"+"ec"]`), or across functions
-  is not followed.
-- The Go analyzer does not yet build an AST with `go/parser`, and JS/Python do
-  not use tree-sitter, so unusual formatting or generated code can be missed.
+- The engine uses pattern matching and no third-party parser, keeping the binary
+  small and self-contained. Python and Go taint tracking follows local aliases
+  and arguments passed through unambiguous helper functions in the same file.
+  JavaScript/TypeScript tracking remains handler-local. Be aware of the known
+  limits so you do not read a clean report as a proof of safety:
+- Taint is not tracked across files, object properties, returned values,
+  dynamic dispatch or destructuring/import aliases (`import { exec as run }`,
+  `child_process["ex"+"ec"]`). Sink matching is pattern-based, so unusual
+  formatting and generated code can still be missed or misclassified.
+- Go uses the standard-library `go/parser` to locate helper function boundaries;
+  it does not build a full-program data-flow graph. JS/Python do not use
+  tree-sitter.
 - Only JavaScript/TypeScript, Python and Go are analyzed; servers in other
   languages get config- and metadata-level checks only.
 
@@ -521,7 +523,8 @@ analyzer and manual review. Rule details and more examples are in
   `NODE_TLS_REJECT_UNAUTHORIZED=0`).
 - Over-broad permissions. Filesystem servers mounted at `/` or the home
   directory; sandbox or permission checks turned off.
-- Tool poisoning. Injection directives, zero-width/bidirectional Unicode,
+- Tool poisoning. Common English and Chinese injection directives,
+  zero-width/bidirectional Unicode,
   Unicode Tags and Cyrillic/Greek homoglyphs (normalized with NFKC before
   matching), hidden HTML/Markdown and encoded blobs in tool names, descriptions
   and schemas. Plain instructional text is not flagged; directive language is
@@ -622,7 +625,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.17.0
+  rev: v0.19.0
   hooks:
     - id: mcprism
 ```
@@ -657,7 +660,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.17.0
+        uses: HUA503/mcprism@v0.19.0
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
@@ -791,7 +794,7 @@ so only run servers you trust.
 - [x] Homebrew formula
 - [x] Nix package
 - [ ] More SAST languages (Rust, Java, C#)
-- [ ] Opt-in multi-hop / inter-procedural taint tracking
+- [ ] Cross-file, object-flow and JavaScript inter-procedural taint tracking
 - [ ] Built-in sandbox wrapper for live probes
 
 ## Contributing

@@ -24,6 +24,17 @@ var injectionSigs = []struct {
 	{regexp.MustCompile(`(?i)(execute|run) (the |this |following )?command`), SeverityHigh},
 	{regexp.MustCompile(`(?i)include (all |the )?environment variables`), SeverityHigh},
 	{regexp.MustCompile(`(?i)(curl|wget|fetch|download)\s+[a-z0-9]+://`), SeverityHigh},
+	// Chinese-language directives are matched explicitly so offline scanning
+	// does not depend on translation or a language model.
+	{regexp.MustCompile(`忽略.{0,8}(之前|先前|上文|以上|原有|系统|系統).{0,8}(指令|指示|提示词|提示詞|提示|规则|規則)`), SeverityCritical},
+	{regexp.MustCompile(`(泄露|洩露|显示|顯示|输出|輸出|打印|揭示).{0,8}(系统提示词|系統提示詞|系统指令|系統指令|内部指令|內部指令|隐藏指令|隱藏指令|提示词|提示詞)`), SeverityCritical},
+	{regexp.MustCompile(`(发送|上傳|上传|回传|回傳|窃取|竊取|外传|外傳).{0,12}(密钥|金鑰|凭据|憑證|憑據|环境变量|環境變數|系统提示词|系統提示詞|内部指令|內部指令|私钥|私鑰|令牌|權杖|cookie|机密信息|機密信息)`), SeverityCritical},
+	{regexp.MustCompile(`(发送|上傳|上传|回传|回傳|窃取|竊取|外传|外傳).{0,8}(所有|全部|整个|整個|本地).{0,6}(文件|檔案|数据|資料|上下文|环境变量|環境變數)`), SeverityCritical},
+	{regexp.MustCompile(`(你现在是|你現在是|从现在开始你是|從現在開始你是)`), SeverityHigh},
+	{regexp.MustCompile(`(新的|新增的).{0,5}(系统|系統)?(指令|指示)|覆盖.{0,8}(原有|之前|系统).{0,5}(指令|规则)|覆寫.{0,8}(原有|之前|系統).{0,5}(指令|規則)|更新.{0,8}(系统提示词|系統提示詞|系统指令|系統指令|指令|指示)`), SeverityHigh},
+	{regexp.MustCompile(`(不要|請勿|请勿).{0,5}(告诉|告知|通知).{0,5}用户`), SeverityHigh},
+	{regexp.MustCompile(`(必须|務必|立刻|立即).{0,5}(执行|執行|运行|運行).{0,5}(命令|指令|代码|程式碼|脚本|腳本)`), SeverityHigh},
+	{regexp.MustCompile(`(立即|立刻|務必).{0,5}(执行|執行|运行|運行)(以下|这个|此|該).{0,5}(命令|指令|代码|程式碼|脚本|腳本)`), SeverityHigh},
 }
 
 var (
