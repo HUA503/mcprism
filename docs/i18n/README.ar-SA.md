@@ -232,7 +232,10 @@ mcprism vet --probe -- npx -y some-mcp-server   # إطلاق فعلي وتعدا
 # ابحث في MCP Registry الرسمي وافحص البيانات العامة الثابتة
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
-mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
+mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
+```
+
+أضف `--all` لمتابعة جميع صفحات النتائج. أضف `--require-complete` لكي يفشل الأمر إذا كان التدقيق غير مكتمل. تُفحص البيانات الوصفية العامة فقط، ولا تُشغّل الخوادم.
 
 mcprism inspect mcp.json     # تعداد أدوات/موارد/أوامر الخادم
 mcprism rules                # تعداد القواعد المدمجة
