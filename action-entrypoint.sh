@@ -6,9 +6,11 @@ fail() {
   exit 2
 }
 
-if [[ "$(uname -s)" != "Linux" ]]; then
-  fail "this action currently supports Linux runners only"
-fi
+case "$(uname -s)" in
+  Linux) os="linux" ;;
+  Darwin) os="darwin" ;;
+  *) fail "unsupported runner OS: $(uname -s); use Linux or macOS" ;;
+esac
 
 version="${MC_PRISM_VERSION:-}"
 if [[ -z "$version" ]]; then
@@ -31,10 +33,10 @@ fi
 case "$(uname -m)" in
   x86_64|amd64) arch="amd64" ;;
   aarch64|arm64) arch="arm64" ;;
-  *) fail "unsupported Linux architecture: $(uname -m)" ;;
+  *) fail "unsupported ${os} architecture: $(uname -m)" ;;
 esac
 
-archive="mcprism_linux_${arch}.tar.gz"
+archive="mcprism_${os}_${arch}.tar.gz"
 base="https://github.com/HUA503/mcprism/releases/download/${version}"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
@@ -46,7 +48,13 @@ curl --fail --location --silent --show-error --retry 3 \
 
 expected="$(awk -v name="$archive" '$2 == name || $2 == "*" name { print $1; exit }' "${tmp_dir}/checksums.txt")"
 [[ "$expected" =~ ^[[:xdigit:]]{64}$ ]] || fail "no valid SHA-256 checksum found for ${archive} in release ${version}"
-actual="$(sha256sum "${tmp_dir}/${archive}" | awk '{print $1}')"
+if command -v sha256sum >/dev/null 2>&1; then
+  actual="$(sha256sum "${tmp_dir}/${archive}" | awk '{print $1}')"
+elif command -v shasum >/dev/null 2>&1; then
+  actual="$(shasum -a 256 "${tmp_dir}/${archive}" | awk '{print $1}')"
+else
+  fail "no SHA-256 utility found (need sha256sum or shasum)"
+fi
 [[ "$actual" == "$expected" ]] || fail "SHA-256 verification failed for ${archive}"
 
 tar -xzf "${tmp_dir}/${archive}" -C "$tmp_dir"

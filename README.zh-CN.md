@@ -462,7 +462,7 @@ Roo Code 配置。全局扩展配置也会从 VS Code 兼容编辑器的存储�
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.14.0
+  rev: v0.15.0
   hooks:
     - id: mcprism
 ```
@@ -495,7 +495,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.14.0
+        uses: HUA503/mcprism@v0.15.0
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
@@ -508,10 +508,10 @@ jobs:
           sarif_file: mcprism.sarif
 ```
 
-该 Action 会下载指定的 Linux release、验证 SHA-256 校验和，并默认使用
+该 Action 会下载匹配的 Linux 或 macOS release、验证 SHA-256 校验和，并默认使用
 `ci` profile。可通过 `policy`、`suppressions`、`baseline` 或 `fail-on` 设置自定义门禁。
 `sarif-file` 输出可传给上传步骤。上传结果需要 workflow 有
-`security-events: write` 权限。Windows、macOS、Jenkins、GitLab 等场景请使用上面的 CLI 示例。
+`security-events: write` 权限。Windows、Jenkins、GitLab 等场景请使用上面的 CLI 示例。
 Action 固定到 release tag 时会自动使用同版本二进制。需要更强的供应链保护时，可将 Action 固定到完整 commit SHA。
 
 要在 CI 中发现单个 server 的工具定义变化，先运行
