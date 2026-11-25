@@ -260,7 +260,7 @@ Release archives from v0.8.4 onward include verifiable build provenance. See
 ## Quick start
 
 ```sh
-# Auto-discover configs for Claude, Codex, GitHub Copilot CLI, Zed, Gemini CLI, OpenCode, ...
+# Auto-discover configs for Claude, Codex, Amazon Q, GitHub Copilot CLI, Zed, Gemini CLI, OpenCode, ...
 mcprism scan
 
 # See which MCP configs auto-discovery can find
@@ -562,8 +562,11 @@ The full list with the OWASP crosswalk is in [docs/RULES.md](docs/RULES.md).
 
 mcprism reads the JSON/JSONC MCP config used by Claude Desktop, Claude Code,
 GitHub Copilot CLI, Zed, Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline,
-Roo Code, Continue and similar tools, Gemini CLI's `~/.gemini/settings.json`
-and `.gemini/settings.json`, plus Codex's TOML config. Zed uses `context_servers`
+Roo Code, Continue and similar tools, Amazon Q Developer's global
+`~/.aws/amazonq/agents/default.json` and project `.amazonq/default.json`
+config (plus the legacy `mcp.json` locations), Gemini CLI's
+`~/.gemini/settings.json` and `.gemini/settings.json`, plus Codex's TOML config.
+Zed uses `context_servers`
 in `~/.config/zed/settings.json` (or `~/.zed/settings.json` on macOS) and
 `.zed/settings.json` for projects, including profile-specific server maps.
 Copilot CLI user servers come from `~/.copilot/mcp-config.json` (or
@@ -601,6 +604,11 @@ VS Code-compatible editor storage.
 Cline CLI discovery checks `~/.cline/data/settings/cline_mcp_settings.json`.
 Set `CLINE_MCP_SETTINGS_PATH` when Cline uses a custom settings path. The
 scanner also checks the legacy VS Code extension storage locations.
+
+Amazon Q Developer discovery checks the IDE's global agent config at
+`~/.aws/amazonq/agents/default.json` and project config at
+`.amazonq/default.json`. It also checks the legacy global and project
+`mcp.json` files.
 
 ## CI/CD
 

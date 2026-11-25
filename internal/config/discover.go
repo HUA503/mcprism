@@ -114,6 +114,11 @@ func globalCandidates() []candPath {
 	}
 	add("github-copilot-cli", "global", filepath.Join(copilotHome, "mcp-config.json"))
 
+	// Amazon Q Developer IDE stores its default agent and legacy MCP config here.
+	amazonQDir := filepath.Join(home, ".aws", "amazonq")
+	add("amazon-q", "global", filepath.Join(amazonQDir, "agents", "default.json"))
+	add("amazon-q", "global", filepath.Join(amazonQDir, "mcp.json"))
+
 	// Gemini CLI user settings use JSON with a top-level mcpServers object.
 	add("gemini-cli", "global", filepath.Join(home, ".gemini", "settings.json"))
 
@@ -213,6 +218,8 @@ func projectCandidates(dir string) []candPath {
 			candPath{filepath.Join(d, ".cursor", "mcp.json"), "cursor", "project"},
 			candPath{filepath.Join(d, ".vscode", "mcp.json"), "vscode", "project"},
 			candPath{filepath.Join(d, ".roo", "mcp.json"), "roo-code", "project"},
+			candPath{filepath.Join(d, ".amazonq", "default.json"), "amazon-q", "project"},
+			candPath{filepath.Join(d, ".amazonq", "mcp.json"), "amazon-q", "project"},
 			candPath{filepath.Join(d, ".gemini", "settings.json"), "gemini-cli", "project"},
 			candPath{filepath.Join(d, "opencode.json"), "opencode", "project"},
 			candPath{filepath.Join(d, "opencode.jsonc"), "opencode", "project"},
