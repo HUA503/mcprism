@@ -10,7 +10,7 @@
 
 MCP server 把 AI 助手连接到 GitHub、文件、数据库等外部工具和数据。它可能运行命令或读取文件，因此 mcprism 会检查它的配置和本地源码，并报告潜在风险。
 
-运行 `mcprism scan` 检查 AI 客户端里已配置的 server；用 `mcprism vet ...` 单独审查准备接入的 server。动态探测需要主动开启，只会列出工具，不会调用工具。如果你暂时不用 MCP，可能还不需要 mcprism。
+运行 `mcprism scan` 检查 AI 客户端里已配置的 server；如果没有发现配置，用 `mcprism doctor` 查看发现结果；用 `mcprism vet ...` 单独审查准备接入的 server。动态探测需要主动开启，只会列出工具，不会调用工具。如果你暂时不用 MCP，可能还不需要 mcprism。
 
 mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server 的安全扫描器。它从三个角度审查一个 server：
 
@@ -197,6 +197,9 @@ GoReleaser 会在每次正式发布时更新 Scoop 清单和 Homebrew 公式。H
 ```sh
 # 自动发现 Claude、Codex、GitHub Copilot CLI、Zed、Gemini CLI、OpenCode、Roo Code 等客户端的配置
 mcprism scan
+
+# 查看自动发现能找到哪些 MCP 配置
+mcprism doctor
 
 # 扫描指定配置文件
 mcprism scan ~/.claude.json
@@ -462,7 +465,7 @@ Roo Code 配置。全局扩展配置也会从 VS Code 兼容编辑器的存储�
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.15.0
+  rev: v0.16.0
   hooks:
     - id: mcprism
 ```
@@ -495,7 +498,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.15.0
+        uses: HUA503/mcprism@v0.16.0
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
