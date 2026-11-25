@@ -1,8 +1,9 @@
 # Rule catalog
 
-mcprism ships with 30 deterministic rules. Every finding is mapped to the
-OWASP Top 10 for Agentic Applications - MCP risks (MCP01-MCP07). No rule needs
-an LLM or an internet connection; everything runs locally.
+mcprism ships with 35 deterministic built-in rules. Findings are mapped to the
+OWASP Top 10 for Agentic Applications - MCP risks (MCP01-MCP07) where
+applicable; MCP206 is a usability finding without an OWASP category. No rule
+needs an LLM or an internet connection; everything runs locally.
 
 Severity is contextual and can be raised by other signals, such as a recognized
 credential format or an Authorization header over plaintext HTTP. Rules can be
@@ -64,6 +65,7 @@ arguments into sinks. [SAST.md](SAST.md) has vulnerable and fixed code for each.
 | MCP804 | MCP05 | High (Critical with input) | Dynamic code execution (eval/Function/exec) |
 | MCP805 | MCP05 | High | Unsafe deserialization (pickle/marshal/yaml.load) |
 | MCP806 | MCP01 | High (Medium suspected) | Hardcoded credential in the source |
+| MCP807 | MCP05 | Medium | Tool input controls a dynamic module `require()` target |
 
 ## Connectivity & cross-server
 
@@ -88,7 +90,7 @@ arguments into sinks. [SAST.md](SAST.md) has vulnerable and fixed code for each.
 | MCP02 | Privilege escalation via scope creep | MCP103, MCP105, MCP301, MCP303, MCP701, MCP802, MCP803 |
 | MCP03 | Tool poisoning (rug pull, schema poisoning, shadowing) | MCP201-MCP206, MCP601 |
 | MCP04 | Software supply chain & dependency tampering | MCP106, MCP402, MCP403 |
-| MCP05 | Command injection & execution | MCP104, MCP302, MCP801, MCP804, MCP805 |
+| MCP05 | Command injection & execution | MCP104, MCP302, MCP801, MCP804, MCP805, MCP807 |
 | MCP07 | Insufficient authentication & authorization | MCP107, MCP501, MCP700 |
 
 > False positives: secrets referenced as `${VAR}`, obvious placeholders
