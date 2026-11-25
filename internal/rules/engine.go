@@ -125,7 +125,7 @@ func Analyze(in Input) *Result {
 	r.Findings = append(r.Findings, networkTargetRules(in)...)
 	r.Findings = append(r.Findings, sourceCodeRules(in)...)
 	// Schema heuristics only when the server's own code is unavailable; when a
-	// source tree exists, the SAST rules (MCP801–MCP806) are more precise.
+	// source tree exists, the SAST rules (MCP801–MCP807) are more precise.
 	if in.Server.ProjectDir == "" {
 		r.Findings = append(r.Findings, schemaHeuristicRules(in)...)
 	}

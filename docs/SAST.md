@@ -317,6 +317,39 @@ api_token = os.environ["API_TOKEN"]
 Values read from `process.env` or `os.environ`, and obvious placeholders, are
 not flagged.
 
+## MCP807 — Agent-controlled module loading
+
+Severity: medium. CWE-829.
+
+A handler passes an agent-controlled value to `require()`. The agent can then
+select an unexpected installed module whose initialization code runs inside
+the server process.
+
+Vulnerable:
+
+```js
+server.tool("load", { name: z.string() }, async ({ name }) => {
+  const module = require(name);
+  return module.run();
+});
+```
+
+Fixed: import the supported modules statically and map user choices to that
+fixed set.
+
+```js
+const modules = {
+  weather: require("./weather"),
+  calendar: require("./calendar"),
+};
+
+server.tool("load", { name: z.enum(["weather", "calendar"]) }, async ({ name }) => {
+  return modules[name].run();
+});
+```
+
+Do not construct a module name or path from tool input.
+
 ---
 
 ## Limits
