@@ -136,13 +136,13 @@ mcprism vet server.py            # 审查单个文件
 ## 报告
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png?v=0.9.2" alt="mcprism 对在线 server 的 HTML 报告" width="86%">
+  <img src="assets/screenshot-dynamic.png?v=0.14.0" alt="mcprism 对在线 server 的 HTML 报告" width="86%">
 </p>
 
 跨多个 server 的批量审查（静态模式）：
 
 <p align="center">
-  <img src="assets/screenshot-static.png?v=0.9.2" alt="mcprism 跨多个 server 的 HTML 报告" width="70%">
+  <img src="assets/screenshot-static.png?v=0.14.0" alt="mcprism 跨多个 server 的 HTML 报告" width="70%">
 </p>
 
 ## 安装
