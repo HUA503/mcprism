@@ -385,6 +385,9 @@ También revisa la configuración del sistema: `/etc/codex/config.toml` en Unix 
 
 
 Gemini CLI también se detecta automáticamente en la configuración del usuario (`~/.gemini/settings.json`), del proyecto (`.gemini/settings.json`) y del sistema.
+
+También se admite OpenCode: se leen los servidores de `mcp.servers` en `opencode.json(c)` y se detectan configuraciones de usuario, proyecto y sistema.
+
 ## CI/CD
 
 Bloquea servidores de riesgo en una canalización con el perfil `ci`:

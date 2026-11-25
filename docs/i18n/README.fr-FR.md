@@ -385,6 +385,9 @@ Les configurations système sont également vérifiées : `/etc/codex/config.tom
 
 
 Gemini CLI est également détecté automatiquement dans les réglages utilisateur (`~/.gemini/settings.json`), projet (`.gemini/settings.json`) et système.
+
+OpenCode est également pris en charge : les serveurs de `mcp.servers` dans `opencode.json(c)` sont détectés dans les configurations utilisateur, projet et système.
+
 ## CI/CD
 
 Bloquez les serveurs risqués dans un pipeline avec le profil `ci` :

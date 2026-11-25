@@ -385,6 +385,9 @@ Codex MCP TOML 설정도 지원합니다. 전역 설정은 `$CODEX_HOME/config.t
 
 
 Gemini CLI 사용자 설정(`~/.gemini/settings.json`), 프로젝트 설정(`.gemini/settings.json`), 시스템 설정도 자동으로 검색합니다.
+
+OpenCode도 지원합니다. `opencode.json(c)`의 `mcp.servers`를 읽고 사용자, 프로젝트, 시스템 설정을 자동 검색합니다.
+
 ## CI/CD
 
 `ci` 프로필으로 파이프라인에서 위험한 서버를 차단:
