@@ -10,12 +10,16 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/HUA503/mcprism/internal/config"
 )
 
-// PreferredVersion 是客户端发起握手时请求的协议版本。
-const PreferredVersion = "2025-06-18"
+// PreferredVersion 是旧版握手协议中最新的版本。
+const PreferredVersion = "2025-11-25"
+
+// ModernVersion 是使用无状态请求与 server/discover 的当前协议版本。
+const ModernVersion = "2026-07-28"
 
 // ClientVersion 是 mcprism 自身版本，会在 clientInfo 中上报。
 // ClientVersion is reported to servers in clientInfo. The main package sets it
@@ -58,9 +62,11 @@ type transport interface {
 
 // Client 是 MCP 客户端会话。
 type Client struct {
-	tr    transport
-	once  sync.Once
-	idSeq int64
+	tr      transport
+	once    sync.Once
+	idSeq   int64
+	version string
+	modern  bool
 }
 
 // Dial 根据 server 配置建立 MCP 会话。
@@ -100,7 +106,7 @@ type ServerInfo struct {
 	Version string `json:"version"`
 }
 
-// InitializeResult 是 initialize 的返回。
+// InitializeResult 是 legacy initialize 或现代 server/discover 的统一结果。
 type InitializeResult struct {
 	ProtocolVersion string         `json:"protocolVersion"`
 	Capabilities    map[string]any `json:"capabilities"`
@@ -108,10 +114,107 @@ type InitializeResult struct {
 	Instructions    string         `json:"instructions,omitempty"`
 }
 
-// Initialize 执行 MCP 握手并发送 initialized 通知。
+// Initialize 协商新旧 MCP 协议。新版 server 使用 server/discover 与
+// 无状态请求；旧版 server 回退到 initialize/initialized 握手。
 func (c *Client) Initialize(ctx context.Context) (*InitializeResult, error) {
+	probeCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	params := requestMeta(ModernVersion)
+	raw, probeErr := c.tr.call(probeCtx, c.nextID(), "server/discover", params)
+	cancel()
+
+	if probeErr == nil {
+		var discovered discoverResult
+		if err := json.Unmarshal(raw, &discovered); err == nil && len(discovered.SupportedVersions) > 0 {
+			version, ok := selectVersion(discovered.SupportedVersions)
+			if !ok {
+				return nil, incompatibleVersionError(discovered.SupportedVersions)
+			}
+			if version == ModernVersion {
+				c.version, c.modern = version, true
+				return &InitializeResult{
+					ProtocolVersion: version,
+					Capabilities:    discovered.Capabilities,
+					ServerInfo:      discovered.Meta.ServerInfo,
+					Instructions:    discovered.Instructions,
+				}, nil
+			}
+			return c.initializeLegacy(ctx, version)
+		}
+	} else if rpcErr, ok := probeErr.(*RPCError); ok && rpcErr.Code == unsupportedProtocolVersionCode {
+		versions := supportedVersions(rpcErr.Data)
+		if version, ok := selectVersion(versions); ok && version != ModernVersion {
+			return c.initializeLegacy(ctx, version)
+		}
+		return nil, incompatibleVersionError(versions)
+	}
+
+	// Older servers do not know server/discover. On stdio they may return an
+	// unknown-method error or stay silent until the bounded probe times out.
+	return c.initializeLegacy(ctx, PreferredVersion)
+}
+
+const unsupportedProtocolVersionCode = -32022
+
+type discoverResult struct {
+	SupportedVersions []string       `json:"supportedVersions"`
+	Capabilities      map[string]any `json:"capabilities"`
+	Meta              struct {
+		ServerInfo ServerInfo `json:"io.modelcontextprotocol/serverInfo"`
+	} `json:"_meta"`
+	Instructions string `json:"instructions"`
+}
+
+func requestMeta(version string) map[string]any {
+	return map[string]any{"_meta": map[string]any{
+		"io.modelcontextprotocol/protocolVersion":    version,
+		"io.modelcontextprotocol/clientInfo":         map[string]string{"name": "mcprism", "version": ClientVersion},
+		"io.modelcontextprotocol/clientCapabilities": map[string]any{},
+	}}
+}
+
+func selectVersion(versions []string) (string, bool) {
+	for _, preferred := range []string{ModernVersion, PreferredVersion, "2025-06-18", "2025-03-26", "2024-11-05"} {
+		for _, supported := range versions {
+			if supported == preferred {
+				return preferred, true
+			}
+		}
+	}
+	return "", false
+}
+
+func supportedVersions(data any) []string {
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		return nil
+	}
+	var detail struct {
+		Supported []string `json:"supported"`
+	}
+	if json.Unmarshal(encoded, &detail) != nil {
+		return nil
+	}
+	return detail.Supported
+}
+
+func incompatibleVersionError(versions []string) error {
+	if len(versions) == 0 {
+		return fmt.Errorf("MCP server does not support a protocol version mcprism can use")
+	}
+	return fmt.Errorf("MCP server supports protocol versions %v, but none are supported by mcprism", versions)
+}
+
+func (c *Client) setVersion(version string, modern bool) {
+	c.version, c.modern = version, modern
+	if setter, ok := c.tr.(interface{ setProtocolVersion(string) }); ok {
+		setter.setProtocolVersion(version)
+	}
+}
+
+func (c *Client) initializeLegacy(ctx context.Context, version string) (*InitializeResult, error) {
+	c.setVersion(version, false)
 	params := map[string]any{
-		"protocolVersion": PreferredVersion,
+		"protocolVersion": version,
 		"capabilities":    map[string]any{},
 		"clientInfo":      map[string]string{"name": "mcprism", "version": ClientVersion},
 	}
@@ -123,10 +226,21 @@ func (c *Client) Initialize(ctx context.Context) (*InitializeResult, error) {
 	if err := json.Unmarshal(raw, &res); err != nil {
 		return nil, fmt.Errorf("decode initialize: %w", err)
 	}
+	if res.ProtocolVersion != "" {
+		c.setVersion(res.ProtocolVersion, false)
+	}
 	if err := c.tr.notify(ctx, "notifications/initialized", map[string]any{}); err != nil {
 		return nil, fmt.Errorf("send initialized notification: %w", err)
 	}
 	return &res, nil
+}
+
+func (c *Client) call(ctx context.Context, method string, params map[string]any) (json.RawMessage, error) {
+	if c.modern {
+		metadata := requestMeta(c.version)["_meta"]
+		params["_meta"] = metadata
+	}
+	return c.tr.call(ctx, c.nextID(), method, params)
 }
 
 // Tool 是一个 MCP 工具定义。
@@ -151,7 +265,7 @@ func (c *Client) listAll(ctx context.Context, method, itemsField string, appendF
 		if cursor != "" {
 			params["cursor"] = cursor
 		}
-		raw, err := c.tr.call(ctx, c.nextID(), method, params)
+		raw, err := c.call(ctx, method, params)
 		if err != nil {
 			return err
 		}
@@ -253,6 +367,9 @@ func (c *Client) ListPrompts(ctx context.Context) ([]Prompt, error) {
 
 // Ping 发送 ping 心跳。
 func (c *Client) Ping(ctx context.Context) error {
-	_, err := c.tr.call(ctx, c.nextID(), "ping", map[string]any{})
+	if c.modern {
+		return fmt.Errorf("ping is not part of MCP protocol version %s", c.version)
+	}
+	_, err := c.call(ctx, "ping", map[string]any{})
 	return err
 }

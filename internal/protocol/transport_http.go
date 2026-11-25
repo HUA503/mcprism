@@ -99,11 +99,34 @@ func resolveHeaderEnv(headers map[string]string) map[string]string {
 const maxRPCMessageSize = 16 * 1024 * 1024
 
 type httpTransport struct {
-	url     string
-	headers map[string]string
-	client  *http.Client
-	mu      sync.Mutex
-	session string
+	url             string
+	headers         map[string]string
+	client          *http.Client
+	mu              sync.Mutex
+	session         string
+	protocolVersion string
+}
+
+func (t *httpTransport) setProtocolVersion(version string) {
+	t.mu.Lock()
+	t.protocolVersion = version
+	t.mu.Unlock()
+}
+
+func requestProtocolVersion(params any) string {
+	values, ok := params.(map[string]any)
+	if !ok {
+		return ""
+	}
+	if version, ok := values["protocolVersion"].(string); ok {
+		return version
+	}
+	metadata, ok := values["_meta"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	version, _ := metadata["io.modelcontextprotocol/protocolVersion"].(string)
+	return version
 }
 
 func (t *httpTransport) call(ctx context.Context, id int64, method string, params any) (json.RawMessage, error) {
@@ -139,7 +162,14 @@ func (t *httpTransport) roundTrip(ctx context.Context, req RPCRequest) (*RPCResp
 	for k, v := range t.headers {
 		httpReq.Header.Set(k, v)
 	}
+	httpReq.Header.Set("Mcp-Method", req.Method)
 	t.mu.Lock()
+	if version := requestProtocolVersion(req.Params); version != "" {
+		t.protocolVersion = version
+	}
+	if t.protocolVersion != "" {
+		httpReq.Header.Set("MCP-Protocol-Version", t.protocolVersion)
+	}
 	if t.session != "" {
 		httpReq.Header.Set("Mcp-Session-Id", t.session)
 	}
@@ -150,7 +180,15 @@ func (t *httpTransport) roundTrip(ctx context.Context, req RPCRequest) (*RPCResp
 		return nil, err
 	}
 	defer resp.Body.Close()
+	wantID, _ := req.ID.(int64)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		data, readErr := io.ReadAll(io.LimitReader(resp.Body, maxRPCMessageSize+1))
+		if readErr == nil && len(data) <= maxRPCMessageSize {
+			var rpcResp RPCResponse
+			if json.Unmarshal(data, &rpcResp) == nil && matchesRPCResponse(&rpcResp, wantID) {
+				return &rpcResp, nil
+			}
+		}
 		return nil, fmt.Errorf("MCP HTTP request returned status %d", resp.StatusCode)
 	}
 
@@ -164,7 +202,6 @@ func (t *httpTransport) roundTrip(ctx context.Context, req RPCRequest) (*RPCResp
 	if req.ID == nil {
 		return &RPCResponse{}, nil
 	}
-	wantID, _ := req.ID.(int64)
 	if strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream") {
 		return parseSSEResponse(resp.Body, wantID)
 	}
@@ -247,17 +284,24 @@ func parseSSEResponse(r io.Reader, wantID int64) (*RPCResponse, error) {
 // ---------- Legacy HTTP+SSE ----------
 
 type legacySSETransport struct {
-	url          string
-	postURL      string
-	headers      map[string]string
-	client       *http.Client
-	cancel       context.CancelFunc
-	mu           sync.Mutex
-	pending      map[int64]chan callResult
-	closed       chan struct{}
-	gotEndpoint  chan struct{}
-	endpointOnce sync.Once
-	readErr      error // protected by mu; recorded before closed is signaled
+	url             string
+	postURL         string
+	headers         map[string]string
+	client          *http.Client
+	protocolVersion string
+	cancel          context.CancelFunc
+	mu              sync.Mutex
+	pending         map[int64]chan callResult
+	closed          chan struct{}
+	gotEndpoint     chan struct{}
+	endpointOnce    sync.Once
+	readErr         error // protected by mu; recorded before closed is signaled
+}
+
+func (t *legacySSETransport) setProtocolVersion(version string) {
+	t.mu.Lock()
+	t.protocolVersion = version
+	t.mu.Unlock()
 }
 
 func (t *legacySSETransport) connect(ctx context.Context) error {
@@ -419,7 +463,11 @@ func (t *legacySSETransport) deliver(id int64, resp RPCResponse) {
 
 func (t *legacySSETransport) post(ctx context.Context, req RPCRequest) error {
 	t.mu.Lock()
+	if version := requestProtocolVersion(req.Params); version != "" {
+		t.protocolVersion = version
+	}
 	postURL := t.postURL
+	protocolVersion := t.protocolVersion
 	t.mu.Unlock()
 	if postURL == "" {
 		return fmt.Errorf("legacy sse endpoint not yet known")
@@ -438,6 +486,10 @@ func (t *legacySSETransport) post(ctx context.Context, req RPCRequest) error {
 	httpReq.Header.Set("Content-Type", "application/json")
 	for k, v := range t.headers {
 		httpReq.Header.Set(k, v)
+	}
+	httpReq.Header.Set("Mcp-Method", req.Method)
+	if protocolVersion != "" {
+		httpReq.Header.Set("MCP-Protocol-Version", protocolVersion)
 	}
 	resp, err := t.client.Do(httpReq)
 	if err != nil {
