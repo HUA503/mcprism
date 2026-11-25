@@ -74,7 +74,7 @@ set +e
 status=$?
 inventory_status="skipped"
 inventory_exit=0
-if [[ -n "$inventory_baseline" ]]; then
+if [[ -n "$inventory_baseline" && "$status" -ne 2 ]]; then
   "$binary" inventory verify "$inventory_target" --baseline "$inventory_baseline"
   inventory_exit=$?
   case "$inventory_exit" in
