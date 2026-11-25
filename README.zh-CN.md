@@ -465,7 +465,7 @@ Roo Code 配置。全局扩展配置也会从 VS Code 兼容编辑器的存储�
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.19.0
+  rev: v0.20.0
   hooks:
     - id: mcprism
 ```
@@ -498,7 +498,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.19.0
+        uses: HUA503/mcprism@v0.20.0
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
