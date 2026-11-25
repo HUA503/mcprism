@@ -8,6 +8,8 @@
 
 **Prüfen Sie MCP-Server auf Sicherheitsrisiken, bevor Sie sie mit Ihrer KI verbinden.**
 
+Wenn Sie MCP-Server mit Claude, Cursor, VS Code oder einem anderen KI-Client nutzen, prüft mcprism vor der Verbindung deren Konfiguration und lokalen Quellcode. Live-Prüfungen von Tool-Metadaten laufen nur, wenn Sie sie ausdrücklich aktivieren. Wenn Sie keine MCP-Server verwenden, brauchen Sie mcprism wahrscheinlich noch nicht.
+
 mcprism ist ein Sicherheits-Scanner für [Model Context Protocol](https://modelcontextprotocol.io/)-Server. Er betrachtet einen Server aus drei Blickwinkeln:
 
 1. **Konfiguration** — wie ein Client ihn startet oder verbindet: versionsfixierte Pakete, unverschlüsselte Übertragung, Anmeldedaten in der Konfiguration sowie Ziele auf Cloud-Metadaten und private Netzwerke.
