@@ -195,7 +195,7 @@ GoReleaser 会在每次正式发布时更新 Scoop 清单和 Homebrew 公式。H
 ## 快速开始
 
 ```sh
-# 自动发现 Claude、Codex、GitHub Copilot CLI、Zed、Gemini CLI、OpenCode、Roo Code 等客户端的配置
+# 自动发现 Claude、Codex、Amazon Q、GitHub Copilot CLI、Zed、Gemini CLI、OpenCode、Roo Code 等客户端的配置
 mcprism scan
 
 # 查看自动发现能找到哪些 MCP 配置
@@ -444,7 +444,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 ## 支持的客户端与传输
 
-mcprism 能读取 Claude Desktop、Claude Code、GitHub Copilot CLI、Zed、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Roo Code、Continue 等工具使用的 JSON/JSONC MCP 配置，也支持 Gemini CLI 的 `~/.gemini/settings.json`、项目级 `.gemini/settings.json` 和 Codex 的 TOML 配置。Zed 使用 `context_servers`，支持用户级 `~/.config/zed/settings.json`（macOS 也检查 `~/.zed/settings.json`）、项目级 `.zed/settings.json` 以及 Agent Profile 内的 server。Copilot CLI 的用户级 server 位于 `~/.copilot/mcp-config.json`（也可通过 `$COPILOT_HOME` 自定义），项目级配置位于 `.mcp.json` 和 `.github/mcp.json`，支持 `mcpServers` 对象和项目配置的顶层 server map。OpenCode 使用 `opencode.json(c)` 中的 `mcp.servers`，本地命令数组、环境变量和远程 URL 也会转换成统一格式进行检查。它支持 `mcpServers` / `servers` 对象和数组，以及 Codex 的 `[mcp_servers.<name>]` 表。传输层支持 stdio、Streamable HTTP 和旧版 HTTP+SSE。
+mcprism 能读取 Claude Desktop、Claude Code、Amazon Q Developer、GitHub Copilot CLI、Zed、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Roo Code、Continue 等工具使用的 JSON/JSONC MCP 配置，也支持 Gemini CLI 的 `~/.gemini/settings.json`、项目级 `.gemini/settings.json` 和 Codex 的 TOML 配置。Amazon Q Developer 检查全局 `~/.aws/amazonq/agents/default.json`、项目 `.amazonq/default.json` 和旧版 `mcp.json` 路径。Zed 使用 `context_servers`，支持用户级 `~/.config/zed/settings.json`（macOS 也检查 `~/.zed/settings.json`）、项目级 `.zed/settings.json` 以及 Agent Profile 内的 server。Copilot CLI 的用户级 server 位于 `~/.copilot/mcp-config.json`（也可通过 `$COPILOT_HOME` 自定义），项目级配置位于 `.mcp.json` 和 `.github/mcp.json`，支持 `mcpServers` 对象和项目配置的顶层 server map。OpenCode 使用 `opencode.json(c)` 中的 `mcp.servers`，本地命令数组、环境变量和远程 URL 也会转换成统一格式进行检查。它支持 `mcpServers` / `servers` 对象和数组，以及 Codex 的 `[mcp_servers.<name>]` 表。传输层支持 stdio、Streamable HTTP 和旧版 HTTP+SSE。
 
 Codex 自动发现会检查系统配置（Unix 上为 `/etc/codex/config.toml`，Windows 上为 `%ProgramData%/OpenAI/Codex/config.toml`）、用户配置（`$CODEX_HOME/config.toml`，未设置时为 `~/.codex/config.toml`），以及项目配置（`.codex/config.toml` 和 `config.toml`）。`bearer_token_env_var` 引用的环境变量仅在显式使用 `--dynamic` 动态探测时读取。
 
