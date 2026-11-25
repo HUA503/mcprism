@@ -6,7 +6,7 @@
 
 # mcprism
 
-**Prüfen Sie MCP-Server, bevor Ihre KI ihnen vertraut.**
+**Prüfen Sie MCP-Server auf Sicherheitsrisiken, bevor Sie sie mit Ihrer KI verbinden.**
 
 mcprism ist ein Sicherheits-Scanner für [Model Context Protocol](https://modelcontextprotocol.io/)-Server. Er betrachtet einen Server aus drei Blickwinkeln:
 
