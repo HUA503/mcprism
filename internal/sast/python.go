@@ -12,8 +12,9 @@ func analyzePython(path string) []Issue {
 	}
 	var out []Issue
 	functions := extractPythonFunctions(lines)
+	staticMaps := pyStaticMapNames(lines, nil)
 	for _, b := range extractPythonHandlers(lines) {
-		out = append(out, scanReachablePython(path, b, functions)...)
+		out = append(out, scanReachablePython(path, b, functions, staticMaps)...)
 	}
 	for _, l := range maskedPythonLines(lines) {
 		out = append(out, lineSecretIssues(path, l)...)
@@ -118,14 +119,14 @@ func extractPythonFunctions(lines []srcLine) map[string]handlerBlock {
 // scanReachablePython follows tainted positional/keyword arguments through
 // unambiguous helper functions in the same source file. Each helper is scanned
 // only for parameters reached from an MCP tool argument.
-func scanReachablePython(path string, entry handlerBlock, functions map[string]handlerBlock) []Issue {
+func scanReachablePython(path string, entry handlerBlock, functions map[string]handlerBlock, staticMaps map[string]bool) []Issue {
 	taintedByName := map[string]map[string]bool{}
 	processedByName := map[string]map[string]bool{}
 	queue := []handlerBlock{entry}
 	var out []Issue
 	for head := 0; head < len(queue); head++ {
 		block := queue[head]
-		seed := pyTaintedNames(block.lines, block.params)
+		seed := pyTaintedNames(block.lines, block.params, staticMaps)
 		known := taintedByName[block.name]
 		if known == nil {
 			known = map[string]bool{}
@@ -205,7 +206,7 @@ func pythonParamForArg(arg string, position int, params []string) string {
 	return ""
 }
 
-func pyTaintedNames(lines []srcLine, seeds []string) []string {
+func pyTaintedNames(lines []srcLine, seeds []string, fileStaticMaps map[string]bool) []string {
 	set := map[string]bool{}
 	for _, name := range seeds {
 		if name != "" {
@@ -216,6 +217,9 @@ func pyTaintedNames(lines []srcLine, seeds []string) []string {
 	for changed := true; changed; {
 		changed = false
 		staticMaps := pyStaticMapNames(lines, set)
+		for name := range fileStaticMaps {
+			staticMaps[name] = true
+		}
 		params := make([]string, 0, len(set))
 		for name := range set {
 			params = append(params, name)
