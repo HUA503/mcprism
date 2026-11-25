@@ -8,9 +8,13 @@ semantic versioning.
 
 ### Added
 
+- Save and verify privacy-preserving tool inventory locks to detect definition drift.
+
 - `registry audit --all` follows Registry cursors to audit every matching entry.
 
 ### Fixed
+
+- Reject MCP list responses that omit or null the item array, so incomplete enumeration cannot look like an empty inventory.
 
 - Reject Registry audit entries missing a name or version so incomplete records
   cannot be reported as fully audited.
