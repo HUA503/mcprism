@@ -60,7 +60,9 @@ not require an LLM or network access.
 
 ## Reporting bugs & security issues
 
-- Bugs and feature requests: open a GitHub issue using the templates.
+- Bugs and feature requests: open a GitHub issue using the templates. Before posting,
+  remove credentials, private server URLs, usernames and sensitive local paths from
+  commands, configs, reports and screenshots; use placeholders in a minimal example.
 - Security vulnerabilities: **do not open a public issue** — follow
   [`SECURITY.md`](SECURITY.md).
 
