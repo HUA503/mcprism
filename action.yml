@@ -1,5 +1,5 @@
 name: mcprism MCP security scan
-description: Scan MCP configs with mcprism and write a SARIF report for GitHub code scanning.
+description: Scan MCP configs and enforce policy in GitHub Actions. Write SARIF reports and detect tool inventory drift against a reviewed lock.
 author: HUA503
 branding:
   icon: shield
