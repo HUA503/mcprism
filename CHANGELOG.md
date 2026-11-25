@@ -15,6 +15,10 @@ semantic versioning.
 
 ### Fixed
 
+- Strip terminal control characters from Registry launch metadata before
+  scanning so findings remain safe to render and hidden controls cannot split
+  suspicious tokens.
+
 - Atomically replace tool inventory lock files with `--force`, preserving the previous lock if writing the replacement fails.
 
 - Reject MCP list responses that omit or null the item array, so incomplete enumeration cannot look like an empty inventory.
