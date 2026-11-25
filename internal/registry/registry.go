@@ -227,6 +227,19 @@ func SanitizeText(value string) string {
 	}, value)
 }
 
+// stripControlText removes control characters from metadata that is passed to
+// the rules engine. Unlike replacing them with spaces, removing them preserves
+// suspicious tokens and option names split by terminal controls, so the scan
+// remains conservative while its findings stay safe to print.
+func stripControlText(value string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, value)
+}
+
 func getJSON(parent context.Context, target string, out any) error {
 	ctx, cancel := context.WithTimeout(parent, requestTimeout)
 	defer cancel()
@@ -302,7 +315,7 @@ func remoteServer(name, source string, transport Transport, index int) (*config.
 	if err != nil {
 		return nil, err
 	}
-	remoteURL := SanitizeText(renderValue(transport.URL, transport.Variables))
+	remoteURL := stripControlText(renderValue(transport.URL, transport.Variables))
 	if remoteURL == "" {
 		return nil, errors.New("missing URL")
 	}
@@ -316,7 +329,7 @@ func remoteServer(name, source string, transport Transport, index int) (*config.
 		}
 	}
 	return &config.Server{
-		Name:      fmt.Sprintf("%s (remote %d)", name, index),
+		Name:      fmt.Sprintf("%s (remote %d)", SanitizeText(name), index),
 		Transport: serverTransport,
 		URL:       remoteURL,
 		Headers:   keyValueMap(transport.Headers),
@@ -339,7 +352,7 @@ func packageServer(name, source string, pkg Package, index int) (*config.Server,
 	default:
 		return nil, fmt.Errorf("unsupported package transport %q", pkg.Transport.Type)
 	}
-	command := strings.TrimSpace(SanitizeText(pkg.RuntimeHint))
+	command := strings.TrimSpace(stripControlText(pkg.RuntimeHint))
 	if command == "" {
 		switch strings.ToLower(pkg.RegistryType) {
 		case "npm":
@@ -358,13 +371,13 @@ func packageServer(name, source string, pkg Package, index int) (*config.Server,
 	if err != nil {
 		return nil, err
 	}
-	packageRef = SanitizeText(packageRef)
+	packageRef = stripControlText(packageRef)
 	args := make([]string, 0, len(pkg.RuntimeArguments)+len(pkg.PackageArguments)+1)
 	args = append(args, argumentValues(pkg.RuntimeArguments)...)
 	args = append(args, packageRef)
 	args = append(args, argumentValues(pkg.PackageArguments)...)
 	server := &config.Server{
-		Name:      fmt.Sprintf("%s (%s %d)", name, SanitizeText(pkg.RegistryType), index),
+		Name:      fmt.Sprintf("%s (%s %d)", SanitizeText(name), SanitizeText(pkg.RegistryType), index),
 		Transport: config.TransportStdio,
 		Command:   command,
 		Args:      args,
@@ -410,16 +423,17 @@ func argumentValues(args []Argument) []string {
 	var values []string
 	for _, arg := range args {
 		value := firstValue(arg.Value, arg.Default)
-		value = SanitizeText(renderValue(value, arg.Variables))
+		value = stripControlText(renderValue(value, arg.Variables))
 		if value == "" && arg.IsRequired {
 			value = "${MCPRISM_INPUT}"
 		}
 		switch strings.ToLower(arg.Type) {
 		case "named":
+			name := stripControlText(arg.Name)
 			if value == "" {
-				values = append(values, arg.Name)
-			} else if arg.Name != "" {
-				values = append(values, arg.Name+"="+value)
+				values = append(values, name)
+			} else if name != "" {
+				values = append(values, name+"="+value)
 			}
 		default:
 			if value != "" {
@@ -436,14 +450,15 @@ func keyValueMap(items []KeyValue) map[string]string {
 	}
 	values := make(map[string]string, len(items))
 	for _, item := range items {
-		if item.Name == "" {
+		name := strings.TrimSpace(stripControlText(item.Name))
+		if name == "" {
 			continue
 		}
-		value := renderValue(firstValue(item.Value, item.Default), item.Variables)
+		value := stripControlText(renderValue(firstValue(item.Value, item.Default), item.Variables))
 		if value == "" && item.IsSecret {
 			value = "${MCPRISM_SECRET}"
 		}
-		values[item.Name] = value
+		values[name] = value
 	}
 	return values
 }
