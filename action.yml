@@ -27,7 +27,7 @@ inputs:
     description: Optional JSON baseline report. When set, only new findings fail the scan.
     required: false
   inventory-target:
-    description: Optional MCP config file or server URL for tool inventory verification. This connects to the target and may launch a stdio process; use a dedicated runner without secrets.
+    description: Optional single-server MCP config file or server URL for tool inventory verification. This connects to the target and may launch a stdio process; use a dedicated runner without secrets.
     required: false
   inventory-baseline:
     description: Optional lock file created by `mcprism inventory save`. Requires inventory-target.
