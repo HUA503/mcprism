@@ -101,6 +101,14 @@ func globalCandidates() []candPath {
 
 	// Continue
 	add("continue", "global", filepath.Join(home, ".continue", "config.json"))
+
+	// GitHub Copilot CLI keeps user MCP servers under COPILOT_HOME (or ~/.copilot).
+	copilotHome := os.Getenv("COPILOT_HOME")
+	if copilotHome == "" {
+		copilotHome = filepath.Join(home, ".copilot")
+	}
+	add("github-copilot-cli", "global", filepath.Join(copilotHome, "mcp-config.json"))
+
 	// Gemini CLI user settings use JSON with a top-level mcpServers object.
 	add("gemini-cli", "global", filepath.Join(home, ".gemini", "settings.json"))
 
@@ -195,6 +203,7 @@ func projectCandidates(dir string) []candPath {
 	for d != "" {
 		out = append(out,
 			candPath{filepath.Join(d, ".mcp.json"), "generic", "project"},
+			candPath{filepath.Join(d, ".github", "mcp.json"), "github-copilot-cli", "project"},
 			candPath{filepath.Join(d, ".cursor", "mcp.json"), "cursor", "project"},
 			candPath{filepath.Join(d, ".vscode", "mcp.json"), "vscode", "project"},
 			candPath{filepath.Join(d, ".roo", "mcp.json"), "roo-code", "project"},

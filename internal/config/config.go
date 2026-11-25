@@ -89,6 +89,8 @@ func ParseFile(path, client, scope string) (*ClientFile, error) {
 	var servers []*Server
 	if strings.EqualFold(filepath.Ext(path), ".toml") {
 		servers, err = ParseCodexTOML(data)
+	} else if client == "github-copilot-cli" || filepath.Base(path) == ".mcp.json" {
+		servers, err = ParseCopilotBytes(data)
 	} else if strings.EqualFold(filepath.Base(path), "opencode.json") || strings.EqualFold(filepath.Base(path), "opencode.jsonc") {
 		servers, err = ParseOpenCodeBytes(data)
 	} else {
@@ -103,6 +105,40 @@ func ParseFile(path, client, scope string) (*ClientFile, error) {
 		s.Scope = scope
 	}
 	return &ClientFile{Path: path, Client: client, Scope: scope, Servers: servers}, nil
+}
+
+// ParseCopilotBytes supports GitHub Copilot CLI's mcpServers object and its
+// project-level bare server map. A bare map is only considered when no known
+// MCP wrapper key is present, so unrelated config keys are not treated as
+// servers.
+func ParseCopilotBytes(data []byte) ([]*Server, error) {
+	servers, err := ParseBytes(data)
+	if err != nil || len(servers) > 0 {
+		return servers, err
+	}
+	data = bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF})
+	cleaned := stripTrailingCommas(stripJSONC(data))
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(cleaned, &root); err != nil {
+		return nil, err
+	}
+	for _, key := range []string{"mcpServers", "servers", "projects"} {
+		if _, ok := root[key]; ok {
+			return nil, nil
+		}
+	}
+	names := make([]string, 0, len(root))
+	for name := range root {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		server, err := decodeServer(name, root[name])
+		if err == nil && server != nil && (server.Command != "" || server.URL != "") {
+			servers = append(servers, server)
+		}
+	}
+	return servers, nil
 }
 
 // ParseOpenCodeBytes extracts OpenCode's mcp.servers definitions from JSON/JSONC.

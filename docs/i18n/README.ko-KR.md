@@ -381,7 +381,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 ## 지원 클라이언트와 전송
 
-mcprism은 Claude Desktop, Claude Code, Cursor, VS Code(GitHub Copilot Chat), Windsurf, Cline, Continue 등이 쓰는 JSON/JSONC MCP 구성을 읽고 `mcpServers` 객체와 배열 형식 모두 지원합니다. 세 가지 MCP 전송(stdio, Streamable HTTP, 레거시 HTTP+SSE)을 모두 지원합니다.
+mcprism은 Claude Desktop, Claude Code, GitHub Copilot CLI, Cursor, VS Code(GitHub Copilot Chat), Windsurf, Cline, Continue 등이 쓰는 JSON/JSONC MCP 구성을 읽고 `mcpServers` 객체와 배열 형식 모두 지원합니다. 세 가지 MCP 전송(stdio, Streamable HTTP, 레거시 HTTP+SSE)을 모두 지원합니다.
 
 Codex MCP TOML 설정도 지원합니다. 전역 설정은 `$CODEX_HOME/config.toml`(미설정 시 `~/.codex/config.toml`)을 검색하고, 프로젝트 설정은 `.codex/config.toml`과 `config.toml`을 검색합니다.
 시스템 설정도 확인합니다. Unix에서는 `/etc/codex/config.toml`, Windows에서는 `%ProgramData%/OpenAI/Codex/config.toml`을 검색합니다.

@@ -28,6 +28,8 @@ Cline CLI.
 For ongoing review, `inventory save` and `inventory verify` detect changes to
 tool definitions; the lock stores tool names and fingerprints, not the
 definitions themselves. The GitHub Action can enforce that check in CI.
+Automatic config discovery includes GitHub Copilot CLI's user and
+repository-level MCP configurations.
 Inventory commands connect to the server to enumerate tools, so run them on a
 dedicated runner without secrets.
 

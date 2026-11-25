@@ -259,7 +259,7 @@ Release archives from v0.8.4 onward include verifiable build provenance. See
 ## Quick start
 
 ```sh
-# Auto-discover configs for Claude, Codex, Gemini CLI, OpenCode, Roo Code, ...
+# Auto-discover configs for Claude, Codex, GitHub Copilot CLI, Gemini CLI, OpenCode, ...
 mcprism scan
 
 # A specific config file
@@ -557,9 +557,11 @@ The full list with the OWASP crosswalk is in [docs/RULES.md](docs/RULES.md).
 ## Supported clients & transports
 
 mcprism reads the JSON/JSONC MCP config used by Claude Desktop, Claude Code,
-Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Roo Code, Continue and
-similar tools, Gemini CLI's `~/.gemini/settings.json` and `.gemini/settings.json`, plus
-Codex's TOML config. OpenCode uses `mcp.servers` in `opencode.json` or
+GitHub Copilot CLI, Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline,
+Roo Code, Continue and similar tools, Gemini CLI's `~/.gemini/settings.json`
+and `.gemini/settings.json`, plus Codex's TOML config. Copilot CLI user
+servers come from `~/.copilot/mcp-config.json` (or `$COPILOT_HOME`); project
+servers come from `.mcp.json` and `.github/mcp.json`. OpenCode uses `mcp.servers` in `opencode.json` or
 `opencode.jsonc`; local command arrays, environment maps, and remote URLs are
 normalized for the same checks. It understands `mcpServers` / `servers` JSON
 objects and arrays, and Codex's `[mcp_servers.<name>]` tables. It speaks all
