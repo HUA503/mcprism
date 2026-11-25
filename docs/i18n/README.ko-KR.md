@@ -46,14 +46,17 @@ MCP는 AI 에이전트를 외부 서버에 연결해 도구, 파일, 데이터�
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-mcprism scan
+mcprism demo
 ```
 
 ```powershell
 # Windows PowerShell
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
-mcprism scan
+mcprism demo
 ```
+
+내장 데모는 오프라인으로 실행되며 사용자 설정을 읽거나 서버를 시작하지
+않습니다. 실제로 구성한 MCP 서버를 검사하려면 `mcprism scan`을 실행하세요.
 
 ## 한 줄로 서버 하나 검사하기
 

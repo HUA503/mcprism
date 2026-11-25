@@ -62,14 +62,21 @@ mcprism هو ماسح أمني لخوادم <a href="https://modelcontextprotoco
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-mcprism scan
+mcprism demo
 ```
 
 ```powershell
 # Windows PowerShell
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
-mcprism scan
+mcprism demo
 ```
+
+<div dir="rtl">
+
+يعمل العرض التوضيحي المضمّن دون اتصال، ولا يقرأ إعداداتك ولا يشغّل أي خادم.
+لفحص خوادم MCP التي أعددتها فعليًا، شغّل `mcprism scan`.
+
+</div>
 
 <div dir="rtl">
 

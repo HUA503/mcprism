@@ -46,14 +46,18 @@ MCP verbindet Ihren KI-Agenten mit externen Servern für Tools, Dateien und Date
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-mcprism scan
+mcprism demo
 ```
 
 ```powershell
 # Windows PowerShell
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
-mcprism scan
+mcprism demo
 ```
+
+Die integrierte Demo funktioniert offline, liest keine Ihrer Konfigurationen
+und startet keinen Server. Für Ihre tatsächlich konfigurierten MCP-Server
+führen Sie `mcprism scan` aus.
 
 ## Einen Server in einer Zeile prüfen
 

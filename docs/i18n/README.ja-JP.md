@@ -46,14 +46,18 @@ MCP は AI エージェントを外部サーバーに接続し、ツール、フ
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-mcprism scan
+mcprism demo
 ```
 
 ```powershell
 # Windows PowerShell
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
-mcprism scan
+mcprism demo
 ```
+
+内蔵デモはオフラインで動作し、設定を読み込んだりサーバーを起動したり
+しません。実際に設定済みの MCP サーバーをスキャンするには
+`mcprism scan` を実行してください。
 
 ## 1 行でサーバーを審査
 

@@ -46,14 +46,18 @@ MCP conecta a tu agente de IA con servidores externos para usar herramientas, ar
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-mcprism scan
+mcprism demo
 ```
 
 ```powershell
 # Windows PowerShell
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
-mcprism scan
+mcprism demo
 ```
+
+La demostración incluida funciona sin conexión, no lee tu configuración ni
+inicia ningún servidor. Para analizar los servidores MCP que tienes configurados,
+ejecuta `mcprism scan`.
 
 ## Revisar un servidor en una línea
 
