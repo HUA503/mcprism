@@ -292,6 +292,10 @@ mcprism registry audit filesystem --all --limit 100 --require-complete --format 
 mcprism inspect mcp.json     # list a server's tools/resources/prompts
 mcprism rules                # list built-in rules
 mcprism profiles             # list built-in profiles
+
+# Lock one reviewed server's tool definitions and detect later drift
+mcprism inventory save one-server.json --output server.tools.lock.json
+mcprism inventory verify one-server.json --baseline server.tools.lock.json
 ```
 
 By default, Registry batch audit checks one page (up to 100 results). Add `--all`
