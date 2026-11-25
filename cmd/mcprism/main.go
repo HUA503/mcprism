@@ -52,7 +52,7 @@ func rootCmd() *cobra.Command {
 	root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		ui.Init(noColor, ascii)
 	}
-	root.AddCommand(scanCmd(), vetCmd(), inspectCmd(), registryCmd(), rulesCmd(), profilesCmd(), versionCmd())
+	root.AddCommand(scanCmd(), vetCmd(), inspectCmd(), registryCmd(), inventoryCmd(), rulesCmd(), profilesCmd(), versionCmd())
 	return root
 }
 
@@ -60,7 +60,7 @@ func exitCode(err error) int {
 	switch {
 	case err == nil:
 		return 0
-	case errors.Is(err, errAuditFailed):
+	case errors.Is(err, errAuditFailed), errors.Is(err, errInventoryDrift):
 		return 1
 	default:
 		fmt.Fprintln(os.Stderr, "Error:", err)
