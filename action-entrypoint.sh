@@ -19,6 +19,15 @@ if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
   fail "set version to a release tag such as v0.7.0, or pin this action to a release tag"
 fi
 
+inventory_target="${MC_PRISM_INVENTORY_TARGET:-}"
+inventory_baseline="${MC_PRISM_INVENTORY_BASELINE:-}"
+if [[ -n "$inventory_target" && -z "$inventory_baseline" ]]; then
+  fail "inventory-target requires inventory-baseline"
+fi
+if [[ -z "$inventory_target" && -n "$inventory_baseline" ]]; then
+  fail "inventory-baseline requires inventory-target"
+fi
+
 case "$(uname -m)" in
   x86_64|amd64) arch="amd64" ;;
   aarch64|arm64) arch="arm64" ;;
@@ -63,5 +72,24 @@ echo "version=${version}" >> "$GITHUB_OUTPUT"
 set +e
 "$binary" "${args[@]}"
 status=$?
+inventory_status="skipped"
+inventory_exit=0
+if [[ -n "$inventory_baseline" ]]; then
+  "$binary" inventory verify "$inventory_target" --baseline "$inventory_baseline"
+  inventory_exit=$?
+  case "$inventory_exit" in
+    0) inventory_status="passed" ;;
+    1) inventory_status="drift" ;;
+    *) inventory_status="error" ;;
+  esac
+fi
 set -e
-exit "$status"
+
+echo "inventory-status=${inventory_status}" >> "$GITHUB_OUTPUT"
+if [[ "$status" -eq 2 || "$inventory_exit" -eq 2 ]]; then
+  exit 2
+fi
+if [[ "$status" -ne 0 || "$inventory_exit" -ne 0 ]]; then
+  exit 1
+fi
+exit 0
