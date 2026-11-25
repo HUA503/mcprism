@@ -9,6 +9,7 @@ semantic versioning.
 ### Added
 
 - Save and verify privacy-preserving tool inventory locks to detect definition drift.
+- The GitHub Action can verify a saved tool inventory lock and fail when tool definitions drift. This opt-in check connects to the target; run it on a dedicated runner without secrets.
 
 - `registry audit --all` follows Registry cursors to audit every matching entry.
 
