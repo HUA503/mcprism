@@ -12,7 +12,8 @@ An MCP server connects your AI to outside tools and data such as GitHub, files,
 and databases. Because it may run commands or read files, mcprism reviews its
 configuration and local source code and reports potential risks. Run
 `mcprism scan` to check servers already configured in your AI client, or
-`mcprism vet ...` to review one before adding it. Optional live inspection
+`mcprism doctor` if discovery finds no servers. Use `mcprism vet ...` to review
+one before adding it. Optional live inspection
 lists a server's tools without calling them. If you do not use MCP servers, you
 probably do not need mcprism yet.
 
@@ -261,6 +262,9 @@ Release archives from v0.8.4 onward include verifiable build provenance. See
 ```sh
 # Auto-discover configs for Claude, Codex, GitHub Copilot CLI, Zed, Gemini CLI, OpenCode, ...
 mcprism scan
+
+# See which MCP configs auto-discovery can find
+mcprism doctor
 
 # A specific config file
 mcprism scan ~/.claude.json
@@ -605,7 +609,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.15.0
+  rev: v0.16.0
   hooks:
     - id: mcprism
 ```
@@ -640,7 +644,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.15.0
+        uses: HUA503/mcprism@v0.16.0
         with:
           target: mcp.json
           sarif-file: mcprism.sarif

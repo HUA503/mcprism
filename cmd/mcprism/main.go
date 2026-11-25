@@ -52,7 +52,7 @@ func rootCmd() *cobra.Command {
 	root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		ui.Init(noColor, ascii)
 	}
-	root.AddCommand(scanCmd(), demoCmd(), vetCmd(), inspectCmd(), registryCmd(), inventoryCmd(), rulesCmd(), profilesCmd(), versionCmd())
+	root.AddCommand(scanCmd(), demoCmd(), doctorCmd(), vetCmd(), inspectCmd(), registryCmd(), inventoryCmd(), rulesCmd(), profilesCmd(), versionCmd())
 	return root
 }
 
@@ -122,7 +122,10 @@ in a sandbox and treat it as executing untrusted code.`,
 				return err
 			}
 			if len(servers) == 0 {
-				return fmt.Errorf("no MCP servers found (point at a config file, a directory, a server URL, or use 'vet' for a launch command)")
+				if len(args) == 0 {
+					return fmt.Errorf("no MCP servers found during auto-discovery; run 'mcprism doctor' to inspect config discovery, pass a config file/directory/URL, or run 'mcprism demo'")
+				}
+				return fmt.Errorf("no MCP servers found in the supplied targets; check that they contain supported server definitions, or run 'mcprism demo'")
 			}
 			return audit(servers, files, dynamic, o)
 		},
