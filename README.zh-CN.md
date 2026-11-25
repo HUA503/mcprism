@@ -51,6 +51,12 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 mcprism scan
 ```
 
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+mcprism scan
+```
+
 ### 用示例离线体验
 
 在本仓库根目录运行以下命令。即使还没配置 MCP 客户端，也可以扫描示例，
