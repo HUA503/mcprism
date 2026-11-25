@@ -204,7 +204,7 @@ https://github.com/HUA503/mcprism
 2. **Post to one or two places where your account has history.** Start with Show HN and one Reddit sub; don't cross-post the same text across many subs the same day.
 3. **Timing.** Choose a weekday window when your target audience is likely to be online, then stay available to answer questions. Test timing with actual engagement rather than relying on a fixed schedule.
 4. **Post X with the GIF**, and reply with the thread if you have follow-ups.
-5. **Prepare a social preview image** and add it in the repository settings so shared links show the project name, MCP security use case, and release link. Verify the link preview after uploading.
+5. **Set the repository social preview.** Upload [`assets/social-preview.jpg`](../assets/social-preview.jpg) under **Settings → General → Social preview**. The card is 1280 × 640 and under 1 MB. Pair shared posts with the release link, then verify the rendered preview.
 6. **Watch the proposal issue** at
    https://github.com/bh-rat/awesome-mcp-enterprise/issues/154. Once it has the
    `approved-for-pr` label before opening a PR. The proposal is for the Emerging
