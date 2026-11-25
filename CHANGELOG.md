@@ -6,6 +6,13 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-11-25
+
+### Added
+
+- Discover Roo Code project MCP configs from `.roo/mcp.json`, including when
+  scanning a directory.
+
 ## [0.10.1] - 2026-11-25
 
 ### Added
@@ -410,7 +417,8 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
-[Unreleased]: https://github.com/HUA503/mcprism/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/HUA503/mcprism/compare/v0.10.2...HEAD
+[0.10.2]: https://github.com/HUA503/mcprism/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/HUA503/mcprism/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/HUA503/mcprism/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/HUA503/mcprism/releases/tag/v0.9.2
