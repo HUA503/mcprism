@@ -102,6 +102,11 @@ func globalCandidates() []candPath {
 	// Continue
 	add("continue", "global", filepath.Join(home, ".continue", "config.json"))
 
+	// Zed MCP servers are stored in the user's settings file.
+	add("zed", "global", filepath.Join(cfgDir, "zed", "settings.json"))
+	add("zed", "global", filepath.Join(home, ".config", "zed", "settings.json"))
+	add("zed", "global", filepath.Join(home, ".zed", "settings.json"))
+
 	// GitHub Copilot CLI keeps user MCP servers under COPILOT_HOME (or ~/.copilot).
 	copilotHome := os.Getenv("COPILOT_HOME")
 	if copilotHome == "" {
@@ -204,6 +209,7 @@ func projectCandidates(dir string) []candPath {
 		out = append(out,
 			candPath{filepath.Join(d, ".mcp.json"), "generic", "project"},
 			candPath{filepath.Join(d, ".github", "mcp.json"), "github-copilot-cli", "project"},
+			candPath{filepath.Join(d, ".zed", "settings.json"), "zed", "project"},
 			candPath{filepath.Join(d, ".cursor", "mcp.json"), "cursor", "project"},
 			candPath{filepath.Join(d, ".vscode", "mcp.json"), "vscode", "project"},
 			candPath{filepath.Join(d, ".roo", "mcp.json"), "roo-code", "project"},

@@ -53,7 +53,8 @@ func WalkDir(root string) ([]*ClientFile, error) {
 		isOpenCodeConfig := d.Name() == "opencode.json" || d.Name() == "opencode.jsonc"
 		isRooCodeConfig := d.Name() == "mcp.json" && filepath.Base(filepath.Dir(p)) == ".roo"
 		isCopilotProjectConfig := d.Name() == "mcp.json" && filepath.Base(filepath.Dir(p)) == ".github"
-		if !isConfigName(d.Name()) && !isCodexConfig && !isGeminiConfig && !isOpenCodeConfig && !isRooCodeConfig && !isCopilotProjectConfig {
+		isZedConfig := d.Name() == "settings.json" && filepath.Base(filepath.Dir(p)) == ".zed"
+		if !isConfigName(d.Name()) && !isCodexConfig && !isGeminiConfig && !isOpenCodeConfig && !isRooCodeConfig && !isCopilotProjectConfig && !isZedConfig {
 			return nil
 		}
 		client := "walk"
@@ -67,6 +68,8 @@ func WalkDir(root string) ([]*ClientFile, error) {
 			client = "roo-code"
 		} else if isCopilotProjectConfig {
 			client = "github-copilot-cli"
+		} else if isZedConfig {
+			client = "zed"
 		} else if d.Name() == ".mcp.json" {
 			client = "generic"
 		}
