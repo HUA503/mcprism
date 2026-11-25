@@ -94,6 +94,7 @@ mcprism vet server.py            # vérifier un fichier
 - Vérifications statique, source et en direct. Il lit la configuration, examine le source JS/TS/Python/Go quand une arborescence est présente, et effectue la poignée de main MCP pour lister les outils, ressources et invites. Il n'appelle jamais un outil.
 - Politique sous forme de code. Activez/désactivez des règles, changez les sévérités, autorisez ou refusez des paquets, commandes et domaines, et exigez l'isolation réseau. Les profils intégrés offrent les bases `default`, `strict` et `ci`.
 - Registre des risques acceptés. Supprimez des constats avec une raison et une date d'expiration. Les éléments supprimés restent visibles dans le rapport et reviennent à expiration.
+- Verrouillage de l’inventaire des outils. Enregistrez les noms et empreintes SHA-256 des outils approuvés ; toute addition, suppression ou modification fait échouer la vérification. Le verrou ne contient ni description ni schéma. L’enregistrement et la vérification se connectent au serveur pour énumérer les outils, sans en appeler aucun.
 - Déterministe. 35 règles associées à OWASP MCP01–MCP07. Les analyses locales de configuration et de code source fonctionnent hors ligne ; les commandes Registry récupèrent des métadonnées publiques depuis le registre officiel. Aucune télémétrie.
 - Des rapports pour les humains et les machines : table, JSON, Markdown, HTML, SARIF, JUnit XML, SBOM CycloneDX et CSV.
 - Scannez plusieurs cibles à la fois : fichiers, répertoires (récursivement) ou URL.
@@ -193,6 +194,10 @@ mcprism vet --probe -- npx -y some-mcp-server   # lancer réellement et lister l
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
 mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
+
+# Verrouiller les outils approuvés et détecter les changements
+mcprism inventory save one-server.json --output server.tools.lock.json
+mcprism inventory verify one-server.json --baseline server.tools.lock.json
 ```
 
 Ajoutez `--all` pour parcourir toutes les pages de résultats. Ajoutez `--require-complete` pour faire échouer la commande si l’audit est partiel. Seules les métadonnées publiques sont examinées ; les serveurs ne sont pas démarrés.
