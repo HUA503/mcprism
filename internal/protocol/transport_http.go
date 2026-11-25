@@ -185,7 +185,7 @@ func (t *httpTransport) roundTrip(ctx context.Context, req RPCRequest) (*RPCResp
 		data, readErr := io.ReadAll(io.LimitReader(resp.Body, maxRPCMessageSize+1))
 		if readErr == nil && len(data) <= maxRPCMessageSize {
 			var rpcResp RPCResponse
-			if json.Unmarshal(data, &rpcResp) == nil && matchesRPCResponse(&rpcResp, wantID) {
+			if json.Unmarshal(data, &rpcResp) == nil && matchesRPCResponse(&rpcResp, wantID) && rpcResp.Error != nil {
 				return &rpcResp, nil
 			}
 		}
