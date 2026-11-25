@@ -15,6 +15,8 @@ semantic versioning.
 
 ### Fixed
 
+- Atomically replace tool inventory lock files with `--force`, preserving the previous lock if writing the replacement fails.
+
 - Reject MCP list responses that omit or null the item array, so incomplete enumeration cannot look like an empty inventory.
 
 - Reject Registry audit entries missing a name or version so incomplete records
