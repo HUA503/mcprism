@@ -609,7 +609,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.16.0
+  rev: v0.17.0
   hooks:
     - id: mcprism
 ```
@@ -644,7 +644,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.16.0
+        uses: HUA503/mcprism@v0.17.0
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
@@ -657,9 +657,9 @@ jobs:
           sarif_file: mcprism.sarif
 ```
 
-The action downloads the matching Linux or macOS release, verifies its SHA-256
-checksum, and runs the `ci` profile by default. Set `policy`, `suppressions`,
-`baseline`, or `fail-on` to use your own gate. Its `sarif-file` output can be
+The action downloads the matching Linux, macOS, or Windows release, verifies its
+SHA-256 checksum, and runs the `ci` profile by default. Set `policy`,
+`suppressions`, `baseline`, or `fail-on` to use your own gate. Its `sarif-file` output can be
 passed to the upload step. The workflow needs `security-events: write` to publish findings.
 When the action is pinned to a release tag, it uses that matching binary
 version automatically. Pin to a full commit SHA for stricter supply-chain
@@ -670,8 +670,8 @@ To fail CI when one server's tool definitions change, create a reviewed lock wit
 `inventory-target` and `inventory-baseline` in the action. This opt-in check
 connects to the server to enumerate tools and may launch a stdio process; use a
 dedicated runner without secrets.
-For Windows, Jenkins, GitLab, or other runners, use the CLI examples
-above.
+The composite action supports Linux, macOS, and Windows GitHub-hosted runners.
+For Jenkins, GitLab, or other CI systems, use the CLI examples above.
 
 JUnit output works with the test report steps in Jenkins and GitLab, and
 CycloneDX output can be handed to an SBOM or vulnerability tracker.

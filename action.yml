@@ -43,18 +43,19 @@ inputs:
 outputs:
   sarif-file:
     description: Path to the generated SARIF report, relative to the workspace.
-    value: ${{ steps.scan.outputs.sarif-file }}
+    value: ${{ steps.scan.outputs.sarif-file || steps.scan-windows.outputs.sarif-file }}
   version:
     description: mcprism release version used for the scan.
-    value: ${{ steps.scan.outputs.version }}
+    value: ${{ steps.scan.outputs.version || steps.scan-windows.outputs.version }}
   inventory-status:
     description: Tool inventory verification result: passed, drift, error, or skipped.
-    value: ${{ steps.scan.outputs.inventory-status }}
+    value: ${{ steps.scan.outputs.inventory-status || steps.scan-windows.outputs.inventory-status }}
 
 runs:
   using: composite
   steps:
     - id: scan
+      if: runner.os != 'Windows'
       shell: bash
       env:
         MC_PRISM_VERSION: ${{ inputs.version }}
@@ -69,3 +70,19 @@ runs:
         MC_PRISM_FAIL_ON: ${{ inputs['fail-on'] }}
         MC_PRISM_SARIF_FILE: ${{ inputs.sarif-file }}
       run: bash "$GITHUB_ACTION_PATH/action-entrypoint.sh"
+    - id: scan-windows
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        MC_PRISM_VERSION: ${{ inputs.version }}
+        MC_PRISM_ACTION_REF: ${{ github.action_ref }}
+        MC_PRISM_TARGET: ${{ inputs.target }}
+        MC_PRISM_PROFILE: ${{ inputs.profile }}
+        MC_PRISM_POLICY: ${{ inputs.policy }}
+        MC_PRISM_SUPPRESSIONS: ${{ inputs.suppressions }}
+        MC_PRISM_BASELINE: ${{ inputs.baseline }}
+        MC_PRISM_INVENTORY_TARGET: ${{ inputs['inventory-target'] }}
+        MC_PRISM_INVENTORY_BASELINE: ${{ inputs['inventory-baseline'] }}
+        MC_PRISM_FAIL_ON: ${{ inputs['fail-on'] }}
+        MC_PRISM_SARIF_FILE: ${{ inputs.sarif-file }}
+      run: '& (Join-Path $env:GITHUB_ACTION_PATH "action-entrypoint.ps1")'

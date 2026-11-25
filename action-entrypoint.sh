@@ -18,7 +18,7 @@ if [[ -z "$version" ]]; then
   version="${version#refs/tags/}"
 fi
 if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-  fail "set version to a release tag such as v0.7.0, or pin this action to a release tag"
+  fail "set version to a release tag such as v0.17.0, or pin this action to a release tag"
 fi
 
 inventory_target="${MC_PRISM_INVENTORY_TARGET:-}"
