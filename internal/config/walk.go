@@ -29,8 +29,8 @@ func skipDirName(name string) bool {
 }
 
 // WalkDir recursively finds and parses MCP config files under root. It looks
-// for the common config names, Codex TOML config files and any *.mcp.json file,
-// skipping dependency and build directories.
+// for the common config names, Codex TOML config files, Gemini CLI settings,
+// and any *.mcp.json file, skipping dependency and build directories.
 func WalkDir(root string) ([]*ClientFile, error) {
 	var out []*ClientFile
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -45,12 +45,17 @@ func WalkDir(root string) ([]*ClientFile, error) {
 		}
 		isCodexConfig := d.Name() == "config.toml" &&
 			(filepath.Dir(p) == root || filepath.Base(filepath.Dir(p)) == ".codex")
-		if !isConfigName(d.Name()) && !isCodexConfig {
+		isGeminiConfig := d.Name() == "settings.json" &&
+			(filepath.Base(filepath.Dir(p)) == ".gemini" ||
+				(filepath.Base(root) == ".gemini" && filepath.Clean(filepath.Dir(p)) == filepath.Clean(root)))
+		if !isConfigName(d.Name()) && !isCodexConfig && !isGeminiConfig {
 			return nil
 		}
 		client := "walk"
 		if filepath.Ext(p) == ".toml" {
 			client = "codex"
+		} else if isGeminiConfig {
+			client = "gemini-cli"
 		}
 		cf, err := ParseFile(p, client, "project")
 		if err != nil {

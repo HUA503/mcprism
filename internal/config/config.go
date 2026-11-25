@@ -1,7 +1,7 @@
 // Package config 定义 MCP server 配置模型，并负责解析各类 MCP 客户端配置文件。
 //
 // mcprism 同时理解多种主流 MCP 客户端的配置格式（Claude Desktop、Claude Code、
-// Codex、Cursor、VS Code/Copilot、Windsurf、Cline 等），包括 JSON 和 TOML。
+// Codex、Gemini CLI、Cursor、VS Code/Copilot、Windsurf、Cline 等），包括 JSON 和 TOML。
 package config
 
 import (

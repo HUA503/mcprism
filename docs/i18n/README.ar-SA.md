@@ -204,7 +204,7 @@ nix run github:HUA503/mcprism -- scan
 </div>
 
 ```sh
-# يكتشف تلقائيًا تكوينات Claude وCodex وCursor وVS Code وWindsurf وغيرها
+# يكتشف تلقائيًا تكوينات Claude وCodex وGemini CLI وCursor وVS Code وWindsurf وغيرها
 mcprism scan
 
 # ملف تكوين محدد
@@ -461,6 +461,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 يدعم أيضًا إعداد MCP بصيغة TOML في Codex. يبحث عن الإعداد العام في `$CODEX_HOME/config.toml` (أو `~/.codex/config.toml`) وعن إعدادات المشروع في `.codex/config.toml` و`config.toml`.
 ويفحص أيضًا إعداد النظام: `/etc/codex/config.toml` في Unix و`%ProgramData%/OpenAI/Codex/config.toml` في Windows.
 
+
+يدعم الاكتشاف أيضًا إعدادات Gemini CLI للمستخدم والمشروع والنظام، بما فيها ملفات `system-defaults.json` و`settings.json`.
 ## CI/CD
 
 احجب الخوادم الخطرة داخل خط الأنابيب باستخدام الملف الشخصي `ci`:

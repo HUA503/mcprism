@@ -66,6 +66,7 @@ mcprism scan
 mcprism scan examples/clean.mcp.json
 mcprism scan examples/vulnerable.mcp.json --format html --output mcprism-report.html
 mcprism scan examples/codex-config.toml
+mcprism scan examples/gemini-settings.json
 ```
 
 第一个命令的退出码为 0。第二个命令会先保存报告，再以退出码 1 结束，
@@ -197,7 +198,7 @@ GoReleaser 会在每次正式发布时更新 Scoop 清单和 Homebrew 公式。H
 ## 快速开始
 
 ```sh
-# 自动发现 Claude、Codex、Cursor、VS Code、Windsurf 等客户端的配置
+# 自动发现 Claude、Codex、Gemini CLI、Cursor、VS Code 等客户端的配置
 mcprism scan
 
 # 扫描指定配置文件
@@ -443,9 +444,11 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 ## 支持的客户端与传输
 
-mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Continue 等工具使用的 JSON/JSONC MCP 配置，也支持 Codex 的 TOML 配置。它支持 `mcpServers` / `servers` 对象和数组，以及 Codex 的 `[mcp_servers.<name>]` 表。传输层支持 stdio、Streamable HTTP 和旧版 HTTP+SSE。
+mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Continue 等工具使用的 JSON/JSONC MCP 配置，也支持 Gemini CLI 的 `~/.gemini/settings.json`、项目级 `.gemini/settings.json` 和 Codex 的 TOML 配置。它支持 `mcpServers` / `servers` 对象和数组，以及 Codex 的 `[mcp_servers.<name>]` 表。传输层支持 stdio、Streamable HTTP 和旧版 HTTP+SSE。
 
 Codex 自动发现会检查系统配置（Unix 上为 `/etc/codex/config.toml`，Windows 上为 `%ProgramData%/OpenAI/Codex/config.toml`）、用户配置（`$CODEX_HOME/config.toml`，未设置时为 `~/.codex/config.toml`），以及项目配置（`.codex/config.toml` 和 `config.toml`）。`bearer_token_env_var` 引用的环境变量仅在显式使用 `--dynamic` 动态探测时读取。
+
+Gemini CLI 还会自动发现系统默认配置和系统设置：Linux 路径为 `/etc/gemini-cli/system-defaults.json` 与 `/etc/gemini-cli/settings.json`，macOS 路径为 `/Library/Application Support/GeminiCli/system-defaults.json` 与 `/Library/Application Support/GeminiCli/settings.json`，Windows 路径为 `%ProgramData%/gemini-cli/system-defaults.json` 与 `%ProgramData%/gemini-cli/settings.json`。可用 `GEMINI_CLI_SYSTEM_DEFAULTS_PATH` 和 `GEMINI_CLI_SYSTEM_SETTINGS_PATH` 分别覆盖系统路径。
 
 ## CI/CD
 
