@@ -5,7 +5,11 @@ body:
   - type: markdown
     attributes:
       value: |
-        Check the [Quick start](https://github.com/HUA503/mcprism#quick-start) and [FAQ](https://github.com/HUA503/mcprism#faq) first. If your question reveals a bug or missing explanation, this form helps us improve the project.
+        Start with the [English Quick start](https://github.com/HUA503/mcprism#quick-start)
+        or [简体中文快速开始](https://github.com/HUA503/mcprism/blob/main/README.zh-CN.md#快速开始),
+        then see the [English FAQ](https://github.com/HUA503/mcprism#faq)
+        or [中文常见问题](https://github.com/HUA503/mcprism/blob/main/README.zh-CN.md#常见问题).
+        If your question reveals a bug or missing explanation, this form helps us improve the project.
         
         Do not post credentials, private server URLs, usernames, sensitive paths, or raw scan reports. For a security vulnerability, use the [private reporting instructions](https://github.com/HUA503/mcprism/blob/main/SECURITY.md).
   - type: dropdown
@@ -33,7 +37,7 @@ body:
     id: version
     attributes:
       label: mcprism version (if installed)
-      placeholder: e.g. v0.9.1
+      placeholder: e.g. v0.9.2
   - type: input
     id: environment
     attributes:

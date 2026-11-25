@@ -8,6 +8,10 @@
 
 **把 MCP 服务器接入 AI 前，先检查它的安全风险。**
 
+如果你在 Claude、Cursor、VS Code 等 AI 客户端里使用 MCP server，mcprism
+可以检查它的配置和本地源码；你也可以显式开启探测，查看它公开的工具信息。
+如果你还没用 MCP server，暂时不需要安装 mcprism。
+
 mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server 的安全扫描器。它从三个角度审查一个 server：
 
 1. **配置**：客户端如何启动或连接它——版本是否固定、是否明文传输、配置里有没有凭据、是否指向云元数据或内网。
