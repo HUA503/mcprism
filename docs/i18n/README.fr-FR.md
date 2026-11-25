@@ -164,7 +164,7 @@ Sous Linux et macOS, si `/usr/local/bin` n'est pas accessible en écriture, l'in
 ## Démarrage rapide
 
 ```sh
-# Détecte automatiquement les configurations de Claude, Codex, Gemini CLI, OpenCode, Cursor, VS Code, Windsurf, ...
+# Détecte automatiquement les configurations de Claude, Codex, Gemini CLI, OpenCode, Roo Code, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # Un fichier de configuration précis

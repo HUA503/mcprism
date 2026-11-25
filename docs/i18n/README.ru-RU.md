@@ -164,7 +164,7 @@ nix run github:HUA503/mcprism -- scan
 ## Быстрый старт
 
 ```sh
-# Автоматически находит конфигурации Claude, Codex, Gemini CLI, OpenCode, Cursor, VS Code, Windsurf, ...
+# Автоматически находит конфигурации Claude, Codex, Gemini CLI, OpenCode, Roo Code, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # Конкретный файл конфигурации

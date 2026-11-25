@@ -199,7 +199,7 @@ GoReleaser 会在每次正式发布时更新 Scoop 清单和 Homebrew 公式。H
 ## 快速开始
 
 ```sh
-# 自动发现 Claude、Codex、Gemini CLI、OpenCode、Cursor 等客户端的配置
+# 自动发现 Claude、Codex、Gemini CLI、OpenCode、Roo Code、Cursor 等客户端的配置
 mcprism scan
 
 # 扫描指定配置文件
@@ -445,7 +445,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 ## 支持的客户端与传输
 
-mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Continue 等工具使用的 JSON/JSONC MCP 配置，也支持 Gemini CLI 的 `~/.gemini/settings.json`、项目级 `.gemini/settings.json` 和 Codex 的 TOML 配置。OpenCode 使用 `opencode.json(c)` 中的 `mcp.servers`，本地命令数组、环境变量和远程 URL 也会转换成统一格式进行检查。它支持 `mcpServers` / `servers` 对象和数组，以及 Codex 的 `[mcp_servers.<name>]` 表。传输层支持 stdio、Streamable HTTP 和旧版 HTTP+SSE。
+mcprism 能读取 Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Roo Code、Continue 等工具使用的 JSON/JSONC MCP 配置，也支持 Gemini CLI 的 `~/.gemini/settings.json`、项目级 `.gemini/settings.json` 和 Codex 的 TOML 配置。OpenCode 使用 `opencode.json(c)` 中的 `mcp.servers`，本地命令数组、环境变量和远程 URL 也会转换成统一格式进行检查。它支持 `mcpServers` / `servers` 对象和数组，以及 Codex 的 `[mcp_servers.<name>]` 表。传输层支持 stdio、Streamable HTTP 和旧版 HTTP+SSE。
 
 Codex 自动发现会检查系统配置（Unix 上为 `/etc/codex/config.toml`，Windows 上为 `%ProgramData%/OpenAI/Codex/config.toml`）、用户配置（`$CODEX_HOME/config.toml`，未设置时为 `~/.codex/config.toml`），以及项目配置（`.codex/config.toml` 和 `config.toml`）。`bearer_token_env_var` 引用的环境变量仅在显式使用 `--dynamic` 动态探测时读取。
 
@@ -456,6 +456,9 @@ OpenCode 自动发现用户配置 `~/.config/opencode/opencode.json(c)`、项目
 Cline CLI 会自动检查 `~/.cline/data/settings/cline_mcp_settings.json`。
 如果 Cline 使用自定义路径，可设置 `CLINE_MCP_SETTINGS_PATH`；旧版 VS Code
 扩展的配置存储路径也会继续检查。
+
+Roo Code 会自动发现项目中的 `.roo/mcp.json`；目录扫描也会将它识别为
+Roo Code 配置。全局扩展配置也会从 VS Code 兼容编辑器的存储位置读取。
 
 ## CI/CD
 
