@@ -260,7 +260,7 @@ Release archives from v0.8.4 onward include verifiable build provenance. See
 ## Quick start
 
 ```sh
-# Auto-discover configs for Claude, Codex, Amazon Q, GitHub Copilot CLI, Zed, Gemini CLI, OpenCode, ...
+# Auto-discover configs for Claude, Codex, Kiro, Amazon Q, GitHub Copilot CLI, Zed, Gemini CLI, OpenCode, ...
 mcprism scan
 
 # See which MCP configs auto-discovery can find
@@ -562,7 +562,8 @@ The full list with the OWASP crosswalk is in [docs/RULES.md](docs/RULES.md).
 
 mcprism reads the JSON/JSONC MCP config used by Claude Desktop, Claude Code,
 GitHub Copilot CLI, Zed, Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline,
-Roo Code, Continue and similar tools, Amazon Q Developer's global
+Roo Code, Continue and similar tools, Kiro's global `~/.kiro/settings/mcp.json`
+and project `.kiro/settings/mcp.json`, Amazon Q Developer's global
 `~/.aws/amazonq/agents/default.json` and project `.amazonq/default.json`
 config (plus the legacy `mcp.json` locations), Gemini CLI's
 `~/.gemini/settings.json` and `.gemini/settings.json`, plus Codex's TOML config.
@@ -609,6 +610,10 @@ Amazon Q Developer discovery checks the IDE's global agent config at
 `~/.aws/amazonq/agents/default.json` and project config at
 `.amazonq/default.json`. It also checks the legacy global and project
 `mcp.json` files.
+
+Kiro IDE and CLI share the global `~/.kiro/settings/mcp.json`; the project
+config is `.kiro/settings/mcp.json`. Set `KIRO_HOME` to override the global
+Kiro directory.
 
 ## CI/CD
 
