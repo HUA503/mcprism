@@ -84,6 +84,14 @@ func globalCandidates() []candPath {
 	// Windsurf
 	add("windsurf", "global", filepath.Join(home, ".codeium", "windsurf", "mcp_config.json"))
 
+	// Cline CLI uses a user-level settings file and supports an explicit path
+	// override. Keep the VS Code extension locations below for older installs.
+	clineSettings := os.Getenv("CLINE_MCP_SETTINGS_PATH")
+	if clineSettings == "" {
+		clineSettings = filepath.Join(home, ".cline", "data", "settings", "cline_mcp_settings.json")
+	}
+	add("cline", "global", clineSettings)
+
 	// Cline / Roo Code（VS Code 衍生存储）
 	for _, editor := range []string{"Code", "Code - Insiders", "VSCodium"} {
 		base := filepath.Join(cfgDir, editor, "User", "globalStorage")

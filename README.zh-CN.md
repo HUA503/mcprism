@@ -453,6 +453,10 @@ Gemini CLI 还会自动发现系统默认配置和系统设置：Linux 路径为
 
 OpenCode 自动发现用户配置 `~/.config/opencode/opencode.json(c)`、项目配置 `opencode.json(c)` 与 `.opencode/opencode.json(c)`，以及 Linux `/etc/opencode/`、macOS `/Library/Application Support/opencode/`、Windows `%ProgramData%/opencode/` 下的系统配置。
 
+Cline CLI 会自动检查 `~/.cline/data/settings/cline_mcp_settings.json`。
+如果 Cline 使用自定义路径，可设置 `CLINE_MCP_SETTINGS_PATH`；旧版 VS Code
+扩展的配置存储路径也会继续检查。
+
 ## CI/CD
 
 把 mcprism 配成 [pre-commit](https://pre-commit.com) 钩子，提交前自动检查改动的 MCP 配置：
