@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/HUA503/mcprism/internal/protocol"
@@ -218,31 +219,70 @@ func Save(path string, lock Lock, overwrite bool) error {
 	if err != nil {
 		return fmt.Errorf("encode lock file: %w", err)
 	}
-	flags := os.O_WRONLY | os.O_CREATE
+	data = append(data, '\n')
 	if overwrite {
-		flags |= os.O_TRUNC
-	} else {
-		flags |= os.O_EXCL
+		return replaceAtomically(path, data)
 	}
-	f, err := os.OpenFile(path, flags, 0o600)
+
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return fmt.Errorf("create lock file %q: %w", path, err)
 	}
 	ok := false
 	defer func() {
 		_ = f.Close()
-		if !ok && !overwrite {
+		if !ok {
 			_ = os.Remove(path)
 		}
 	}()
 	if err := f.Chmod(0o600); err != nil {
 		return fmt.Errorf("set lock file permissions: %w", err)
 	}
-	if _, err := f.Write(append(data, '\n')); err != nil {
+	if _, err := f.Write(data); err != nil {
 		return fmt.Errorf("write lock file: %w", err)
+	}
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("sync lock file: %w", err)
 	}
 	if err := f.Close(); err != nil {
 		return fmt.Errorf("close lock file: %w", err)
+	}
+	ok = true
+	return nil
+}
+
+// replaceAtomically writes beside the destination, then renames the completed
+// file over it. This keeps the previous lock intact on write errors and replaces
+// a symlink itself instead of following it to a different file.
+func replaceAtomically(path string, data []byte) error {
+	dir := filepath.Dir(path)
+	pattern := "." + filepath.Base(path) + ".tmp-*"
+	f, err := os.CreateTemp(dir, pattern)
+	if err != nil {
+		return fmt.Errorf("create temporary lock file for %q: %w", path, err)
+	}
+	tmpPath := f.Name()
+	ok := false
+	defer func() {
+		_ = f.Close()
+		if !ok {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+	if err := f.Chmod(0o600); err != nil {
+		return fmt.Errorf("set temporary lock file permissions: %w", err)
+	}
+	if _, err := f.Write(data); err != nil {
+		return fmt.Errorf("write temporary lock file: %w", err)
+	}
+	if err := f.Sync(); err != nil {
+		return fmt.Errorf("sync temporary lock file: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("close temporary lock file: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("replace lock file %q: %w", path, err)
 	}
 	ok = true
 	return nil
