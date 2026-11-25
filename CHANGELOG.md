@@ -6,6 +6,14 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-11-25
+
+### Added
+
+- Discover the current Cline CLI MCP settings file and respect the
+  `CLINE_MCP_SETTINGS_PATH` override while retaining legacy VS Code extension
+  discovery.
+
 ## [0.10.0] - 2026-11-25
 
 ### Added
@@ -402,7 +410,8 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
-[Unreleased]: https://github.com/HUA503/mcprism/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/HUA503/mcprism/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/HUA503/mcprism/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/HUA503/mcprism/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/HUA503/mcprism/releases/tag/v0.9.2
 [0.9.1]: https://github.com/HUA503/mcprism/releases/tag/v0.9.1
