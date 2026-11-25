@@ -67,37 +67,33 @@ report and a score before you let an agent use them, the way you would run
   <img src="assets/comparison.png" alt="Before and after using mcprism" width="100%">
 </p>
 
-## Quick start in two lines
+## First run in two lines
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-mcprism scan
+mcprism demo
 ```
 
 ```powershell
 # Windows PowerShell
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
-mcprism scan
+mcprism demo
 ```
 
 ### Try it without a configured MCP client
 
-From a checkout of this repository, scan the bundled examples and open the
-generated HTML report in your browser. Both scans run offline.
+The built-in demo is included in the binary, so you do not need a repository
+checkout or an MCP client. It scans one clean and several intentionally
+vulnerable examples. The scan runs offline, never reads your config, and never
+starts a server. Findings are expected and the demo exits successfully.
 
 ```sh
-mcprism scan examples/clean.mcp.json
-mcprism scan examples/vulnerable.mcp.json --format html --output mcprism-report.html
-mcprism scan examples/codex-config.toml
-mcprism scan examples/gemini-settings.json
-mcprism scan examples/opencode.jsonc
+mcprism demo
+mcprism demo --format html --output mcprism-demo.html
 ```
 
-The clean example exits with code 0. The second scan saves the report and
-exits with code 1 because the default policy flags critical findings. On
-Windows PowerShell, check the exit code with `$LASTEXITCODE` and open the
-report with `Invoke-Item .\mcprism-report.html`. See [Install](#install)
-for Windows binaries.
+On Windows PowerShell, open the report with `Invoke-Item .\mcprism-demo.html`.
+To scan your configured MCP clients, run `mcprism scan`.
 
 To auto-discover only project configs from your current directory and its
 parents, run `mcprism scan --project-only`.

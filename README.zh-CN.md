@@ -44,36 +44,32 @@ MCP 让 AI agent 连接外部 server 来获取工具、文件和数据。Claude 
   <img src="assets/comparison.png" alt="使用 mcprism 前后对比" width="100%">
 </p>
 
-## 两行快速上手
+## 两行快速体验
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
-mcprism scan
+mcprism demo
 ```
 
 ```powershell
 # Windows PowerShell
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
-mcprism scan
+mcprism demo
 ```
 
 ### 用示例离线体验
 
-在本仓库根目录运行以下命令。即使还没配置 MCP 客户端，也可以扫描示例，
-然后在浏览器里查看生成的 HTML 报告。
+内置示例随二进制一起发布，不需要克隆仓库或配置 MCP 客户端。它会扫描一个
+安全示例和多个故意设置了风险的示例。扫描完全离线，不读取你的配置，也不会
+启动任何 server。示例中的风险发现是预期结果，demo 命令仍会正常退出。
 
 ```sh
-mcprism scan examples/clean.mcp.json
-mcprism scan examples/vulnerable.mcp.json --format html --output mcprism-report.html
-mcprism scan examples/codex-config.toml
-mcprism scan examples/gemini-settings.json
-mcprism scan examples/opencode.jsonc
+mcprism demo
+mcprism demo --format html --output mcprism-demo.html
 ```
 
-第一个命令的退出码为 0。第二个命令会先保存报告，再以退出码 1 结束，
-因为默认策略拦截了严重级别为 `critical` 的发现。在 Windows PowerShell
-中，运行 `$LASTEXITCODE` 查看退出码，并用
-`Invoke-Item .\mcprism-report.html` 打开报告。Windows 二进制下载见[安装](#安装)。
+在 Windows PowerShell 中用 `Invoke-Item .\mcprism-demo.html` 打开报告。
+要扫描你实际配置的 MCP 客户端，运行 `mcprism scan`。
 
 要从当前目录向上查找项目级配置并跳过个人配置，运行 `mcprism scan --project-only`。
 
