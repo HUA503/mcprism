@@ -588,6 +588,10 @@ configs named `opencode.json(c)` or `.opencode/opencode.json(c)`, and system
 configs under `/etc/opencode/` (Linux), `/Library/Application Support/opencode/`
 (macOS), or `%ProgramData%/opencode/` (Windows).
 
+Cline CLI discovery checks `~/.cline/data/settings/cline_mcp_settings.json`.
+Set `CLINE_MCP_SETTINGS_PATH` when Cline uses a custom settings path. The
+scanner also checks the legacy VS Code extension storage locations.
+
 ## CI/CD
 
 Run mcprism as a [pre-commit](https://pre-commit.com) hook so changed MCP
