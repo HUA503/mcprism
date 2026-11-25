@@ -302,7 +302,7 @@ Registry 批量审计默认只检查一页（最多 100 条）。加上 `--all` 
 以静态模式扫描两个本地 server：
 
 ```text
-◆ mcprism   v0.2.0 · 2026-09-29
+◆ mcprism   v0.20.0 · 2026-11-25
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
