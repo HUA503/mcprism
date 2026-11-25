@@ -4,6 +4,7 @@
 package protocol
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -158,15 +159,20 @@ func (c *Client) listAll(ctx context.Context, method, itemsField string, appendF
 		if err := json.Unmarshal(raw, &body); err != nil {
 			return fmt.Errorf("decode %s: %w", method, err)
 		}
-		if items, ok := body[itemsField]; ok {
-			var list []json.RawMessage
-			if err := json.Unmarshal(items, &list); err != nil {
-				return fmt.Errorf("decode %s.%s: %w", method, itemsField, err)
-			}
-			for _, it := range list {
-				if err := appendFn(it); err != nil {
-					return err
-				}
+		items, ok := body[itemsField]
+		if !ok {
+			return fmt.Errorf("decode %s: missing %s array", method, itemsField)
+		}
+		if bytes.Equal(bytes.TrimSpace(items), []byte("null")) {
+			return fmt.Errorf("decode %s.%s: expected an array, got null", method, itemsField)
+		}
+		var list []json.RawMessage
+		if err := json.Unmarshal(items, &list); err != nil {
+			return fmt.Errorf("decode %s.%s: %w", method, itemsField, err)
+		}
+		for _, it := range list {
+			if err := appendFn(it); err != nil {
+				return err
 			}
 		}
 		next := ""
