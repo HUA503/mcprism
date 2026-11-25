@@ -466,6 +466,9 @@ Nein. mcprism meldet bekannte, beobachtbare Risiken. Es kann nicht beweisen, das
 - [x] Scoop-Paket
 - [x] Homebrew-Formel
 - [x] Nix-Paket
+- [ ] Mehr Sprachen für die SAST-Analyse (Rust, Java, C#)
+- [ ] Optionale mehrstufige/interprozedurale Taint-Verfolgung
+- [ ] Integrierter Sandbox-Wrapper für Live-Prüfungen
 
 ## Mitwirken
 
