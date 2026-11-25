@@ -107,7 +107,7 @@ mcprism vet server.py            # vérifier un fichier
 - Politique sous forme de code. Activez/désactivez des règles, changez les sévérités, autorisez ou refusez des paquets, commandes et domaines, et exigez l'isolation réseau. Les profils intégrés offrent les bases `default`, `strict` et `ci`.
 - Registre des risques acceptés. Supprimez des constats avec une raison et une date d'expiration. Les éléments supprimés restent visibles dans le rapport et reviennent à expiration.
 - Verrouillage de l’inventaire des outils. Enregistrez les noms et empreintes SHA-256 des outils approuvés ; toute addition, suppression ou modification fait échouer la vérification. Le verrou ne contient ni description ni schéma. L’enregistrement et la vérification se connectent au serveur pour énumérer les outils, sans en appeler aucun.
-- Déterministe. 35 règles associées à OWASP MCP01–MCP07. Les analyses locales de configuration et de code source fonctionnent hors ligne ; les commandes Registry récupèrent des métadonnées publiques depuis le registre officiel. Aucune télémétrie.
+- Déterministe. 35 règles associées à OWASP MCP01–MCP07. L’analyse des métadonnées d’outils détecte aussi des motifs courants d’injection de prompt en chinois simplifié et traditionnel. Les analyses locales de configuration et de code source fonctionnent hors ligne ; les commandes Registry récupèrent des métadonnées publiques depuis le registre officiel. Aucune télémétrie.
 - Des rapports pour les humains et les machines : table, JSON, Markdown, HTML, SARIF, JUnit XML, SBOM CycloneDX et CSV.
 - Scannez plusieurs cibles à la fois : fichiers, répertoires (récursivement) ou URL.
 
@@ -250,7 +250,7 @@ Ajoutez la commande à votre profil shell pour l’activer dans les prochaines s
 Scan de deux serveurs locaux en mode statique :
 
 ```text
-◆ mcprism   v0.2.0 · 2026-09-29
+◆ mcprism   v0.20.0 · 2026-11-25
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -309,7 +309,7 @@ Il reconnaît les SDK et frameworks courants :
 - JavaScript/TypeScript : le `McpServer` de `@modelcontextprotocol/sdk`, le `Server.setRequestHandler` bas niveau et les inscriptions `.tool(...)`.
 - Python : le décorateur `@mcp.tool()` de `FastMCP` et le gestionnaire `call_tool` bas niveau.
 
-Pour chaque outil, il considère les arguments du gestionnaire comme contrôlés par un attaquant et les suit d'un bond jusqu'à un point de sortie. Les constats nomment le fichier et la ligne, montrent le code et expliquent comment corriger :
+Pour chaque outil, il considère les arguments du gestionnaire comme contrôlés par un attaquant et applique une analyse heuristique pour les suivre jusqu'à un point de sortie. Les constats nomment le fichier et la ligne, montrent le code et expliquent comment corriger :
 
 | Règle | Point de sortie | Défaut |
 |---|---|---|
@@ -321,6 +321,8 @@ Pour chaque outil, il considère les arguments du gestionnaire comme contrôlés
 | MCP806 | Identifiant codé en dur dans le source | high |
 
 Il reconnaît les motifs sûrs habituels et reste silencieux quand ils sont présents, pour limiter les faux positifs :
+
+Python et Go suivent également les alias locaux et les arguments transmis par des appels non ambigus à des fonctions auxiliaires dans le même fichier. L’analyse JavaScript/TypeScript reste limitée à chaque gestionnaire.
 
 - Une commande fixe avec des arguments passés en tableau (`execFile(cmd, args)`, `subprocess.run([...])`) au lieu d'une chaîne shell.
 - Confinement des chemins : `path.resolve(base, name)` vérifié par `startsWith(base)`, ou `realpath` + `startswith` en Python.
