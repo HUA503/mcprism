@@ -578,6 +578,9 @@ flowchart TD
 - [x] Scoop 包
 - [x] Homebrew 公式
 - [x] Nix 包
+- [ ] 支持更多 SAST 语言（Rust、Java、C#）
+- [ ] 可选的多跳/跨函数污点追踪
+- [ ] 为实时探测提供内置沙箱封装
 
 ## 贡献
 

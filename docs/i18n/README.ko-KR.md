@@ -466,6 +466,9 @@ mcprism은 기능을 나열만 하므로 분석에 부작용이 없습니다. �
 - [x] Scoop 패키지
 - [x] Homebrew formula
 - [x] Nix 패키지
+- [ ] SAST 지원 언어 확대 (Rust, Java, C#)
+- [ ] 선택형 다중 홉/함수 간 taint 추적
+- [ ] 라이브 탐색용 내장 샌드박스 래퍼
 
 ## 기여하기
 

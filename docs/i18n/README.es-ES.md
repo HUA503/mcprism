@@ -466,6 +466,9 @@ No. mcprism notifica riesgos conocidos y observables. No puede probar que un ser
 - [x] Paquete Scoop
 - [x] Fórmula de Homebrew
 - [x] Paquete Nix
+- [ ] Ampliar los lenguajes de SAST (Rust, Java y C#)
+- [ ] Seguimiento de taint opcional entre varios saltos y procedimientos
+- [ ] Entorno aislado integrado para sondeos en vivo
 
 ## Contribuir
 

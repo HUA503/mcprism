@@ -466,6 +466,9 @@ Non. mcprism signale les risques connus et observables. Il ne peut pas prouver q
 - [x] Paquet Scoop
 - [x] Formule Homebrew
 - [x] Paquet Nix
+- [ ] Étendre les langages SAST (Rust, Java, C#)
+- [ ] Suivi du taint multi-sauts et interprocédural, activable en option
+- [ ] Wrapper de sandbox intégré pour les sondes en direct
 
 ## Contribuer
 
