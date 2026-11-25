@@ -1,0 +1,47 @@
+name: Usage question
+description: Ask how to install, scan, or interpret mcprism results
+title: "[Question]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [Quick start](https://github.com/HUA503/mcprism#quick-start) and [FAQ](https://github.com/HUA503/mcprism#faq) first. If your question reveals a bug or missing explanation, this form helps us improve the project.
+        
+        Do not post credentials, private server URLs, usernames, sensitive paths, or raw scan reports. For a security vulnerability, use the [private reporting instructions](https://github.com/HUA503/mcprism/blob/main/SECURITY.md).
+  - type: dropdown
+    id: topic
+    attributes:
+      label: What do you need help with?
+      options:
+        - Installing or updating
+        - Scanning an MCP config
+        - Vetting a server or Registry entry
+        - Understanding a finding or report
+        - Policies, baselines, or suppressions
+        - CI or integrations
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What are you trying to do, and where did you get stuck?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: mcprism version (if installed)
+      placeholder: e.g. v0.9.1
+  - type: input
+    id: environment
+    attributes:
+      label: OS and architecture (if relevant)
+      placeholder: e.g. Windows 11 x64, Ubuntu 24.04 arm64
+  - type: textarea
+    id: sanitized-details
+    attributes:
+      label: Sanitized command or output (optional)
+      description: Remove secrets and private details; share only the smallest useful excerpt.
+      render: shell
