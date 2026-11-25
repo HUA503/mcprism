@@ -94,6 +94,7 @@ mcprism vet server.py            # 파일 하나 검사
 - 정적·소스·라이브 검사. 구성을 읽고 체크아웃이 있으면 JS/TS/Python/Go 소스를 검토하며 MCP 핸드셰이크로 도구, 리소스, 프롬프트를 나열합니다. 도구를 호출하지 않습니다.
 - 정책 as 코드. 규칙 켜기/끄기, 심각도 변경, 패키지·명령·도메인 허용/거부, 네트워크 격리를 요구할 수 있습니다. 내장 프로필에는 `default`, `strict`, `ci` 기준선이 있습니다.
 - 위험 수용 대장. 이유와 만료일을 적어 발견 항목을 억제할 수 있습니다. 억제된 항목은 보고서에 계속 표시되고 만료되면 다시 나타납니다.
+- 도구 정의 잠금. 검토한 도구 이름과 SHA-256 지문을 저장하고 추가·삭제·정의 변경을 감지해 실패 처리합니다. 잠금 파일에는 설명이나 스키마를 저장하지 않습니다. 저장 및 검증 시 도구 목록을 읽으려고 서버에 연결하지만 도구를 실행하지 않습니다.
 - 결정론적 검사. 35개 규칙이 OWASP MCP01~MCP07에 매핑됩니다. 로컬 구성·소스 검사는 오프라인으로 실행되며 Registry 명령은 공식 Registry의 공개 메타데이터를 조회합니다. 원격 측정은 없습니다.
 - 사람과 기계를 위한 보고서: table, JSON, Markdown, HTML, SARIF, JUnit XML, CycloneDX SBOM, CSV.
 - 여러 대상을 한 번에 스캔: 파일, 디렉터리(재귀), URL.
@@ -193,6 +194,10 @@ mcprism vet --probe -- npx -y some-mcp-server   # 실제로 시작해 도구 나
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
 mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
+
+# 검토한 도구 정의를 잠그고 이후 변경을 감지
+mcprism inventory save one-server.json --output server.tools.lock.json
+mcprism inventory verify one-server.json --baseline server.tools.lock.json
 ```
 
 `--all`을 추가하면 검색 결과의 모든 페이지를 따라갑니다. 일부 항목을 감사하지 못했을 때 실패하게 하려면 `--require-complete`을 추가하세요. 공개 메타데이터만 감사하며 서버를 실행하지 않습니다.

@@ -94,6 +94,7 @@ mcprism vet server.py            # 1 ファイルを審査
 - 静的・ソース・ライブ解析。設定を読み、コードがある場合は JS/TS/Python/Go ソースをレビューし、MCP ハンドシェイクを行ってツール、リソース、プロンプトを列挙します。ツールを呼び出すことはありません。
 - ポリシー・アズ・コード。ルールのオン/オフ、重要度の変更、パッケージ・コマンド・ドメインの許可/拒否、ネットワーク分離の要求ができます。組み込みプロファイルには `default`、`strict`、`ci` のベースラインがあります。
 - リスク許容レジスタ。理由と期限を付けて検出項目を抑制できます。抑制された項目はレポートに表示され続け、期限が切れると再び報告されます。
+- ツール定義ロック。確認済みツールの名前と SHA-256 指紋を保存し、追加・削除・定義変更を検知して失敗します。ロックには説明やスキーマを保存しません。保存と検証時にサーバーへ接続してツール一覧を取得しますが、ツールは実行しません。
 - 決定論的。35 のルールが OWASP MCP01〜MCP07 に対応します。ローカルの設定・ソースコード検査はオフラインで実行され、Registry コマンドは公式 Registry の公開メタデータを取得します。テレメトリはありません。
 - 人とマシン向けのレポート：table、JSON、Markdown、HTML、SARIF、JUnit XML、CycloneDX SBOM、CSV。
 - 複数の対象を一度にスキャン：ファイル、ディレクトリ（再帰）、URL。
@@ -193,6 +194,10 @@ mcprism vet --probe -- npx -y some-mcp-server   # 実際に起動してツール
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
 mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
+
+# 確認済みツールの定義をロックして後続の変更を検知
+mcprism inventory save one-server.json --output server.tools.lock.json
+mcprism inventory verify one-server.json --baseline server.tools.lock.json
 ```
 
 `--all` を付けると、検索結果のページを最後まで取得します。監査の一部が省略された場合に失敗させるには `--require-complete` を付けてください。これは公開メタデータのみを監査し、サーバーは起動しません。

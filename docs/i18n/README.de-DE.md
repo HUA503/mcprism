@@ -94,6 +94,7 @@ mcprism vet server.py            # eine Datei prüfen
 - Statische, Quell- und Live-Prüfung. Liest die Konfiguration, prüft JS/TS/Python/Go-Quellcode, wenn ein Checkout vorhanden ist, und führt den MCP-Handshake durch, um Tools, Ressourcen und Prompts aufzulisten. Er ruft nie ein Tool auf.
 - Policy als Code. Regeln ein-/ausschalten, Schweregrade ändern, Pakete/Befehle/Domains erlauben oder ablehnen und Netzwerkisolation verlangen. Die eingebauten Profile bieten die Baselines `default`, `strict` und `ci`.
 - Risikoakzeptanz-Register. Befunde mit Grund und Ablaufdatum unterdrücken. Unterdrückte Einträge bleiben im Bericht sichtbar und kehren nach Ablauf zurück.
+- Tool-Inventar sperren. Speichern Sie Namen und SHA-256-Fingerprints geprüfter Tools; hinzugefügte, entfernte oder geänderte Definitionen lassen die Prüfung fehlschlagen. Die Sperrdatei enthält weder Beschreibungen noch Schemas. Speichern und Prüfen verbinden sich zum Auflisten der Tools mit dem Server, rufen aber kein Tool auf.
 - Deterministisch. 35 Regeln sind OWASP MCP01–MCP07 zugeordnet. Lokale Konfigurations- und Quellcodeprüfungen laufen offline; Registry-Befehle rufen öffentliche Metadaten aus der offiziellen Registry ab. Es gibt keine Telemetrie.
 - Berichte für Menschen und Maschinen: table, JSON, Markdown, HTML, SARIF, JUnit XML, CycloneDX-SBOM und CSV.
 - Mehrere Ziele auf einmal scannen: Dateien, Verzeichnisse (rekursiv) und URLs.
@@ -193,6 +194,10 @@ mcprism vet --probe -- npx -y some-mcp-server   # wirklich starten und Tools auf
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
 mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
+
+# Geprüfte Tool-Definitionen sperren und Änderungen erkennen
+mcprism inventory save one-server.json --output server.tools.lock.json
+mcprism inventory verify one-server.json --baseline server.tools.lock.json
 ```
 
 Mit `--all` werden alle Ergebnisseiten durchlaufen. Ergänzen Sie `--require-complete`, damit ein unvollständiges Audit fehlschlägt. Geprüft werden nur öffentliche Metadaten; die Server werden nicht gestartet.
