@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.17.0] - 2026-11-25
+
+### Added
+
+- Support Windows runners in the GitHub Action with native PowerShell download,
+  checksum verification, and report handling.
+
 ## [0.16.0] - 2026-11-25
 
 ### Added
@@ -455,6 +462,7 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
+[0.17.0]: https://github.com/HUA503/mcprism/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/HUA503/mcprism/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/HUA503/mcprism/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/HUA503/mcprism/compare/v0.13.0...v0.14.0
