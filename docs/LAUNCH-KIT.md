@@ -5,7 +5,7 @@ The post text is written in first person because these communities expect a
 person, not a press release. Adapt each post to the channel and your own voice;
 don't cross-post identical text everywhere.
 
-**Current release: [v0.10.1](https://github.com/HUA503/mcprism/releases/tag/v0.10.1).**
+**Current release: [v0.10.2](https://github.com/HUA503/mcprism/releases/tag/v0.10.2).**
 The copy below reflects the current product and privacy boundaries.
 
 ## The hook
@@ -23,7 +23,8 @@ mcprism is one Go binary with no runtime dependencies. Local config and source
 scans run offline; Registry commands fetch public metadata from the official MCP
 Registry; live probing is opt-in. When probing, it lists tools without invoking
 them. It brings policy and CI checks to MCP server review, and automatically
-discovers configs from clients such as Gemini CLI, OpenCode, and the Cline CLI.
+discovers configs from clients such as Gemini CLI, OpenCode, Roo Code, and the
+Cline CLI.
 For ongoing review, `inventory save` and `inventory verify` detect changes to
 tool definitions; the lock stores tool names and fingerprints, not the
 definitions themselves. The GitHub Action can enforce that check in CI.
@@ -50,7 +51,7 @@ Hi HN. I built mcprism, a security scanner for MCP (Model Context Protocol) serv
 MCP is built into Claude, Cursor, VS Code and others. Adding a tool usually means running a third-party package on your machine - npx -y @someone/..., a pip/uv package, or a remote URL. That process runs as your user, inherits your environment (often AWS, GitHub and OpenAI keys), can run shell commands, and can reach the network. A typo-squatted or republished package is a supply-chain problem, and the client doesn't review it.
 
 mcprism auto-discovers MCP configs from major clients, including Gemini CLI,
-OpenCode, and the Cline CLI, so you can scan servers you already configured
+OpenCode, Roo Code, and the Cline CLI, so you can scan servers you configured
 without copying them into a separate file.
 
 mcprism checks a server before you connect:
@@ -193,7 +194,7 @@ MCP 现在 Claude、Cursor、VS Code 都内置了，但加一个 server 基本�
 
 mcprism 在连接前扫描 server：识别管道执行远程脚本的启动命令、只枚举工具不调用、检查工具描述里的注入指令、按类型和熵识别密钥、检查云元数据等网络目标，给出 0-100 分和 A-F 评级，映射 OWASP MCP。
 
-单个 Go 二进制，无运行时依赖。本地配置和源码扫描离线运行；Registry 命令会查询官方目录的公开元数据，动态探测则需显式开启。支持 YAML 策略和 SARIF/JUnit/CycloneDX，可放进 CI 按评级设门禁。还可保存工具定义指纹，发现工具清单变化，并在 CI 中拦截未经审查的变化。v0.10.0 起自动发现 Gemini CLI 与 OpenCode 的 MCP 配置，v0.10.1 加入 Cline CLI 配置发现和自定义路径支持。
+单个 Go 二进制，无运行时依赖。本地配置和源码扫描离线运行；Registry 命令会查询官方目录的公开元数据，动态探测则需显式开启。支持 YAML 策略和 SARIF/JUnit/CycloneDX，可放进 CI 按评级设门禁。还可保存工具定义指纹，发现工具清单变化，并在 CI 中拦截未经审查的变化。现在支持自动发现 Gemini CLI、OpenCode、Roo Code 项目配置，以及 Cline CLI 的默认和自定义配置路径。
 
 攻击面分析（含示例）：https://github.com/HUA503/mcprism/blob/main/docs/MCP-ATTACK-SURFACE.md
 仓库：https://github.com/HUA503/mcprism
@@ -220,7 +221,7 @@ https://github.com/HUA503/mcprism
    https://github.com/bh-rat/awesome-mcp-enterprise/issues/154. Once it has the
    `approved-for-pr` label before opening a PR. The proposal is for the Emerging
    list under Security and Governance; refresh its release and privacy evidence
-   before resubmitting because the original issue text predates v0.10.1.
+   before resubmitting because the original issue text predates v0.10.2.
 7. **Reply to comments early.** The first hour of discussion decides how far a Show HN or Reddit post travels.
 
 ## Tracking

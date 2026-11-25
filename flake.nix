@@ -12,7 +12,7 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      version = "0.10.1";
+      version = "0.10.2";
     in
     {
       packages = forAllSystems (system:
