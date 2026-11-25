@@ -545,6 +545,9 @@ flowchart TD
 **mcprism 会调用我的工具吗？**
 不会。它只做 MCP 的 initialize 和列出请求，不会调用工具、不会通过 server 打开文件、也不会发送提示词。
 
+**`inventory save` 和 `inventory verify` 会启动 server 吗？**
+会连接远程 server 或启动 stdio 进程来枚举工具，但不会调用工具。检查不可信目标时请使用沙箱或不含密钥的专用 runner；锁文件只保存工具名和哈希。
+
 **它会把数据发到别处吗？**
 没有遥测，也不会上传本地配置或报告。`registry search` 和 `registry audit` 会把搜索词发送给官方 MCP Registry，`registry scan` 会发送指定名称以获取公开元数据；其他静态扫描不会联网。动态扫描（`scan --dynamic` / `vet --probe`）会启动或连接你指定的 server，该进程可能执行代码或联网，请在沙箱里运行。探测会拒绝跨 host 重定向、拒绝连接云元数据/link-local 地址，默认也不会把你的 shell 环境传给被拉起的 server。
 
