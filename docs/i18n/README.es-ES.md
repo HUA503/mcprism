@@ -382,7 +382,7 @@ La lista completa con la correspondencia OWASP está en [docs/RULES.md](../RULES
 
 ## Clientes y transportes admitidos
 
-mcprism lee la configuración MCP JSON/JSONC que usan Claude Desktop, Claude Code, GitHub Copilot CLI, Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Continue y herramientas parecidas, tanto en formato de objeto `mcpServers` como de array. Admite los tres transportes MCP: stdio, Streamable HTTP y el heredado HTTP+SSE.
+mcprism lee la configuración MCP JSON/JSONC que usan Claude Desktop, Claude Code, GitHub Copilot CLI, Zed, Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Continue y herramientas parecidas, tanto en formato de objeto `mcpServers` como de array. Admite los tres transportes MCP: stdio, Streamable HTTP y el heredado HTTP+SSE.
 
 También admite la configuración MCP TOML de Codex. La búsqueda global revisa `$CODEX_HOME/config.toml` (o `~/.codex/config.toml`); en proyectos revisa `.codex/config.toml` y `config.toml`.
 También revisa la configuración del sistema: `/etc/codex/config.toml` en Unix y `%ProgramData%/OpenAI/Codex/config.toml` en Windows.

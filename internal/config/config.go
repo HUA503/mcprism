@@ -89,6 +89,8 @@ func ParseFile(path, client, scope string) (*ClientFile, error) {
 	var servers []*Server
 	if strings.EqualFold(filepath.Ext(path), ".toml") {
 		servers, err = ParseCodexTOML(data)
+	} else if client == "zed" || (filepath.Base(path) == "settings.json" && filepath.Base(filepath.Dir(path)) == "zed") {
+		servers, err = ParseZedBytes(data)
 	} else if client == "github-copilot-cli" || filepath.Base(path) == ".mcp.json" {
 		servers, err = ParseCopilotBytes(data)
 	} else if strings.EqualFold(filepath.Base(path), "opencode.json") || strings.EqualFold(filepath.Base(path), "opencode.jsonc") {
@@ -105,6 +107,57 @@ func ParseFile(path, client, scope string) (*ClientFile, error) {
 		s.Scope = scope
 	}
 	return &ClientFile{Path: path, Client: client, Scope: scope, Servers: servers}, nil
+}
+
+// ParseZedBytes reads Zed's top-level context_servers and profile-specific
+// context_servers maps from JSON/JSONC settings.
+func ParseZedBytes(data []byte) ([]*Server, error) {
+	servers, err := ParseBytes(data)
+	if err != nil {
+		return nil, err
+	}
+	data = bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF})
+	cleaned := stripTrailingCommas(stripJSONC(data))
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(cleaned, &root); err != nil {
+		return nil, err
+	}
+	var agent map[string]json.RawMessage
+	if err := json.Unmarshal(root["agent"], &agent); err != nil {
+		return servers, nil
+	}
+	var profiles map[string]json.RawMessage
+	if err := json.Unmarshal(agent["profiles"], &profiles); err != nil {
+		return servers, nil
+	}
+	profileNames := make([]string, 0, len(profiles))
+	for name := range profiles {
+		profileNames = append(profileNames, name)
+	}
+	sort.Strings(profileNames)
+	for _, name := range profileNames {
+		var profile map[string]json.RawMessage
+		if err := json.Unmarshal(profiles[name], &profile); err != nil {
+			continue
+		}
+		raw := profile["context_servers"]
+		if len(raw) == 0 {
+			continue
+		}
+		wrapped, err := json.Marshal(map[string]json.RawMessage{"mcpServers": raw})
+		if err != nil {
+			continue
+		}
+		profileServers, err := ParseBytes(wrapped)
+		if err != nil {
+			continue
+		}
+		for _, server := range profileServers {
+			server.Name = name + "/" + server.Name
+			servers = append(servers, server)
+		}
+	}
+	return servers, nil
 }
 
 // ParseCopilotBytes supports GitHub Copilot CLI's mcpServers object and its
@@ -226,7 +279,7 @@ func ParseBytes(data []byte) ([]*Server, error) {
 	}
 
 	var candidates []json.RawMessage
-	for _, key := range []string{"mcpServers", "servers"} {
+	for _, key := range []string{"mcpServers", "servers", "context_servers"} {
 		if raw, ok := root[key]; ok {
 			candidates = append(candidates, raw)
 		}
