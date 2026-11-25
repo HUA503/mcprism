@@ -147,6 +147,10 @@ below, with no network needed.
 - Accepted-risk register. Suppress findings with a reason and an expiry, or
   accept a whole `--baseline` report so only new problems fail the build.
   Suppressed items stay visible in the report, and expired ones come back.
+- Tool inventory locks. Save tool names and SHA-256 fingerprints, then fail if a
+  reviewed server adds, removes or changes a tool definition. The lock does not
+  contain descriptions or schemas. Saving and verifying connect to the server to
+  enumerate tools; they never call a tool.
 - Deterministic. 35 rules mapped to OWASP MCP01–MCP07. Config and source scans
   never touch the network; registry commands only fetch public metadata from
   the official registry. Live probing is opt-in and starts the server, so run
