@@ -31,7 +31,7 @@ mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server �
 ---
 
 <p align="center">
-  <img src="assets/demo.gif?v=0.9.2" alt="mcprism 在终端扫描 MCP server" width="78%">
+  <img src="assets/demo.gif?v=0.14.0" alt="mcprism 检查安全和存在风险的 MCP 服务器配置" width="78%">
 </p>
 
 <p align="center">

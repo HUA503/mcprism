@@ -48,7 +48,7 @@ probing is strictly opt-in (`--dynamic` / `--probe`).
 ---
 
 <p align="center">
-  <img src="assets/demo.gif?v=0.9.2" alt="mcprism scanning MCP servers in a terminal" width="78%">
+  <img src="assets/demo.gif?v=0.14.0" alt="mcprism checking safe and vulnerable MCP server configurations" width="78%">
 </p>
 
 <p align="center">
