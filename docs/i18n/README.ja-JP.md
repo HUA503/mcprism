@@ -382,7 +382,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 ## 対応クライアントとトランスポート
 
-mcprism は Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Continue などが使う JSON/JSONC MCP 設定を読み取り、`mcpServers` オブジェクトと配列の両形式に対応します。3 種類すべての MCP トランスポート（stdio、Streamable HTTP、旧 HTTP+SSE）をサポートします。
+mcprism は Claude Desktop、Claude Code、GitHub Copilot CLI、Cursor、VS Code（GitHub Copilot Chat）、Windsurf、Cline、Continue などが使う JSON/JSONC MCP 設定を読み取り、`mcpServers` オブジェクトと配列の両形式に対応します。3 種類すべての MCP トランスポート（stdio、Streamable HTTP、旧 HTTP+SSE）をサポートします。
 
 Codex の MCP TOML 設定にも対応しています。グローバル設定では `$CODEX_HOME/config.toml`（未設定時は `~/.codex/config.toml`）、プロジェクト設定では `.codex/config.toml` と `config.toml` を検出します。
 システム設定も検出します。Unix では `/etc/codex/config.toml`、Windows では `%ProgramData%/OpenAI/Codex/config.toml` を確認します。

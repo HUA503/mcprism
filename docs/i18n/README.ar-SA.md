@@ -463,7 +463,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 ## العملاء ووسائل النقل المدعومة
 
-يقرأ mcprism تكوين MCP بصيغ JSON/JSONC الذي تستخدمه Claude Desktop وClaude Code وCursor وVS Code (GitHub Copilot Chat) وWindsurf وCline وContinue وأدوات مشابهة، سواء على هيئة كائن `mcpServers` أو مصفوفة. يدعم وسائل نقل MCP الثلاث جميعها: stdio وStreamable HTTP وHTTP+SSE القديم.
+يقرأ mcprism تكوين MCP بصيغ JSON/JSONC الذي تستخدمه Claude Desktop وClaude Code وGitHub Copilot CLI وCursor وVS Code (GitHub Copilot Chat) وWindsurf وCline وContinue وأدوات مشابهة، سواء على هيئة كائن `mcpServers` أو مصفوفة. يدعم وسائل نقل MCP الثلاث جميعها: stdio وStreamable HTTP وHTTP+SSE القديم.
 
 يدعم أيضًا إعداد MCP بصيغة TOML في Codex. يبحث عن الإعداد العام في `$CODEX_HOME/config.toml` (أو `~/.codex/config.toml`) وعن إعدادات المشروع في `.codex/config.toml` و`config.toml`.
 ويفحص أيضًا إعداد النظام: `/etc/codex/config.toml` في Unix و`%ProgramData%/OpenAI/Codex/config.toml` في Windows.
