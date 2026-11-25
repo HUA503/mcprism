@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Add `mcprism demo`, an offline first-run experience using embedded clean and
+  vulnerable MCP configs without launching servers or reading user configs.
+
 ## [0.10.2] - 2026-11-25
 
 ### Added
