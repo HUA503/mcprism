@@ -164,7 +164,7 @@ Linux와 macOS에서 `/usr/local/bin`에 쓸 수 없으면 설치 프로그램�
 ## 빠른 시작
 
 ```sh
-# Claude, Codex, Cursor, VS Code, Windsurf 등의 구성 자동 검색
+# Claude, Codex, Gemini CLI, Cursor, VS Code, Windsurf 등의 구성 자동 검색
 mcprism scan
 
 # 특정 구성 파일
@@ -383,6 +383,8 @@ mcprism은 Claude Desktop, Claude Code, Cursor, VS Code(GitHub Copilot Chat), Wi
 Codex MCP TOML 설정도 지원합니다. 전역 설정은 `$CODEX_HOME/config.toml`(미설정 시 `~/.codex/config.toml`)을 검색하고, 프로젝트 설정은 `.codex/config.toml`과 `config.toml`을 검색합니다.
 시스템 설정도 확인합니다. Unix에서는 `/etc/codex/config.toml`, Windows에서는 `%ProgramData%/OpenAI/Codex/config.toml`을 검색합니다.
 
+
+Gemini CLI 사용자 설정(`~/.gemini/settings.json`), 프로젝트 설정(`.gemini/settings.json`), 시스템 설정도 자동으로 검색합니다.
 ## CI/CD
 
 `ci` 프로필으로 파이프라인에서 위험한 서버를 차단:

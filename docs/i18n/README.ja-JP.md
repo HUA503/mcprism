@@ -164,7 +164,7 @@ Linux と macOS で `/usr/local/bin` に書き込めない場合、インスト�
 ## クイックスタート
 
 ```sh
-# Claude、Codex、Cursor、VS Code、Windsurf などの設定を自動検出
+# Claude、Codex、Gemini CLI、Cursor、VS Code、Windsurf などの設定を自動検出
 mcprism scan
 
 # 特定の設定ファイル
@@ -383,6 +383,8 @@ mcprism は Claude Desktop、Claude Code、Cursor、VS Code（GitHub Copilot Cha
 Codex の MCP TOML 設定にも対応しています。グローバル設定では `$CODEX_HOME/config.toml`（未設定時は `~/.codex/config.toml`）、プロジェクト設定では `.codex/config.toml` と `config.toml` を検出します。
 システム設定も検出します。Unix では `/etc/codex/config.toml`、Windows では `%ProgramData%/OpenAI/Codex/config.toml` を確認します。
 
+
+Gemini CLI のユーザー設定（`~/.gemini/settings.json`）、プロジェクト設定（`.gemini/settings.json`）、システム設定も自動検出します。
 ## CI/CD
 
 `ci` プロファイルでパイプライン内の危険なサーバーをブロック：

@@ -164,7 +164,7 @@ nix run github:HUA503/mcprism -- scan
 ## Быстрый старт
 
 ```sh
-# Автоматически находит конфигурации Claude, Codex, Cursor, VS Code, Windsurf, ...
+# Автоматически находит конфигурации Claude, Codex, Gemini CLI, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # Конкретный файл конфигурации
@@ -383,6 +383,8 @@ mcprism читает конфигурацию MCP в JSON/JSONC, которую 
 Также поддерживается TOML-конфигурация MCP в Codex. Для глобальной конфигурации проверяется `$CODEX_HOME/config.toml` (или `~/.codex/config.toml`), а для проекта — `.codex/config.toml` и `config.toml`.
 Также проверяются системные конфигурации: `/etc/codex/config.toml` в Unix и `%ProgramData%/OpenAI/Codex/config.toml` в Windows.
 
+
+Gemini CLI также автоматически обнаруживается в пользовательских (`~/.gemini/settings.json`), проектных (`.gemini/settings.json`) и системных настройках.
 ## CI/CD
 
 Блокируйте рискованные серверы в конвейере профилем `ci`:

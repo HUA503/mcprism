@@ -164,7 +164,7 @@ En Linux y macOS, si no se puede escribir en `/usr/local/bin`, el instalador usa
 ## Inicio rápido
 
 ```sh
-# Detecta automáticamente las configuraciones de Claude, Codex, Cursor, VS Code, Windsurf, ...
+# Detecta automáticamente las configuraciones de Claude, Codex, Gemini CLI, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # Un archivo de configuración concreto
@@ -383,6 +383,8 @@ mcprism lee la configuración MCP JSON/JSONC que usan Claude Desktop, Claude Cod
 También admite la configuración MCP TOML de Codex. La búsqueda global revisa `$CODEX_HOME/config.toml` (o `~/.codex/config.toml`); en proyectos revisa `.codex/config.toml` y `config.toml`.
 También revisa la configuración del sistema: `/etc/codex/config.toml` en Unix y `%ProgramData%/OpenAI/Codex/config.toml` en Windows.
 
+
+Gemini CLI también se detecta automáticamente en la configuración del usuario (`~/.gemini/settings.json`), del proyecto (`.gemini/settings.json`) y del sistema.
 ## CI/CD
 
 Bloquea servidores de riesgo en una canalización con el perfil `ci`:

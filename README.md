@@ -86,6 +86,7 @@ generated HTML report in your browser. Both scans run offline.
 mcprism scan examples/clean.mcp.json
 mcprism scan examples/vulnerable.mcp.json --format html --output mcprism-report.html
 mcprism scan examples/codex-config.toml
+mcprism scan examples/gemini-settings.json
 ```
 
 The clean example exits with code 0. The second scan saves the report and
@@ -257,7 +258,7 @@ Release archives from v0.8.4 onward include verifiable build provenance. See
 ## Quick start
 
 ```sh
-# Auto-discover configs for Claude, Codex, Cursor, VS Code, Windsurf, ...
+# Auto-discover configs for Claude, Codex, Gemini CLI, Cursor, VS Code, ...
 mcprism scan
 
 # A specific config file
@@ -556,8 +557,9 @@ The full list with the OWASP crosswalk is in [docs/RULES.md](docs/RULES.md).
 
 mcprism reads the JSON/JSONC MCP config used by Claude Desktop, Claude Code,
 Cursor, VS Code (GitHub Copilot Chat), Windsurf, Cline, Continue and similar
-tools, plus Codex's TOML config. It understands `mcpServers` / `servers` JSON
-objects and arrays, and Codex's `[mcp_servers.<name>]` tables. It speaks all
+tools, Gemini CLI's `~/.gemini/settings.json` and `.gemini/settings.json`, plus
+Codex's TOML config. It understands `mcpServers` / `servers` JSON objects and
+arrays, and Codex's `[mcp_servers.<name>]` tables. It speaks all
 three MCP transports: stdio, Streamable HTTP, and the legacy HTTP+SSE.
 Codex discovery checks the system config (`/etc/codex/config.toml` on Unix or
 `%ProgramData%/OpenAI/Codex/config.toml` on Windows), the user config
@@ -565,6 +567,15 @@ Codex discovery checks the system config (`/etc/codex/config.toml` on Unix or
 (`.codex/config.toml` and `config.toml`). Values referenced by Codex's
 `bearer_token_env_var` are only read when you explicitly enable a live probe
 with `--dynamic`.
+
+Gemini CLI discovery also checks system defaults and settings. The paths are
+`/etc/gemini-cli/system-defaults.json` and `/etc/gemini-cli/settings.json` on
+Linux, `/Library/Application Support/GeminiCli/system-defaults.json` and
+`/Library/Application Support/GeminiCli/settings.json` on macOS, and
+`%ProgramData%/gemini-cli/system-defaults.json` and
+`%ProgramData%/gemini-cli/settings.json` on Windows. Set
+`GEMINI_CLI_SYSTEM_DEFAULTS_PATH` or `GEMINI_CLI_SYSTEM_SETTINGS_PATH` to
+override either system path.
 
 ## CI/CD
 

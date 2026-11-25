@@ -93,6 +93,40 @@ func globalCandidates() []candPath {
 
 	// Continue
 	add("continue", "global", filepath.Join(home, ".continue", "config.json"))
+	// Gemini CLI user settings use JSON with a top-level mcpServers object.
+	add("gemini-cli", "global", filepath.Join(home, ".gemini", "settings.json"))
+
+	// Gemini CLI supports system defaults and system overrides. The documented
+	// environment variables replace the corresponding platform default paths.
+	geminiDefaults := os.Getenv("GEMINI_CLI_SYSTEM_DEFAULTS_PATH")
+	geminiSettings := os.Getenv("GEMINI_CLI_SYSTEM_SETTINGS_PATH")
+	if geminiDefaults == "" || geminiSettings == "" {
+		var geminiSystemDir string
+		switch runtime.GOOS {
+		case "darwin":
+			geminiSystemDir = filepath.Join(string(filepath.Separator), "Library", "Application Support", "GeminiCli")
+		case "windows":
+			programData := os.Getenv("ProgramData")
+			if programData == "" {
+				systemDrive := os.Getenv("SystemDrive")
+				if systemDrive == "" {
+					systemDrive = `C:`
+				}
+				programData = filepath.Join(systemDrive+string(filepath.Separator), "ProgramData")
+			}
+			geminiSystemDir = filepath.Join(programData, "gemini-cli")
+		default:
+			geminiSystemDir = filepath.Join(string(filepath.Separator), "etc", "gemini-cli")
+		}
+		if geminiDefaults == "" {
+			geminiDefaults = filepath.Join(geminiSystemDir, "system-defaults.json")
+		}
+		if geminiSettings == "" {
+			geminiSettings = filepath.Join(geminiSystemDir, "settings.json")
+		}
+	}
+	add("gemini-cli", "system-defaults", geminiDefaults)
+	add("gemini-cli", "system", geminiSettings)
 
 	// Codex CLI / IDE use TOML, with CODEX_HOME allowing a custom config dir.
 	codexHome := os.Getenv("CODEX_HOME")
@@ -127,6 +161,7 @@ func projectCandidates(dir string) []candPath {
 			candPath{filepath.Join(d, ".mcp.json"), "generic", "project"},
 			candPath{filepath.Join(d, ".cursor", "mcp.json"), "cursor", "project"},
 			candPath{filepath.Join(d, ".vscode", "mcp.json"), "vscode", "project"},
+			candPath{filepath.Join(d, ".gemini", "settings.json"), "gemini-cli", "project"},
 			candPath{filepath.Join(d, ".codex", "config.toml"), "codex", "project"},
 			candPath{filepath.Join(d, "config.toml"), "codex", "project"},
 		)
