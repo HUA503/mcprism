@@ -6,7 +6,7 @@
 
 # mcprism
 
-**AI が信頼する前に、MCP サーバーを審査しましょう。**
+**MCPサーバーをAIに接続する前に、セキュリティリスクを確認しましょう。**
 
 mcprism は [Model Context Protocol](https://modelcontextprotocol.io/) サーバー向けのセキュリティスキャナーです。サーバーを 3 つの角度から確認します。
 
