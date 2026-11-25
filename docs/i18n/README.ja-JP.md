@@ -192,7 +192,10 @@ mcprism vet --probe -- npx -y some-mcp-server   # 実際に起動してツール
 # 公式 MCP Registry を検索し、公開メタデータを静的監査
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
-mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
+mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
+```
+
+`--all` を付けると、検索結果のページを最後まで取得します。監査の一部が省略された場合に失敗させるには `--require-complete` を付けてください。これは公開メタデータのみを監査し、サーバーは起動しません。
 
 mcprism inspect mcp.json     # サーバーのツール/リソース/プロンプトを一覧
 mcprism rules                # 組み込みルールを一覧
