@@ -11,6 +11,8 @@ var knownConfigNames = map[string]bool{
 	"claude_desktop_config.json": true,
 	"mcp.json":                   true,
 	".mcp.json":                  true,
+	"opencode.json":              true,
+	"opencode.jsonc":             true,
 }
 
 func isConfigName(base string) bool {
@@ -30,7 +32,7 @@ func skipDirName(name string) bool {
 
 // WalkDir recursively finds and parses MCP config files under root. It looks
 // for the common config names, Codex TOML config files, Gemini CLI settings,
-// and any *.mcp.json file, skipping dependency and build directories.
+// OpenCode configs, and any *.mcp.json file, skipping dependency and build directories.
 func WalkDir(root string) ([]*ClientFile, error) {
 	var out []*ClientFile
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -48,7 +50,8 @@ func WalkDir(root string) ([]*ClientFile, error) {
 		isGeminiConfig := d.Name() == "settings.json" &&
 			(filepath.Base(filepath.Dir(p)) == ".gemini" ||
 				(filepath.Base(root) == ".gemini" && filepath.Clean(filepath.Dir(p)) == filepath.Clean(root)))
-		if !isConfigName(d.Name()) && !isCodexConfig && !isGeminiConfig {
+		isOpenCodeConfig := d.Name() == "opencode.json" || d.Name() == "opencode.jsonc"
+		if !isConfigName(d.Name()) && !isCodexConfig && !isGeminiConfig && !isOpenCodeConfig {
 			return nil
 		}
 		client := "walk"
@@ -56,6 +59,8 @@ func WalkDir(root string) ([]*ClientFile, error) {
 			client = "codex"
 		} else if isGeminiConfig {
 			client = "gemini-cli"
+		} else if isOpenCodeConfig {
+			client = "opencode"
 		}
 		cf, err := ParseFile(p, client, "project")
 		if err != nil {

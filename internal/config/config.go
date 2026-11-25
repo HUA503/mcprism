@@ -1,7 +1,7 @@
 // Package config 定义 MCP server 配置模型，并负责解析各类 MCP 客户端配置文件。
 //
 // mcprism 同时理解多种主流 MCP 客户端的配置格式（Claude Desktop、Claude Code、
-// Codex、Gemini CLI、Cursor、VS Code/Copilot、Windsurf、Cline 等），包括 JSON 和 TOML。
+// Codex、Gemini CLI、OpenCode、Cursor、VS Code/Copilot、Windsurf、Cline 等），包括 JSON 和 TOML。
 package config
 
 import (
@@ -89,6 +89,8 @@ func ParseFile(path, client, scope string) (*ClientFile, error) {
 	var servers []*Server
 	if strings.EqualFold(filepath.Ext(path), ".toml") {
 		servers, err = ParseCodexTOML(data)
+	} else if strings.EqualFold(filepath.Base(path), "opencode.json") || strings.EqualFold(filepath.Base(path), "opencode.jsonc") {
+		servers, err = ParseOpenCodeBytes(data)
 	} else {
 		servers, err = ParseBytes(data)
 	}
@@ -101,6 +103,78 @@ func ParseFile(path, client, scope string) (*ClientFile, error) {
 		s.Scope = scope
 	}
 	return &ClientFile{Path: path, Client: client, Scope: scope, Servers: servers}, nil
+}
+
+// ParseOpenCodeBytes extracts OpenCode's mcp.servers definitions from JSON/JSONC.
+func ParseOpenCodeBytes(data []byte) ([]*Server, error) {
+	data = bytes.TrimPrefix(data, []byte{0xEF, 0xBB, 0xBF})
+	cleaned := stripTrailingCommas(stripJSONC(data))
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(cleaned, &root); err != nil {
+		return nil, err
+	}
+	var mcp map[string]json.RawMessage
+	if err := json.Unmarshal(root["mcp"], &mcp); err != nil {
+		return nil, nil
+	}
+	var entries map[string]json.RawMessage
+	if err := json.Unmarshal(mcp["servers"], &entries); err != nil {
+		return nil, nil
+	}
+	names := make([]string, 0, len(entries))
+	for name := range entries {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	servers := make([]*Server, 0, len(names))
+	for _, name := range names {
+		server, err := decodeOpenCodeServer(name, entries[name])
+		if err == nil && server != nil {
+			servers = append(servers, server)
+		}
+	}
+	return servers, nil
+}
+
+type openCodeServerDTO struct {
+	Type        string            `json:"type"`
+	Command     []string          `json:"command"`
+	URL         string            `json:"url"`
+	Headers     map[string]string `json:"headers"`
+	Environment map[string]string `json:"environment"`
+	Cwd         string            `json:"cwd"`
+}
+
+func decodeOpenCodeServer(name string, raw json.RawMessage) (*Server, error) {
+	var dto openCodeServerDTO
+	if err := json.Unmarshal(raw, &dto); err != nil {
+		return nil, err
+	}
+	server := &Server{
+		Name:    name,
+		URL:     dto.URL,
+		Headers: dto.Headers,
+		Env:     dto.Environment,
+		Cwd:     dto.Cwd,
+		Raw:     append(json.RawMessage(nil), raw...),
+	}
+	switch strings.ToLower(dto.Type) {
+	case "local":
+		if len(dto.Command) == 0 {
+			return nil, nil
+		}
+		server.Transport = TransportStdio
+		server.Command = dto.Command[0]
+		server.Args = dto.Command[1:]
+	case "remote":
+		if dto.URL == "" {
+			return nil, nil
+		}
+		server.Transport = TransportHTTP
+	default:
+		return nil, nil
+	}
+	return server, nil
 }
 
 // ParseBytes 从 JSON/JSONC 字节中提取所有 server。

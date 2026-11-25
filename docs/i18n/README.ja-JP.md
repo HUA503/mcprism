@@ -385,6 +385,9 @@ Codex の MCP TOML 設定にも対応しています。グローバル設定で�
 
 
 Gemini CLI のユーザー設定（`~/.gemini/settings.json`）、プロジェクト設定（`.gemini/settings.json`）、システム設定も自動検出します。
+
+OpenCode にも対応しています。`opencode.json(c)` の `mcp.servers` を解析し、ユーザー、プロジェクト、システムの設定を検出します。
+
 ## CI/CD
 
 `ci` プロファイルでパイプライン内の危険なサーバーをブロック：

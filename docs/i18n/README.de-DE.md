@@ -385,6 +385,9 @@ Systemkonfigurationen werden ebenfalls geprüft: `/etc/codex/config.toml` unter 
 
 
 Gemini CLI wird ebenfalls automatisch erkannt: für Benutzer (`~/.gemini/settings.json`), Projekte (`.gemini/settings.json`) und Systemeinstellungen.
+
+OpenCode wird ebenfalls unterstützt: Server aus `mcp.servers` in `opencode.json(c)` werden in Benutzer-, Projekt- und Systemkonfigurationen erkannt.
+
 ## CI/CD
 
 Mit dem Profil `ci` riskante Server in einer Pipeline blockieren:

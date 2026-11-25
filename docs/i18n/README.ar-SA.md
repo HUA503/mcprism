@@ -463,6 +463,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 
 يدعم الاكتشاف أيضًا إعدادات Gemini CLI للمستخدم والمشروع والنظام، بما فيها ملفات `system-defaults.json` و`settings.json`.
+
+يدعم OpenCode أيضًا؛ إذ تُقرأ الخوادم من `mcp.servers` داخل `opencode.json(c)`، مع اكتشاف إعدادات المستخدم والمشروع والنظام.
+
 ## CI/CD
 
 احجب الخوادم الخطرة داخل خط الأنابيب باستخدام الملف الشخصي `ci`:

@@ -96,6 +96,12 @@ func globalCandidates() []candPath {
 	// Gemini CLI user settings use JSON with a top-level mcpServers object.
 	add("gemini-cli", "global", filepath.Join(home, ".gemini", "settings.json"))
 
+	// OpenCode user settings use mcp.servers in opencode.json(c).
+	openCodeUserDir := filepath.Join(home, ".config", "opencode")
+	for _, name := range []string{"opencode.json", "opencode.jsonc"} {
+		add("opencode", "global", filepath.Join(openCodeUserDir, name))
+	}
+
 	// Gemini CLI supports system defaults and system overrides. The documented
 	// environment variables replace the corresponding platform default paths.
 	geminiDefaults := os.Getenv("GEMINI_CLI_SYSTEM_DEFAULTS_PATH")
@@ -150,6 +156,28 @@ func globalCandidates() []candPath {
 		add("codex", "system", filepath.Join(string(filepath.Separator), "etc", "codex", "config.toml"))
 	}
 
+	// OpenCode machine-wide settings follow its documented system config directory.
+	var openCodeSystemDir string
+	switch runtime.GOOS {
+	case "darwin":
+		openCodeSystemDir = filepath.Join(string(filepath.Separator), "Library", "Application Support", "opencode")
+	case "windows":
+		programData := os.Getenv("ProgramData")
+		if programData == "" {
+			systemDrive := os.Getenv("SystemDrive")
+			if systemDrive == "" {
+				systemDrive = `C:`
+			}
+			programData = filepath.Join(systemDrive+string(filepath.Separator), "ProgramData")
+		}
+		openCodeSystemDir = filepath.Join(programData, "opencode")
+	default:
+		openCodeSystemDir = filepath.Join(string(filepath.Separator), "etc", "opencode")
+	}
+	for _, name := range []string{"opencode.json", "opencode.jsonc"} {
+		add("opencode", "system", filepath.Join(openCodeSystemDir, name))
+	}
+
 	return out
 }
 
@@ -162,6 +190,10 @@ func projectCandidates(dir string) []candPath {
 			candPath{filepath.Join(d, ".cursor", "mcp.json"), "cursor", "project"},
 			candPath{filepath.Join(d, ".vscode", "mcp.json"), "vscode", "project"},
 			candPath{filepath.Join(d, ".gemini", "settings.json"), "gemini-cli", "project"},
+			candPath{filepath.Join(d, "opencode.json"), "opencode", "project"},
+			candPath{filepath.Join(d, "opencode.jsonc"), "opencode", "project"},
+			candPath{filepath.Join(d, ".opencode", "opencode.json"), "opencode", "project"},
+			candPath{filepath.Join(d, ".opencode", "opencode.jsonc"), "opencode", "project"},
 			candPath{filepath.Join(d, ".codex", "config.toml"), "codex", "project"},
 			candPath{filepath.Join(d, "config.toml"), "codex", "project"},
 		)
