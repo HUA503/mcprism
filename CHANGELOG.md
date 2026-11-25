@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.20.0] - 2026-11-25
+
+### Added
+
+- Detect common Chinese prompt-injection directives in MCP metadata.
+- Propagate tool-input taint through local aliases and same-file helper calls
+  in Python and Go source analysis.
+
 ## [0.19.0] - 2026-11-25
 
 ### Added

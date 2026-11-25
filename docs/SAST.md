@@ -42,14 +42,17 @@ the command, SSRF, path and secret rules (MCP801/802/803/806) are.
 ## How taint is tracked
 
 For every registered tool, the handler parameters are marked as controlled by
-the agent. The analyzer follows those values one hop: when a parameter reaches a
-sink in the same handler, it reports the rule below. It also recognizes common
-safe patterns and suppresses the finding when one is present.
+the agent. Python and Go analysis follows simple local assignments and propagates
+taint through arguments passed to unambiguous helper functions in the same source
+file. Go uses the standard-library parser to identify function boundaries; sink
+recognition remains pattern-based. JavaScript/TypeScript analysis currently
+tracks values within the handler. Common safe patterns are recognized where
+implemented.
 
-This is a deliberate trade-off. It is not a full data-flow analyzer and does not
-track values across function calls or files. It targets the short, direct paths
-that make up most MCP server bugs, which keeps the scanner fast, dependency-free
-and easy to reason about.
+This is not a full-program data-flow analyzer. It does not follow values across
+files, object properties, returned values, dynamic dispatch or import aliases.
+The bounded same-file analysis improves helper coverage while keeping the
+scanner dependency-free and predictable.
 
 ---
 
@@ -354,11 +357,12 @@ Do not construct a module name or path from tool input.
 
 ## Limits
 
-- One level of taint. Values passed through helper functions, stored in objects
-  across functions, or transformed before the sink may be missed.
-- Pattern matching, not a full AST. Unusual formatting or a framework not listed
-  above can hide a sink. The low-level call patterns (`exec(`, `fetch(`,
-  `open(`) are still matched regardless of the framework.
+- Python and Go taint follows simple aliases and same-file helper arguments, but
+  values passed through files, object properties, return values, dynamic dispatch
+  or import aliases may be missed. JavaScript/TypeScript remains handler-local.
+- Sink detection is pattern-based, not a full AST/data-flow analysis. Unusual
+  formatting or a framework not listed above can hide or misclassify a sink.
+  Common low-level patterns (`exec(`, `fetch(`, `open(`) are also matched.
 - No exploit and no proof. Findings point at risky data flow; they do not
   confirm the path is reachable in every deployment.
 

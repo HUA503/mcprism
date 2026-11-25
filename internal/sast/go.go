@@ -1,6 +1,9 @@
 package sast
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"regexp"
 	"strings"
 	"unicode"
@@ -12,10 +15,11 @@ func analyzeGo(path string) []Issue {
 		return nil
 	}
 	var out []Issue
-	for _, b := range extractGoHandlers(src) {
-		out = append(out, scanGoBlock(path, b)...)
+	functions := extractGoFunctions(src)
+	for _, b := range extractGoHandlers(maskGoComments(src)) {
+		out = append(out, scanReachableGo(path, b, functions)...)
 	}
-	for _, l := range lines {
+	for _, l := range maskedGoLines(lines) {
 		out = append(out, goLineSecretIssues(path, l)...)
 	}
 	return dedupIssues(out)
@@ -24,6 +28,7 @@ func analyzeGo(path string) []Issue {
 // ---------- handler extraction ----------
 
 var goAddToolRe = regexp.MustCompile(`\.?AddTool\s*\(`)
+var goCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
 
 // extractGoHandlers finds mcp-go tool registrations (server.AddTool / mcp.AddTool)
 // and returns each tool's callback body.
@@ -64,15 +69,135 @@ func extractGoHandlers(src string) []handlerBlock {
 	return out
 }
 
+func extractGoFunctions(src string) map[string]handlerBlock {
+	functions := map[string]handlerBlock{}
+	ambiguous := map[string]bool{}
+	fset := token.NewFileSet()
+	file, _ := parser.ParseFile(fset, "", src, parser.ParseComments|parser.AllErrors)
+	if file == nil {
+		return functions
+	}
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Body == nil {
+			continue
+		}
+		name := fn.Name.Name
+		if ambiguous[name] {
+			continue
+		}
+		if _, exists := functions[name]; exists {
+			delete(functions, name)
+			ambiguous[name] = true
+			continue
+		}
+		var params []string
+		if fn.Type.Params != nil {
+			for _, field := range fn.Type.Params.List {
+				if len(field.Names) == 0 {
+					params = append(params, "")
+					continue
+				}
+				for _, param := range field.Names {
+					params = append(params, param.Name)
+				}
+			}
+		}
+		bodyOpen := fset.Position(fn.Body.Lbrace).Offset
+		bodyClose := fset.Position(fn.Body.Rbrace).Offset
+		functions[name] = handlerBlock{
+			name: name, params: params,
+			lines: linesRange(src, bodyOpen, bodyClose+1),
+		}
+	}
+	return functions
+}
+
+func scanReachableGo(path string, entry handlerBlock, functions map[string]handlerBlock) []Issue {
+	taintedByName := map[string]map[string]bool{}
+	processedByName := map[string]map[string]bool{}
+	queue := []handlerBlock{entry}
+	var out []Issue
+	for head := 0; head < len(queue); head++ {
+		block := queue[head]
+		seed := goTaintedNames(block.lines, block.params)
+		known := taintedByName[block.name]
+		if known == nil {
+			known = map[string]bool{}
+			taintedByName[block.name] = known
+		}
+		for name := range seed {
+			known[name] = true
+		}
+		processed := processedByName[block.name]
+		if processed == nil {
+			processed = map[string]bool{}
+			processedByName[block.name] = processed
+		}
+		pending := false
+		for name := range known {
+			if !processed[name] {
+				pending = true
+				processed[name] = true
+			}
+		}
+		if !pending && head > 0 {
+			continue
+		}
+		params := make([]string, 0, len(known))
+		for name := range known {
+			params = append(params, name)
+		}
+		block.params = params
+		out = append(out, scanGoBlockWithTaint(path, block, params)...)
+
+		text := maskGoComments(joinLines(block.lines))
+		ctrl := goTaintedNames(block.lines, params)
+		for _, call := range goCallRe.FindAllStringSubmatchIndex(text, -1) {
+			name := text[call[2]:call[3]]
+			helper, ok := functions[name]
+			if !ok {
+				continue
+			}
+			open := call[1] - 1
+			close := matchClose(text, open, '(', ')')
+			if close < 0 {
+				continue
+			}
+			args := splitCallArgs(text[open+1 : close])
+			for i, arg := range args {
+				if i >= len(helper.params) || helper.params[i] == "" || !goExprControllable(arg, ctrl) {
+					continue
+				}
+				if taintedByName[name] == nil {
+					taintedByName[name] = map[string]bool{}
+				}
+				param := helper.params[i]
+				if !taintedByName[name][param] {
+					taintedByName[name][param] = true
+					child := helper
+					child.params = []string{param}
+					queue = append(queue, child)
+				}
+			}
+		}
+	}
+	return out
+}
+
 // ---------- sink scanning ----------
 
 func scanGoBlock(path string, b handlerBlock) []Issue {
+	return scanGoBlockWithTaint(path, b, nil)
+}
+
+func scanGoBlockWithTaint(path string, b handlerBlock, seeds []string) []Issue {
 	var out []Issue
-	text := joinLines(b.lines)
+	text := maskGoComments(joinLines(b.lines))
 	baseLine := b.lines[0].num
 	off2line := func(off int) int { return baseLine + strings.Count(text[:off], "\n") }
 
-	ctrl := goControllableVars(b.lines)
+	ctrl := goTaintedNames(b.lines, seeds)
 
 	// 1. process execution (MCP801)
 	cmdRe := regexp.MustCompile(`\b(exec\.Command(?:Context)?|os\.StartProcess|syscall\.Exec)\s*\(`)
@@ -138,7 +263,7 @@ func scanGoBlock(path string, b handlerBlock) []Issue {
 	// is guarded by HasPrefix. A bare filepath.Clean is not a boundary check: it
 	// normalizes the path but does not stop ../ traversal, so it must not silence
 	// the finding. The guard is bound to the sink argument, not to the handler.
-	guarded := goGuardedVars(b.lines)
+	guarded := goGuardedVars(maskedGoLines(b.lines))
 	fileRe := regexp.MustCompile(`\b(?:os|ioutil)\.(Open|OpenFile|ReadFile|Create|WriteFile)\s*\(`)
 	for _, m := range fileRe.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
@@ -169,7 +294,7 @@ func scanGoBlock(path string, b handlerBlock) []Issue {
 // req.RequireString, req.GetString or req.Params.Arguments[...].
 func goControllableVars(ls []srcLine) map[string]bool {
 	set := map[string]bool{}
-	for _, l := range ls {
+	for _, l := range maskedGoLines(ls) {
 		t := l.text
 		if !strings.Contains(t, "RequireString(") && !strings.Contains(t, ".GetString(") &&
 			!strings.Contains(t, "Arguments[") && !strings.Contains(t, "GetArguments(") {
@@ -183,6 +308,40 @@ func goControllableVars(ls []srcLine) map[string]bool {
 		first := strings.TrimSpace(strings.Split(lhs, ",")[0])
 		if isGoIdent(first) {
 			set[first] = true
+		}
+	}
+	return set
+}
+
+// goTaintedNames extends direct MCP argument extraction to simple local aliases
+// and parameters explicitly passed into same-file helper functions.
+func goTaintedNames(ls []srcLine, seeds []string) map[string]bool {
+	set := goControllableVars(ls)
+	for _, name := range seeds {
+		if isGoIdent(name) {
+			set[name] = true
+		}
+	}
+	for changed := true; changed; {
+		changed = false
+		for _, line := range maskedGoLines(ls) {
+			t := strings.TrimSpace(line.text)
+			i := strings.Index(t, ":=")
+			width := 2
+			if i < 0 {
+				i = strings.Index(t, "=")
+				width = 1
+				if i < 0 || i+1 < len(t) && t[i+1] == '=' || i > 0 && t[i-1] == '=' {
+					continue
+				}
+			}
+			lhs := strings.TrimSpace(t[:i])
+			rhs := strings.TrimSpace(t[i+width:])
+			first := strings.TrimSpace(strings.Split(lhs, ",")[0])
+			if isGoIdent(first) && !set[first] && goExprControllable(rhs, set) {
+				set[first] = true
+				changed = true
+			}
 		}
 	}
 	return set

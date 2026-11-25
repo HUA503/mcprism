@@ -11,10 +11,11 @@ func analyzePython(path string) []Issue {
 		return nil
 	}
 	var out []Issue
+	functions := extractPythonFunctions(lines)
 	for _, b := range extractPythonHandlers(lines) {
-		out = append(out, scanPythonBlock(path, b)...)
+		out = append(out, scanReachablePython(path, b, functions)...)
 	}
-	for _, l := range lines {
+	for _, l := range maskedPythonLines(lines) {
 		out = append(out, lineSecretIssues(path, l)...)
 	}
 	return dedupIssues(out)
@@ -23,6 +24,8 @@ func analyzePython(path string) []Issue {
 // ---------- handler extraction ----------
 
 var pyToolDecRe = regexp.MustCompile(`@[\w\.]+\.(tool|call_tool)\b`)
+var pyDefRe = regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
+var pyCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
 
 func extractPythonHandlers(lines []srcLine) []handlerBlock {
 	var blocks []handlerBlock
@@ -65,8 +68,7 @@ func extractPythonHandlers(lines []srcLine) []handlerBlock {
 }
 
 func parsePyDef(line string) (string, []string, bool) {
-	re := regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
-	m := re.FindStringSubmatch(line)
+	m := pyDefRe.FindStringSubmatch(line)
 	if m == nil {
 		return "", nil, false
 	}
@@ -86,6 +88,151 @@ func parsePyDef(line string) (string, []string, bool) {
 		params = append(params, p)
 	}
 	return m[1], params, true
+}
+
+// extractPythonFunctions indexes unambiguous same-file function definitions.
+// Ambiguous names (for example methods with the same short name) are omitted
+// so a call cannot taint an unrelated body.
+func extractPythonFunctions(lines []srcLine) map[string]handlerBlock {
+	functions := map[string]handlerBlock{}
+	ambiguous := map[string]bool{}
+	for i, line := range lines {
+		name, params, ok := parsePyDef(line.text)
+		if !ok || ambiguous[name] {
+			continue
+		}
+		body := pyBodyRange(lines, i, indentOf(line.text))
+		if body == nil {
+			continue
+		}
+		if _, exists := functions[name]; exists {
+			delete(functions, name)
+			ambiguous[name] = true
+			continue
+		}
+		functions[name] = handlerBlock{name: name, params: params, lines: body}
+	}
+	return functions
+}
+
+// scanReachablePython follows tainted positional/keyword arguments through
+// unambiguous helper functions in the same source file. Each helper is scanned
+// only for parameters reached from an MCP tool argument.
+func scanReachablePython(path string, entry handlerBlock, functions map[string]handlerBlock) []Issue {
+	taintedByName := map[string]map[string]bool{}
+	processedByName := map[string]map[string]bool{}
+	queue := []handlerBlock{entry}
+	var out []Issue
+	for head := 0; head < len(queue); head++ {
+		block := queue[head]
+		seed := pyTaintedNames(block.lines, block.params)
+		known := taintedByName[block.name]
+		if known == nil {
+			known = map[string]bool{}
+			taintedByName[block.name] = known
+		}
+		for _, name := range seed {
+			known[name] = true
+		}
+		processed := processedByName[block.name]
+		if processed == nil {
+			processed = map[string]bool{}
+			processedByName[block.name] = processed
+		}
+		pending := false
+		for name := range known {
+			if !processed[name] {
+				pending = true
+				processed[name] = true
+			}
+		}
+		if !pending && head > 0 {
+			continue
+		}
+		params := make([]string, 0, len(known))
+		for name := range known {
+			params = append(params, name)
+		}
+		block.params = params
+		out = append(out, scanPythonBlock(path, block)...)
+
+		text := maskPythonComments(joinLines(block.lines))
+		for _, call := range pyCallRe.FindAllStringSubmatchIndex(text, -1) {
+			name := text[call[2]:call[3]]
+			helper, ok := functions[name]
+			if !ok {
+				continue
+			}
+			open := call[1] - 1
+			close := matchClose(text, open, '(', ')')
+			if close < 0 {
+				continue
+			}
+			args := splitCallArgs(text[open+1 : close])
+			for i, arg := range args {
+				param := pythonParamForArg(arg, i, helper.params)
+				if param == "" || !pyControllable(arg, params) {
+					continue
+				}
+				if taintedByName[name] == nil {
+					taintedByName[name] = map[string]bool{}
+				}
+				if !taintedByName[name][param] {
+					taintedByName[name][param] = true
+					child := helper
+					child.params = []string{param}
+					queue = append(queue, child)
+				}
+			}
+		}
+	}
+	return out
+}
+
+func pythonParamForArg(arg string, position int, params []string) string {
+	if eq := strings.Index(arg, "="); eq > 0 && (eq+1 >= len(arg) || arg[eq+1] != '=') {
+		name := strings.TrimSpace(arg[:eq])
+		for _, p := range params {
+			if p == name {
+				return p
+			}
+		}
+		return ""
+	}
+	if position >= 0 && position < len(params) {
+		return params[position]
+	}
+	return ""
+}
+
+func pyTaintedNames(lines []srcLine, seeds []string) []string {
+	set := map[string]bool{}
+	for _, name := range seeds {
+		if name != "" {
+			set[name] = true
+		}
+	}
+	assign := regexp.MustCompile(`^\s*([A-Za-z_]\w*)(?:\s*:[^=]+)?\s*=(?!=)\s*(.*)$`)
+	for changed := true; changed; {
+		changed = false
+		params := make([]string, 0, len(set))
+		for name := range set {
+			params = append(params, name)
+		}
+		for _, line := range maskedPythonLines(lines) {
+			m := assign.FindStringSubmatch(line.text)
+			if m == nil || set[m[1]] || !pyControllable(m[2], params) {
+				continue
+			}
+			set[m[1]] = true
+			changed = true
+		}
+	}
+	out := make([]string, 0, len(set))
+	for name := range set {
+		out = append(out, name)
+	}
+	return out
 }
 
 func pyBodyRange(lines []srcLine, defIdx, baseIndent int) []srcLine {
@@ -119,7 +266,7 @@ func indentOf(s string) int {
 
 func scanPythonBlock(path string, b handlerBlock) []Issue {
 	var out []Issue
-	text := joinLines(b.lines)
+	text := maskPythonComments(joinLines(b.lines))
 	baseLine := b.lines[0].num
 	off2line := func(off int) int { return baseLine + strings.Count(text[:off], "\n") }
 
