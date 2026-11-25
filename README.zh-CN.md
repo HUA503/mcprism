@@ -113,6 +113,7 @@ mcprism vet server.py            # 审查单个文件
 - 看 schema。对于没有源码的在线 server，如果名为 command、url、path 之类的字符串参数接受任意值，会按命令执行、SSRF、路径风险报出；用 enum、const、pattern 约束过的参数不报。
 - 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套配置。
 - 风险接受清单。可以带理由和到期时间抑制发现，也可以用 `--baseline` 接受整份旧报告，只让新问题卡住构建；被抑制项仍显示在报告里，过期后自动重新出现。
+- 工具清单锁。保存工具名称和 SHA-256 指纹；之后若 server 新增、删除或修改工具定义，命令会报出差异并返回失败。锁文件不保存工具描述或 schema。保存和验证时会连接 server 来枚举工具，但不会调用工具。
 - 结果确定。35 条规则映射到 OWASP MCP01–MCP07。本地配置和源码静态分析不联网；`registry` 命令只从官方 Registry 获取公开元数据。动态探测是可选的，会启动 server 进程，请在沙箱里运行。探测带有出站防护（不允许重定向到云元数据或 link-local 地址），并且默认只给被拉起的进程一个受限的环境变量集合，而不是整个 shell。
 - 面向人和机器的报告：table、JSON、Markdown、HTML、SARIF、JUnit XML、CycloneDX SBOM、CSV。
 - 一次扫描多个目标：文件、目录（递归）、URL。
