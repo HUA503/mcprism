@@ -220,5 +220,6 @@ https://github.com/HUA503/mcprism
 | Reddit (which sub) |  |  |  |
 | X |  |  |  |
 | V2EX |  |  |  |
+| [awesome-agentic-mcp-security](https://github.com/mcp-security-project/awesome-agentic-mcp-security/pull/44) | PR #44 open | Maintainer confirmed fit; rebased and refreshed for v0.9.2; awaiting review | MCP Scanners |
 | awesome-mcp-enterprise | issue #154 open, no approval label yet | wait; do not open a PR before approval | Emerging list |
 | mcp.so / Glama |  |  | These catalog servers; list only if a tools section applies |
