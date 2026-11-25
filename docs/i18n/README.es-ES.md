@@ -49,6 +49,12 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 mcprism scan
 ```
 
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+mcprism scan
+```
+
 ## Revisar un servidor en una línea
 
 Revisa un comando de inicio, una URL, un paquete o código en el disco sin añadirlo a ninguna configuración:

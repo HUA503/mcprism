@@ -49,6 +49,12 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 mcprism scan
 ```
 
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+mcprism scan
+```
+
 ## 1 行でサーバーを審査
 
 設定に追加することなく、起動コマンド、URL、パッケージ、または手元のコードを確認します。

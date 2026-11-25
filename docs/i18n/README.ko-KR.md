@@ -49,6 +49,12 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 mcprism scan
 ```
 
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+mcprism scan
+```
+
 ## 한 줄로 서버 하나 검사하기
 
 어떤 구성에도 추가하지 않고 시작 명령, URL, 패키지, 디스크의 코드를 확인합니다.

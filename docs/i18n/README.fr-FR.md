@@ -49,6 +49,12 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 mcprism scan
 ```
 
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+mcprism scan
+```
+
 ## Vérifier un serveur en une ligne
 
 Vérifiez une commande de lancement, une URL, un paquet ou un code sur le disque sans l'ajouter à une configuration :
