@@ -6,6 +6,21 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-25
+
+### Added
+
+- Discover and scan Gemini CLI MCP settings from user, project, and system
+  configuration locations.
+- Discover and scan OpenCode MCP settings from user, project, and system
+  configuration locations, including local command arrays and remote servers.
+
+### Changed
+
+- Explain mcprism's purpose and the `scan` versus `vet` commands more clearly in
+  the English and Chinese README introductions.
+- Add OpenCode to the localized README quick-start client lists.
+
 ## [0.9.2] - 2026-11-25
 
 ### Added
@@ -387,7 +402,8 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
-[Unreleased]: https://github.com/HUA503/mcprism/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/HUA503/mcprism/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/HUA503/mcprism/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/HUA503/mcprism/releases/tag/v0.9.2
 [0.9.1]: https://github.com/HUA503/mcprism/releases/tag/v0.9.1
 [0.9.0]: https://github.com/HUA503/mcprism/releases/tag/v0.9.0

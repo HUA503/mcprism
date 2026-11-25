@@ -5,7 +5,7 @@ The post text is written in first person because these communities expect a
 person, not a press release. Adapt each post to the channel and your own voice;
 don't cross-post identical text everywhere.
 
-**Current release: [v0.9.2](https://github.com/HUA503/mcprism/releases/tag/v0.9.2).**
+**Current release: [v0.10.0](https://github.com/HUA503/mcprism/releases/tag/v0.10.0).**
 The copy below reflects the current product and privacy boundaries.
 
 ## The hook
@@ -22,7 +22,7 @@ runs on your machine with your credentials, and the client does not audit it.
 mcprism is one Go binary with no runtime dependencies. Local config and source
 scans run offline; Registry commands fetch public metadata from the official MCP
 Registry; live probing is opt-in. When probing, it lists tools without invoking
-them. It brings a policy and CI workflow to MCP server review. In v0.9.2, `inventory save` and `inventory verify` can detect tool-definition drift using a lock that stores names and SHA-256 fingerprints, not descriptions or schemas. The GitHub Action can enforce that check in CI; runtime enumeration is opt-in and should run on a dedicated runner without secrets.
+them. It brings a policy and CI workflow to MCP server review. It now discovers Gemini CLI and OpenCode MCP configs alongside established clients. The v0.9.2 release added `inventory save` and `inventory verify` for detecting tool-definition drift using a lock that stores names and SHA-256 fingerprints, not descriptions or schemas. The GitHub Action can enforce that check in CI; runtime enumeration is opt-in and should run on a dedicated runner without secrets.
 
 **Title candidates**
 - Show HN: mcprism, one Go binary to check MCP servers before an AI connects
