@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # Render a high-resolution static terminal shot of `mcprism vet` on a Go file.
 # The rows mirror the real table output of `mcprism vet internal/sast/testdata/vuln.go`.
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+from demo_helpers import ROOT, load_fonts, release_metadata
 
-MONO = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
-MONOB = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
+DEMO_VERSION, DEMO_DATE = release_metadata()
+
 FS = 18
-font = ImageFont.truetype(MONO, FS)
-fontb = ImageFont.truetype(MONOB, FS)
+font, fontb = load_fonts(FS)
 
 BG = (24, 24, 37)
 FG = (205, 214, 244)
@@ -26,13 +26,13 @@ HBAR = 88
 def finding(sev, sevcol, rule, title, loc, code, advice):
     return [
         [("  " + sev.ljust(4) + " ", sevcol, True), (rule, DIM, False), ("  " + title, FG, False)],
-        [("      \u21b3 " + loc, DIM, False)],
+        [("      -> " + loc, DIM, False)],
         [("      " + code, sevcol, False)],
         [("      \u2192 " + advice, GREEN, False)],
     ]
 
 rows = [
-    [("\u25c6 mcprism", FG, True), ("   v0.7.0", DIM, False), ("  \u00b7 2026-10-12", DIM, False)],
+    [("\u25c6 mcprism", FG, True), ("   " + DEMO_VERSION, DIM, False), ("  \u00b7 " + DEMO_DATE, DIM, False)],
     [("\u2500" * HBAR, RULE, False)],
     [(" F ", RED, True), (" ", FG, False), ("vuln", FG, True),
      ("  ", FG, False), ("\u25cc static only", DIM, False)],
@@ -76,7 +76,6 @@ for ri, row in enumerate(rows):
         x += len(text) * CELLW
 
 import os as _os
-ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 out = _os.path.join(ROOT, "assets", "sast.png")
 img.save(out)
 print("saved", out, img.size)
