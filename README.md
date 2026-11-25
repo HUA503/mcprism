@@ -371,7 +371,7 @@ from command errors.
 Scanning two local servers in static mode:
 
 ```text
-◆ mcprism   v0.2.0 · 2026-09-29
+◆ mcprism   v0.20.0 · 2026-11-25
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
