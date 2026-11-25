@@ -192,7 +192,10 @@ mcprism vet --probe -- npx -y some-mcp-server   # реально запусти�
 # Поиск и статическая проверка публичных метаданных MCP Registry
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
-mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
+mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
+```
+
+Добавьте `--all`, чтобы пройти все страницы результатов. Добавьте `--require-complete`, чтобы команда завершилась с ошибкой при неполном аудите. Проверяются только общедоступные метаданные; серверы не запускаются.
 
 mcprism inspect mcp.json     # перечислить инструменты/ресурсы/подсказки сервера
 mcprism rules                # перечислить встроенные правила
