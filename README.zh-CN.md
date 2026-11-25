@@ -237,9 +237,13 @@ mcprism registry audit filesystem --all --limit 100 --require-complete --format 
 mcprism inspect mcp.json     # 列出 server 的 tools/resources/prompts
 mcprism rules                # 列出内置规则
 mcprism profiles             # 列出内置基线
+
+# 锁定一个已审查服务器的工具定义，并检测后续变化
+mcprism inventory save one-server.json --output server.tools.lock.json
+mcprism inventory verify one-server.json --baseline server.tools.lock.json
 ```
 
-Registry 批量审计默认只检查一页（最多 100 条）。加上 `--all` 会继续按游标分页并审计所有匹配项；`--require-complete` 会在仍有配置无法审计时返回非零状态。解读报告前请检查标准错误输出中的警告，因为这些警告可能不会写入报告。
+Registry 批量审计默认只检查一页（最多 100 条）。加上 `--all` 会继续按游标分页并审计所有匹配项；`--require-complete` 会在仍有配置无法审计时返回非零状态。解读报告前请检查标准错误输出中的警告，因为这些警告可能不会写入报告。\r\n\r\n`inventory save` 和 `inventory verify` 会连接远程服务或启动 stdio 进程来枚举工具，但不会调用工具。先审查目标；不可信服务请在沙箱中运行。锁文件只保存工具名和哈希，不保存描述、schema 或配置值。首次审查通过后保存，升级后运行 verify；发现工具新增、删除或定义变化时退出码为 1。只有审阅变更后才用 `--force` 覆盖锁。
 
 ### Shell 自动补全
 
