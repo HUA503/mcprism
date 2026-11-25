@@ -6,7 +6,7 @@
 
 # mcprism
 
-**Vet MCP servers before your AI trusts them.**
+**Check MCP server security risks before connecting it to your AI.**
 
 mcprism is a security scanner for [Model Context Protocol](https://modelcontextprotocol.io/)
 servers. It looks at a server from three angles:
