@@ -26,8 +26,9 @@ servers. It looks at a server from three angles:
    JS/TS/Python/Go tool handlers and traces arguments an agent can control into
    dangerous sinks: process execution, outbound requests (SSRF) and filesystem
    paths, along with eval, unsafe deserialization and hardcoded secrets.
-3. **Runtime** — it performs the MCP handshake to list tools, resources and
-   prompts and checks tool metadata for poisoning. It never calls a tool.
+3. **Runtime** — it negotiates the current stateless MCP protocol or the legacy
+   handshake, then lists tools, resources and prompts and checks tool metadata
+   for poisoning. It never calls a tool.
 
 Every server gets a list of findings, a 0–100 score and an A–F grade. mcprism
 ships as one Go binary with no runtime dependencies. Local config and source
@@ -147,8 +148,8 @@ below, with no network needed.
 
 - One binary. No Python or Node setup, no LLM API key, no account.
 - Static by default. It reads the config and reviews JS/TS/Python/Go source.
-  Pass `--dynamic` to perform the MCP handshake and list tools, resources and
-  prompts. It never calls a tool.
+  Pass `--dynamic` to negotiate with current or legacy MCP servers and list
+  tools, resources and prompts. It never calls a tool.
 - Schema-aware. For a live server you have no source for, a string parameter
   named like command, url or path that accepts any value is flagged as command,
   SSRF or path risk. Parameters constrained with enum, const or pattern are

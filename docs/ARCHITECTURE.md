@@ -43,9 +43,11 @@ walk a directory tree looking for config files (`WalkDir`).
 ### protocol
 
 A minimal MCP JSON-RPC client. `protocol.Dial` picks a transport (stdio,
-Streamable HTTP, or legacy SSE), and the client performs `initialize`, then
-lists tools, resources and prompts. It does not call tools. Transport details
-are isolated per file so adding a transport does not touch the client surface.
+Streamable HTTP, or legacy SSE). The client probes `server/discover` and uses
+the stateless 2026-07-28 protocol when available, then falls back to the
+legacy `initialize` handshake for older servers. It lists tools, resources
+and prompts but never calls tools. Transport details are isolated per file so
+adding a transport does not touch the client surface.
 
 HTTP responses are matched to their JSON-RPC request id; an SSE response is
 returned when its matching event arrives, without waiting for stream closure.
