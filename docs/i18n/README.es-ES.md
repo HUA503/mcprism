@@ -8,6 +8,8 @@
 
 **Comprueba los riesgos de seguridad de los servidores MCP antes de conectarlos a tu IA.**
 
+Si usas servidores MCP con Claude, Cursor, VS Code u otro cliente de IA, mcprism revisa su configuración y el código fuente local antes de conectarlos. La inspección en vivo de los metadatos de las herramientas solo se ejecuta si la activas expresamente. Si aún no usas servidores MCP, probablemente todavía no necesitas mcprism.
+
 mcprism es un escáner de seguridad para servidores del [Model Context Protocol](https://modelcontextprotocol.io/). Examina un servidor desde tres ángulos:
 
 1. **Configuración** — cómo un cliente lo inicia o conecta: paquetes fijados por versión, transporte en texto plano, credenciales dentro de la configuración y destinos a metadatos de la nube y redes privadas.
