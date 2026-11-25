@@ -119,6 +119,13 @@ func globalCandidates() []candPath {
 	add("amazon-q", "global", filepath.Join(amazonQDir, "agents", "default.json"))
 	add("amazon-q", "global", filepath.Join(amazonQDir, "mcp.json"))
 
+	// Kiro IDE and CLI share a user-level MCP config. KIRO_HOME can relocate it.
+	kiroHome := os.Getenv("KIRO_HOME")
+	if kiroHome == "" {
+		kiroHome = filepath.Join(home, ".kiro")
+	}
+	add("kiro", "global", filepath.Join(kiroHome, "settings", "mcp.json"))
+
 	// Gemini CLI user settings use JSON with a top-level mcpServers object.
 	add("gemini-cli", "global", filepath.Join(home, ".gemini", "settings.json"))
 
@@ -220,6 +227,7 @@ func projectCandidates(dir string) []candPath {
 			candPath{filepath.Join(d, ".roo", "mcp.json"), "roo-code", "project"},
 			candPath{filepath.Join(d, ".amazonq", "default.json"), "amazon-q", "project"},
 			candPath{filepath.Join(d, ".amazonq", "mcp.json"), "amazon-q", "project"},
+			candPath{filepath.Join(d, ".kiro", "settings", "mcp.json"), "kiro", "project"},
 			candPath{filepath.Join(d, ".gemini", "settings.json"), "gemini-cli", "project"},
 			candPath{filepath.Join(d, "opencode.json"), "opencode", "project"},
 			candPath{filepath.Join(d, "opencode.jsonc"), "opencode", "project"},
