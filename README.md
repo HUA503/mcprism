@@ -683,6 +683,9 @@ Based on public project descriptions (features may change):
 No. It performs the MCP initialization and listing calls only. Tools are not
 invoked, files are not opened through a server, and prompts are not sent.
 
+**Do inventory save and verify start the target?**
+Yes. They connect to remote servers or start stdio processes to enumerate tool metadata. They never call the tools. Use a sandbox or a dedicated runner without secrets for untrusted targets; the lock contains tool names and hashes only.
+
 **Does it send data anywhere?**
 There is no telemetry, and local configs or reports are never uploaded.
 `registry search` and `registry audit` send the search term, while `registry scan`
