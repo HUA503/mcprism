@@ -164,7 +164,7 @@ Linux와 macOS에서 `/usr/local/bin`에 쓸 수 없으면 설치 프로그램�
 ## 빠른 시작
 
 ```sh
-# Claude, Codex, Gemini CLI, Cursor, VS Code, Windsurf 등의 구성 자동 검색
+# Claude, Codex, Gemini CLI, OpenCode, Cursor, VS Code, Windsurf 등의 구성 자동 검색
 mcprism scan
 
 # 특정 구성 파일

@@ -164,7 +164,7 @@ Linux と macOS で `/usr/local/bin` に書き込めない場合、インスト�
 ## クイックスタート
 
 ```sh
-# Claude、Codex、Gemini CLI、Cursor、VS Code、Windsurf などの設定を自動検出
+# Claude、Codex、Gemini CLI、OpenCode、Cursor、VS Code、Windsurf などの設定を自動検出
 mcprism scan
 
 # 特定の設定ファイル

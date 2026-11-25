@@ -164,7 +164,7 @@ En Linux y macOS, si no se puede escribir en `/usr/local/bin`, el instalador usa
 ## Inicio rápido
 
 ```sh
-# Detecta automáticamente las configuraciones de Claude, Codex, Gemini CLI, Cursor, VS Code, Windsurf, ...
+# Detecta automáticamente las configuraciones de Claude, Codex, Gemini CLI, OpenCode, Cursor, VS Code, Windsurf, ...
 mcprism scan
 
 # Un archivo de configuración concreto

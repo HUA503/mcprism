@@ -204,7 +204,7 @@ nix run github:HUA503/mcprism -- scan
 </div>
 
 ```sh
-# يكتشف تلقائيًا تكوينات Claude وCodex وGemini CLI وCursor وVS Code وWindsurf وغيرها
+# يكتشف تلقائيًا تكوينات Claude وCodex وGemini CLI وOpenCode وCursor وVS Code وWindsurf وغيرها
 mcprism scan
 
 # ملف تكوين محدد
