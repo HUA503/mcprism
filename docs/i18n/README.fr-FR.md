@@ -6,7 +6,7 @@
 
 # mcprism
 
-**Vérifiez les serveurs MCP avant que votre IA ne leur fasse confiance.**
+**Vérifiez les risques de sécurité des serveurs MCP avant de les connecter à votre IA.**
 
 mcprism est un scanner de sécurité pour les serveurs [Model Context Protocol](https://modelcontextprotocol.io/). Il examine un serveur sous trois angles :
 
