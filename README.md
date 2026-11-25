@@ -151,7 +151,8 @@ below, with no network needed.
   reviewed server adds, removes or changes a tool definition. The lock does not
   contain descriptions or schemas. Saving and verifying connect to the server to
   enumerate tools; they never call a tool.
-- Deterministic. 35 rules mapped to OWASP MCP01–MCP07. Config and source scans
+- Deterministic. 35 built-in rules map to OWASP MCP01–MCP07 where
+  applicable. Config and source scans
   never touch the network; registry commands only fetch public metadata from
   the official registry. Live probing is opt-in and starts the server, so run
   it in a sandbox. Probing applies an egress guard (no redirects to cloud
