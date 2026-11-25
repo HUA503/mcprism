@@ -215,13 +215,15 @@ func pyTaintedNames(lines []srcLine, seeds []string) []string {
 	assign := regexp.MustCompile(`^\s*([A-Za-z_]\w*)(?:\s*:[^=]+)?\s*=\s*(.*)$`)
 	for changed := true; changed; {
 		changed = false
+		staticMaps := pyStaticMapNames(lines, set)
 		params := make([]string, 0, len(set))
 		for name := range set {
 			params = append(params, name)
 		}
 		for _, line := range maskedPythonLines(lines) {
 			m := assign.FindStringSubmatch(line.text)
-			if m == nil || strings.HasPrefix(strings.TrimSpace(m[2]), "=") || set[m[1]] || !pyControllable(m[2], params) {
+			if m == nil || strings.HasPrefix(strings.TrimSpace(m[2]), "=") || set[m[1]] ||
+				pyStaticMapLookup(m[2], staticMaps) || !pyControllable(m[2], params) {
 				continue
 			}
 			set[m[1]] = true
@@ -233,6 +235,39 @@ func pyTaintedNames(lines []srcLine, seeds []string) []string {
 		out = append(out, name)
 	}
 	return out
+}
+
+// pyStaticMapNames finds literal maps whose values do not depend on tainted
+// handler input. Selecting one of their fixed values by a tool argument is an
+// allow-list choice, not propagation of the argument as an executable value.
+func pyStaticMapNames(lines []srcLine, tainted map[string]bool) map[string]bool {
+	text := joinLines(lines)
+	mapStart := regexp.MustCompile(`(?m)^\s*([A-Za-z_]\w*)\s*=\s*\{`)
+	names := map[string]bool{}
+	for _, m := range mapStart.FindAllStringSubmatchIndex(text, -1) {
+		open := m[1] - 1
+		close := matchClose(text, open, '{', '}')
+		if close < 0 {
+			continue
+		}
+		body := text[open+1 : close]
+		dependsOnInput := false
+		for name := range tainted {
+			if containsWord(body, name) {
+				dependsOnInput = true
+				break
+			}
+		}
+		if !dependsOnInput {
+			names[text[m[2]:m[3]]] = true
+		}
+	}
+	return names
+}
+
+func pyStaticMapLookup(expr string, staticMaps map[string]bool) bool {
+	m := regexp.MustCompile(`^\s*([A-Za-z_]\w*)\s*\[[^\]]+\]\s*$`).FindStringSubmatch(expr)
+	return m != nil && staticMaps[m[1]]
 }
 
 func pyBodyRange(lines []srcLine, defIdx, baseIndent int) []srcLine {
