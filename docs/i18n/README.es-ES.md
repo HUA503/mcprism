@@ -192,7 +192,10 @@ mcprism vet --probe -- npx -y some-mcp-server   # iniciar de verdad y listar her
 # Buscar y auditar estáticamente metadatos del MCP Registry oficial
 mcprism registry search filesystem
 mcprism registry scan io.github.user/server-name
-mcprism registry audit filesystem --limit 20 --format sarif --output registry.sarif
+mcprism registry audit filesystem --all --limit 100 --require-complete --format sarif --output registry.sarif
+```
+
+Añade `--all` para recorrer todas las páginas de resultados. Añade `--require-complete` para que el comando falle si la auditoría queda incompleta. Solo se revisan metadatos públicos; los servidores no se inician.
 
 mcprism inspect mcp.json     # listar herramientas/recursos/indicaciones de un servidor
 mcprism rules                # listar las reglas integradas
