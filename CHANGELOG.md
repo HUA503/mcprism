@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-11-25
+
 ### Added
 
 - Save and verify privacy-preserving tool inventory locks to detect definition drift.
@@ -385,7 +387,8 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
-[Unreleased]: https://github.com/HUA503/mcprism/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/HUA503/mcprism/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/HUA503/mcprism/releases/tag/v0.9.2
 [0.9.1]: https://github.com/HUA503/mcprism/releases/tag/v0.9.1
 [0.9.0]: https://github.com/HUA503/mcprism/releases/tag/v0.9.0
 [0.8.9]: https://github.com/HUA503/mcprism/releases/tag/v0.8.9

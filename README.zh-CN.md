@@ -443,7 +443,7 @@ Codex 自动发现会检查系统配置（Unix 上为 `/etc/codex/config.toml`�
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.8.9
+  rev: v0.9.2
   hooks:
     - id: mcprism
 ```
@@ -476,10 +476,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.8.9
+        uses: HUA503/mcprism@v0.9.2
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
+          # 可选：会动态连接单个 server；请使用不含密钥的隔离 runner。
+          # inventory-target: mcp.json
+          # inventory-baseline: mcp.tools.lock.json
       - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
         if: always() && hashFiles('mcprism.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
@@ -491,6 +494,11 @@ jobs:
 `sarif-file` 输出可传给上传步骤。上传结果需要 workflow 有
 `security-events: write` 权限。Windows、macOS、Jenkins、GitLab 等场景请使用上面的 CLI 示例。
 Action 固定到 release tag 时会自动使用同版本二进制。需要更强的供应链保护时，可将 Action 固定到完整 commit SHA。
+
+要在 CI 中发现单个 server 的工具定义变化，先运行
+`mcprism inventory save mcp.json --output mcp.tools.lock.json` 生成并审查锁文件，
+再同时设置 `inventory-target` 和 `inventory-baseline`。这是显式启用的动态检查，
+会连接 server 列出工具，也可能启动 stdio 进程；请使用不含密钥的专用 runner。
 
 JUnit 输出可以直接用 Jenkins 和 GitLab 的测试报告步骤，CycloneDX 输出可以交给 SBOM 或漏洞跟踪系统。
 
@@ -536,6 +544,9 @@ flowchart TD
 
 **mcprism 会调用我的工具吗？**
 不会。它只做 MCP 的 initialize 和列出请求，不会调用工具、不会通过 server 打开文件、也不会发送提示词。
+
+**`inventory save` 和 `inventory verify` 会启动 server 吗？**
+会连接远程 server 或启动 stdio 进程来枚举工具，但不会调用工具。检查不可信目标时请使用沙箱或不含密钥的专用 runner；锁文件只保存工具名和哈希。
 
 **它会把数据发到别处吗？**
 没有遥测，也不会上传本地配置或报告。`registry search` 和 `registry audit` 会把搜索词发送给官方 MCP Registry，`registry scan` 会发送指定名称以获取公开元数据；其他静态扫描不会联网。动态扫描（`scan --dynamic` / `vet --probe`）会启动或连接你指定的 server，该进程可能执行代码或联网，请在沙箱里运行。探测会拒绝跨 host 重定向、拒绝连接云元数据/link-local 地址，默认也不会把你的 shell 环境传给被拉起的 server。

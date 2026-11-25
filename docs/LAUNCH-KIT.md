@@ -5,7 +5,7 @@ The post text is written in first person because these communities expect a
 person, not a press release. Adapt each post to the channel and your own voice;
 don't cross-post identical text everywhere.
 
-**Current release: [v0.9.1](https://github.com/HUA503/mcprism/releases/tag/v0.9.1).**
+**Current release: [v0.9.2](https://github.com/HUA503/mcprism/releases/tag/v0.9.2).**
 The copy below reflects the current product and privacy boundaries.
 
 ## The hook
@@ -22,7 +22,7 @@ runs on your machine with your credentials, and the client does not audit it.
 mcprism is one Go binary with no runtime dependencies. Local config and source
 scans run offline; Registry commands fetch public metadata from the official MCP
 Registry; live probing is opt-in. When probing, it lists tools without invoking
-them. It brings a policy and CI workflow to MCP server review.
+them. It brings a policy and CI workflow to MCP server review. In v0.9.2, `inventory save` and `inventory verify` can detect tool-definition drift using a lock that stores names and SHA-256 fingerprints, not descriptions or schemas. The GitHub Action can enforce that check in CI; runtime enumeration is opt-in and should run on a dedicated runner without secrets.
 
 **Title candidates**
 - Show HN: mcprism, one Go binary to check MCP servers before an AI connects
@@ -52,11 +52,18 @@ mcprism checks a server before you connect:
 It's one Go binary with no runtime dependencies. Local config and source scans
 run offline; Registry commands fetch public metadata from the official MCP
 Registry, and live probing is opt-in. It never uploads local configs or reports.
-Policy-as-code and SARIF/JUnit/CycloneDX output make it usable in CI.
+Policy-as-code and SARIF/JUnit/CycloneDX output make it usable in CI. Tool-definition locks can also fail CI on unreviewed drift.
 
 Local scans do not need an LLM, runtime dependencies, or a cloud account. Registry lookups are explicit and fetch public metadata from the official service.
 
-Registry batch auditing with a completeness gate is available in v0.9.1:
+Tool-definition drift checks are also available in v0.9.2. Save a reviewed lock, then compare it in CI:
+````sh
+mcprism inventory save one-server.json --output one-server.tools.lock.json
+mcprism inventory verify one-server.json --baseline one-server.tools.lock.json
+````
+The lock stores tool names and hashes only. Save and verify connect to the target to list its tools; they do not call tools, and stdio targets are launched. Use a sandbox or dedicated runner without secrets.
+
+Registry batch auditing with a completeness gate is available in v0.9.2:
 ````sh
 mcprism registry search filesystem
 mcprism registry scan <namespace/server>
@@ -94,12 +101,13 @@ https://github.com/HUA503/mcprism/blob/main/docs/MCP-ATTACK-SURFACE.md
 ```
 MCP is how Claude, Cursor and Copilot connect to third-party tools. A local MCP server is a package that runs on your machine as your user, inherits your env (cloud and API keys), can run shell and can talk to the network. The client starts it but doesn't audit it.
 
-mcprism scans the config and the server's tool list before you connect: remote-code-in-shell launch commands, injected instructions in tool descriptions, secrets by type and entropy, and network targets like 169.254.169.254. It outputs a score and grade mapped to OWASP MCP.
+mcprism scans the config and the server's tool list before you connect: remote-code-in-shell launch commands, injected instructions in tool descriptions, secrets by type and entropy, and network targets like 169.254.169.254. It outputs a score and grade mapped to OWASP MCP. Tool inventory locks can also detect changes to tools between trusted reviews.
 
 It's a single Go binary with no runtime dependencies. Local config and source
 scans run offline; registry checks fetch public metadata, and live probes are
 opt-in. It has policy-as-code and SARIF/JUnit output for CI. A clean scan is
 not proof of safety; it helps surface checkable risks before you trust a package.
+Tool inventory locks can flag changes to tool names, descriptions, annotations, and schemas.
 
 https://github.com/HUA503/mcprism
 ```
@@ -129,6 +137,8 @@ I wrote mcprism to check MCP servers before connecting them. It reviews the
 launch config and source code, can inspect tool metadata without invoking tools,
 and gives each server a grade. Local scans are offline; Registry checks fetch
 public metadata, and live probing is opt-in. It is one Go binary and works in CI.
+For ongoing changes, save a tool inventory lock and verify it in CI; this opt-in
+check connects to the server and should run without secrets.
 
 https://github.com/HUA503/mcprism
 ```
@@ -172,7 +182,7 @@ MCP 现在 Claude、Cursor、VS Code 都内置了，但加一个 server 基本�
 
 mcprism 在连接前扫描 server：识别管道执行远程脚本的启动命令、只枚举工具不调用、检查工具描述里的注入指令、按类型和熵识别密钥、检查云元数据等网络目标，给出 0-100 分和 A-F 评级，映射 OWASP MCP。
 
-单个 Go 二进制，无运行时依赖。本地配置和源码扫描离线运行；Registry 命令会查询官方目录的公开元数据，动态探测则需显式开启。支持 YAML 策略和 SARIF/JUnit/CycloneDX，可放进 CI 按评级设门禁。
+单个 Go 二进制，无运行时依赖。本地配置和源码扫描离线运行；Registry 命令会查询官方目录的公开元数据，动态探测则需显式开启。支持 YAML 策略和 SARIF/JUnit/CycloneDX，可放进 CI 按评级设门禁。还可保存工具定义指纹，发现工具清单变化，并在 CI 中拦截未经审查的变化。
 
 攻击面分析（含示例）：https://github.com/HUA503/mcprism/blob/main/docs/MCP-ATTACK-SURFACE.md
 仓库：https://github.com/HUA503/mcprism
@@ -182,7 +192,7 @@ mcprism 在连接前扫描 server：识别管道执行远程脚本的启动命�
 ```
 给 AI 接入的 MCP server 会以你的权限访问工具和数据，配置不当或恶意实现可能带来安全风险。
 
-mcprism 可以检查配置、部分源码和官方 MCP Registry 中公开的启动/远程连接信息，也能在用户显式开启时枚举工具元数据（不会调用工具）。本地配置和源码扫描离线运行；Registry 查询会访问官方目录；动态探测会连接目标。单个 Go 二进制，还可接入 CI。
+mcprism 可以检查配置、部分源码和官方 MCP Registry 中公开的启动/远程连接信息，也能在用户显式开启时枚举工具元数据（不会调用工具）。本地配置和源码扫描离线运行；Registry 查询会访问官方目录；动态探测会连接目标。单个 Go 二进制，还可接入 CI；保存工具清单指纹后，也能在下次接入时发现工具定义变化。
 https://github.com/HUA503/mcprism
 ```
 
@@ -194,12 +204,12 @@ https://github.com/HUA503/mcprism
 2. **Post to one or two places where your account has history.** Start with Show HN and one Reddit sub; don't cross-post the same text across many subs the same day.
 3. **Timing.** Choose a weekday window when your target audience is likely to be online, then stay available to answer questions. Test timing with actual engagement rather than relying on a fixed schedule.
 4. **Post X with the GIF**, and reply with the thread if you have follow-ups.
-5. **Prepare a social preview image** and add it in the repository settings so shared links show the project name, MCP security use case, and release link. Verify the link preview after uploading.
+5. **Set the repository social preview.** Upload [`assets/social-preview.jpg`](../assets/social-preview.jpg) under **Settings → General → Social preview**. The card is 1280 × 640 and under 1 MB. Pair shared posts with the release link, then verify the rendered preview.
 6. **Watch the proposal issue** at
    https://github.com/bh-rat/awesome-mcp-enterprise/issues/154. Once it has the
    `approved-for-pr` label before opening a PR. The proposal is for the Emerging
    list under Security and Governance; refresh its release and privacy evidence
-   before resubmitting because the original issue text predates v0.9.1.
+   before resubmitting because the original issue text predates v0.9.2.
 7. **Reply to comments early.** The first hour of discussion decides how far a Show HN or Reddit post travels.
 
 ## Tracking

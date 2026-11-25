@@ -562,7 +562,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.9.1
+  rev: v0.9.2
   hooks:
     - id: mcprism
 ```
@@ -597,10 +597,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.9.1
+        uses: HUA503/mcprism@v0.9.2
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
+          # Optional: this dynamically connects to one server; use an isolated runner without secrets.
+          # inventory-target: mcp.json
+          # inventory-baseline: mcp.tools.lock.json
       - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
         if: always() && hashFiles('mcprism.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
@@ -614,6 +617,12 @@ upload step. The workflow needs `security-events: write` to publish findings.
 When the action is pinned to a release tag, it uses that matching binary
 version automatically. Pin to a full commit SHA for stricter supply-chain
 protection.
+
+To fail CI when one server's tool definitions change, create a reviewed lock with
+`mcprism inventory save mcp.json --output mcp.tools.lock.json`, then set both
+`inventory-target` and `inventory-baseline` in the action. This opt-in check
+connects to the server to enumerate tools and may launch a stdio process; use a
+dedicated runner without secrets.
 For Windows, macOS, Jenkins, GitLab, or other runners, use the CLI examples
 above.
 
@@ -674,6 +683,9 @@ Based on public project descriptions (features may change):
 **Does mcprism call my tools?**
 No. It performs the MCP initialization and listing calls only. Tools are not
 invoked, files are not opened through a server, and prompts are not sent.
+
+**Do inventory save and verify start the target?**
+Yes. They connect to remote servers or start stdio processes to enumerate tool metadata. They never call the tools. Use a sandbox or a dedicated runner without secrets for untrusted targets; the lock contains tool names and hashes only.
 
 **Does it send data anywhere?**
 There is no telemetry, and local configs or reports are never uploaded.
