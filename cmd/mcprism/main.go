@@ -42,7 +42,7 @@ func main() {
 func rootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "mcprism",
-		Short:         "Vet MCP servers before your AI trusts them",
+		Short:         "Check MCP server security risks before connecting it to your AI",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
