@@ -44,7 +44,7 @@ probing is strictly opt-in (`--dynamic` / `--probe`).
 ---
 
 <p align="center">
-  <img src="assets/demo.gif?v=0.7.0" alt="mcprism scanning MCP servers in a terminal" width="78%">
+  <img src="assets/demo.gif?v=0.9.2" alt="mcprism scanning MCP servers in a terminal" width="78%">
 </p>
 
 <p align="center">
@@ -116,7 +116,7 @@ resources and prompts. A source tree or file goes through the SAST engine
 below, with no network needed.
 
 <p align="center">
-  <img src="assets/vet.png?v=0.7.0" alt="mcprism vet catching a curl|sh launch command" width="94%">
+  <img src="assets/vet.png?v=0.9.2" alt="mcprism vet catching a curl|sh launch command" width="94%">
 </p>
 
 ## Contents
@@ -190,13 +190,13 @@ below, with no network needed.
 ## Report
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png?v=0.7.0" alt="mcprism HTML report for a live server" width="86%">
+  <img src="assets/screenshot-dynamic.png?v=0.9.2" alt="mcprism HTML report for a live server" width="86%">
 </p>
 
 Batch review across many servers (static mode):
 
 <p align="center">
-  <img src="assets/screenshot-static.png?v=0.7.0" alt="mcprism HTML report across many servers" width="70%">
+  <img src="assets/screenshot-static.png?v=0.9.2" alt="mcprism HTML report across many servers" width="70%">
 </p>
 
 ## Install
@@ -502,7 +502,7 @@ analyzer and manual review. Rule details and more examples are in
 [docs/SAST.md](docs/SAST.md).
 
 <p align="center">
-  <img src="assets/sast.png?v=0.7.0" alt="mcprism source-code review findings" width="94%">
+  <img src="assets/sast.png?v=0.9.2" alt="mcprism source-code review findings" width="94%">
 </p>
 
 ## What it detects

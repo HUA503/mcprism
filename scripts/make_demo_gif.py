@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # Render a short terminal recording of `mcprism scan` as a high-resolution GIF.
 import os
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+from demo_helpers import ROOT, load_fonts, release_metadata
 
-MONO = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
-MONOB = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
+DEMO_VERSION, DEMO_DATE = release_metadata()
+
 FS = 16
-font = ImageFont.truetype(MONO, FS)
-fontb = ImageFont.truetype(MONOB, FS)
+font, fontb = load_fonts(FS)
 
 BG = (30, 30, 46)
 BAR = (24, 24, 37)
@@ -37,7 +37,7 @@ def fnd(sev, sc, title):
 rows = [
     None,  # 0 command line, filled per frame
     [("", FG, False)],
-    [("\u25c6 mcprism", FG, True), ("   v0.7.0", DIM, False), ("  \u00b7 2026-10-12", DIM, False)],
+    [("\u25c6 mcprism", FG, True), ("   " + DEMO_VERSION, DIM, False), ("  \u00b7 " + DEMO_DATE, DIM, False)],
     [("  " + "\u2500" * 62, RULE, False)],
     [(" F ", RED, True), (" ", FG, False), ("demo-server", FG, True),
      ("  ", FG, False), ("\u25cf connected", GREEN, False)],
@@ -128,7 +128,6 @@ frames.append(render(len(CMD), set(revealed)))
 durations.append(1800)
 
 import os as _os
-ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 out = _os.path.join(ROOT, "assets", "demo.gif")
 frames[0].save(out, save_all=True, append_images=frames[1:], duration=durations,
                loop=0, optimize=True, disposal=2)
