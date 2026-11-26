@@ -2,6 +2,93 @@ package sast
 
 import "strings"
 
+// maskJSComments removes JavaScript and TypeScript comments while preserving
+// offsets and newlines. Quoted strings and template literals are left intact so
+// values used in sinks remain available to the pattern checks.
+func maskJSComments(src string) string {
+	b := []byte(src)
+	mask := func(start, end int) {
+		for i := start; i < end && i < len(b); i++ {
+			if b[i] != '\n' && b[i] != '\r' {
+				b[i] = ' '
+			}
+		}
+	}
+	for i := 0; i < len(b); {
+		if b[i] == '\'' || b[i] == '"' || b[i] == '`' {
+			quote := b[i]
+			i++
+			for i < len(b) {
+				if b[i] == '\\' {
+					i += 2
+					continue
+				}
+				if b[i] == quote {
+					i++
+					break
+				}
+				i++
+			}
+			continue
+		}
+		if b[i] == '/' && i+1 < len(b) && b[i+1] == '/' {
+			start := i
+			i += 2
+			for i < len(b) && b[i] != '\n' && b[i] != '\r' {
+				i++
+			}
+			mask(start, i)
+			continue
+		}
+		if b[i] == '/' && i+1 < len(b) && b[i+1] == '*' {
+			start := i
+			i += 2
+			for i+1 < len(b) && !(b[i] == '*' && b[i+1] == '/') {
+				i++
+			}
+			if i+1 < len(b) {
+				i += 2
+			}
+			mask(start, i)
+			continue
+		}
+		i++
+	}
+	return string(b)
+}
+
+// maskJSCode blanks comments and string literals while preserving offsets.
+// It is used to locate executable syntax; callers can slice the original text
+// at matching offsets when literal values are relevant.
+func maskJSCode(src string) string {
+	b := []byte(maskJSComments(src))
+	for i := 0; i < len(b); {
+		if b[i] != '\'' && b[i] != '"' && b[i] != '`' {
+			i++
+			continue
+		}
+		start, quote := i, b[i]
+		i++
+		for i < len(b) {
+			if b[i] == '\\' {
+				i += 2
+				continue
+			}
+			if b[i] == quote {
+				i++
+				break
+			}
+			i++
+		}
+		for j := start; j < i && j < len(b); j++ {
+			if b[j] != '\n' && b[j] != '\r' {
+				b[j] = ' '
+			}
+		}
+	}
+	return string(b)
+}
+
 // maskPythonComments replaces comments with spaces while preserving source
 // offsets and newlines. Quotes are tracked so `#` inside strings is retained.
 func maskPythonComments(src string) string {

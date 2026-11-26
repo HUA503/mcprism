@@ -44,14 +44,15 @@ the command, SSRF, path and secret rules (MCP801/802/803/806) are.
 ## How taint is tracked
 
 For every registered tool, the handler parameters are marked as controlled by
-the agent. Python and Go analysis follows simple local assignments and propagates
-taint through arguments passed to unambiguous helper functions in the same source
-file. Go uses the standard-library parser to identify function boundaries; Rust
+the agent. JavaScript/TypeScript, Python and Go analysis follows simple local
+assignments and propagates taint through arguments passed to unambiguous helper
+functions in the same source file. JavaScript/TypeScript helper tracking covers
+function declarations and block-bodied `const`/`let`/`var` arrow functions. Go
+uses the standard-library parser to identify function boundaries; Rust
 recognizes the official `rmcp` `#[tool]` macro and follows simple local aliases
 inside a tool method. Rust does not follow helper calls or macro expansion.
-Sink recognition remains pattern-based. JavaScript/TypeScript analysis
-currently tracks values within the handler. Common safe patterns are
-recognized where implemented.
+Sink recognition remains pattern-based. Common safe patterns are recognized
+where implemented.
 
 This is not a full-program data-flow analyzer. It does not follow values across
 files, object properties, returned values, dynamic dispatch or import aliases.
@@ -72,6 +73,18 @@ Vulnerable (JavaScript):
 ```js
 server.tool("run", { command: z.string() }, async ({ command }) => {
   exec(command, (err, stdout) => callback(stdout));
+});
+```
+
+The same flow is followed through unambiguous same-file helpers:
+
+```js
+function runCommand(command) {
+  exec(command, (err, stdout) => callback(stdout));
+}
+
+server.tool("run", { command: z.string() }, async ({ command }) => {
+  runCommand(command);
 });
 ```
 
@@ -389,11 +402,13 @@ Do not construct a module name or path from tool input.
 
 ## Limits
 
-- Python and Go taint follows simple aliases and same-file helper arguments; Rust
-  follows local aliases inside recognized `rmcp #[tool]` methods, but not helper
-  calls or macro expansion. Values passed through files, object properties,
-  return values, dynamic dispatch or import aliases may be missed.
-  JavaScript/TypeScript remains handler-local.
+- JavaScript/TypeScript, Python and Go taint follows simple aliases and
+  same-file helper arguments; Rust follows local aliases inside recognized
+  `rmcp #[tool]` methods, but not helper calls or macro expansion. Helper
+  resolution is limited to unambiguous same-file functions. Values passed
+  through files, object properties, return values, dynamic dispatch or import
+  aliases may be missed. JS/TS helper tracking currently recognizes function
+  declarations and block-bodied arrow functions.
 - Sink detection is pattern-based, not a full AST/data-flow analysis. Unusual
   formatting or a framework not listed above can hide or misclassify a sink.
   Common low-level patterns (`exec(`, `fetch(`, `open(`) are also matched.

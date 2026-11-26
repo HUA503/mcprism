@@ -12,10 +12,12 @@ func analyzeJS(path string) []Issue {
 		return nil
 	}
 	var out []Issue
-	for _, b := range extractJSHandlers(src) {
-		out = append(out, scanJSBlock(path, b)...)
+	functions := extractJSFunctions(src)
+	staticMaps := jsStaticMapNames(src)
+	for _, b := range extractJSHandlers(maskJSComments(src)) {
+		out = append(out, scanReachableJS(path, b, functions, staticMaps)...)
 	}
-	for _, l := range lines {
+	for _, l := range maskedLines(lines, maskJSComments) {
 		out = append(out, lineSecretIssues(path, l)...)
 	}
 	return dedupIssues(out)
@@ -27,7 +29,8 @@ var jsHandlerRe = regexp.MustCompile(`(?:\.tool|setRequestHandler|registerTool)\
 
 func extractJSHandlers(src string) []handlerBlock {
 	var blocks []handlerBlock
-	for _, m := range jsHandlerRe.FindAllStringIndex(src, -1) {
+	structure := maskJSCode(src)
+	for _, m := range jsHandlerRe.FindAllStringIndex(structure, -1) {
 		openParen := m[1] - 1
 		closeParen := matchClose(src, openParen, '(', ')')
 		if closeParen < 0 {
@@ -78,23 +81,30 @@ func jsHandlerBody(src string, from, to int) ([]srcLine, []string) {
 func jsArrowParams(before string) []string {
 	before = strings.TrimSpace(before)
 	if i := strings.LastIndex(before, "("); i >= 0 {
-		inside := strings.TrimSuffix(strings.TrimSpace(before[i+1:]), ")")
-		return jsParamList(inside)
+		if close := matchClose(before, i, '(', ')'); close >= 0 {
+			return jsParamList(before[i+1 : close])
+		}
 	}
 	return jsParamList(before)
 }
 
 func jsParamList(s string) []string {
 	var out []string
-	for _, p := range strings.Split(s, ",") {
+	for _, p := range splitCallArgs(s) {
 		p = strings.TrimSpace(p)
 		p = strings.TrimPrefix(p, "async ")
 		if strings.HasPrefix(p, "{") {
-			p = strings.Trim(p, "{} ")
-			for _, f := range strings.Split(p, ",") {
+			close := matchClose(p, 0, '{', '}')
+			if close < 0 {
+				continue
+			}
+			for _, f := range splitCallArgs(p[1:close]) {
 				f = strings.TrimSpace(f)
 				if eq := strings.Index(f, "="); eq >= 0 {
 					f = strings.TrimSpace(f[:eq])
+				}
+				if colon := strings.Index(f, ":"); colon >= 0 {
+					f = strings.TrimSpace(f[colon+1:])
 				}
 				if f != "" {
 					out = append(out, f)
@@ -115,17 +125,252 @@ func jsParamList(s string) []string {
 	return out
 }
 
+// extractJSFunctions indexes unambiguous same-file function declarations and
+// block-bodied arrow helpers. Duplicate names are omitted to avoid following an
+// ambiguous call into an unrelated function.
+func extractJSFunctions(src string) map[string]handlerBlock {
+	functions := map[string]handlerBlock{}
+	ambiguous := map[string]bool{}
+	add := func(name string, params []string, start, end int) {
+		if name == "" || start < 0 || end < start || ambiguous[name] {
+			return
+		}
+		if _, exists := functions[name]; exists {
+			delete(functions, name)
+			ambiguous[name] = true
+			return
+		}
+		functions[name] = handlerBlock{name: name, params: params, lines: linesRange(src, start, end)}
+	}
+
+	masked := maskJSComments(src)
+	structure := maskJSCode(src)
+	declRe := regexp.MustCompile(`\bfunction\s+([A-Za-z_$][\w$]*)\s*\(`)
+	for _, m := range declRe.FindAllStringSubmatchIndex(structure, -1) {
+		open := m[1] - 1
+		close := matchClose(masked, open, '(', ')')
+		if close < 0 {
+			continue
+		}
+		bodyOpen := indexByteFrom(masked, close+1, '{', len(masked))
+		if bodyOpen < 0 {
+			continue
+		}
+		bodyClose := matchClose(masked, bodyOpen, '{', '}')
+		if bodyClose < 0 {
+			continue
+		}
+		add(masked[m[2]:m[3]], jsParamList(masked[open+1:close]), bodyOpen+1, bodyClose)
+	}
+
+	// Parse const/let/var arrow helpers without trying to parse TypeScript's full
+	// type grammar. Only identifier-named, block-bodied functions are indexed.
+	arrowHead := regexp.MustCompile(`\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=`)
+	for _, m := range arrowHead.FindAllStringSubmatchIndex(structure, -1) {
+		name := masked[m[2]:m[3]]
+		pos := m[1]
+		for pos < len(masked) && (masked[pos] == ' ' || masked[pos] == '\t' || masked[pos] == '\r' || masked[pos] == '\n') {
+			pos++
+		}
+		if strings.HasPrefix(masked[pos:], "async") && (pos+5 == len(masked) || !isJSIdentByte(masked[pos+5])) {
+			pos += 5
+			for pos < len(masked) && (masked[pos] == ' ' || masked[pos] == '\t' || masked[pos] == '\r' || masked[pos] == '\n') {
+				pos++
+			}
+		}
+		var params []string
+		var arrow int
+		if pos < len(masked) && masked[pos] == '(' {
+			close := matchClose(masked, pos, '(', ')')
+			if close < 0 {
+				continue
+			}
+			params = jsParamList(masked[pos+1 : close])
+			arrow = close + 1
+		} else {
+			start := pos
+			for pos < len(masked) && isJSIdentByte(masked[pos]) {
+				pos++
+			}
+			if pos == start {
+				continue
+			}
+			params = []string{masked[start:pos]}
+			arrow = pos
+		}
+		for arrow < len(masked) && (masked[arrow] == ' ' || masked[arrow] == '\t' || masked[arrow] == '\r' || masked[arrow] == '\n') {
+			arrow++
+		}
+		if !strings.HasPrefix(masked[arrow:], "=>") {
+			continue
+		}
+		bodyOpen := arrow + 2
+		for bodyOpen < len(masked) && (masked[bodyOpen] == ' ' || masked[bodyOpen] == '\t' || masked[bodyOpen] == '\r' || masked[bodyOpen] == '\n') {
+			bodyOpen++
+		}
+		if bodyOpen >= len(masked) || masked[bodyOpen] != '{' {
+			continue
+		}
+		bodyClose := matchClose(masked, bodyOpen, '{', '}')
+		if bodyClose < 0 {
+			continue
+		}
+		add(name, params, bodyOpen+1, bodyClose)
+	}
+	return functions
+}
+
+func isJSIdentByte(b byte) bool {
+	return b == '_' || b == '$' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= '0' && b <= '9'
+}
+
+func scanReachableJS(path string, entry handlerBlock, functions map[string]handlerBlock, staticMaps map[string]string) []Issue {
+	taintedByName := map[string]map[string]bool{}
+	processedByName := map[string]map[string]bool{}
+	queue := []handlerBlock{entry}
+	var out []Issue
+	callRe := regexp.MustCompile(`\b([A-Za-z_$][\w$]*)\s*\(`)
+	for head := 0; head < len(queue); head++ {
+		block := queue[head]
+		seed := jsTaintedNames(block.lines, block.params, staticMaps)
+		known := taintedByName[block.name]
+		if known == nil {
+			known = map[string]bool{}
+			taintedByName[block.name] = known
+		}
+		for _, name := range seed {
+			known[name] = true
+		}
+		processed := processedByName[block.name]
+		if processed == nil {
+			processed = map[string]bool{}
+			processedByName[block.name] = processed
+		}
+		pending := false
+		for name := range known {
+			if !processed[name] {
+				pending = true
+				processed[name] = true
+			}
+		}
+		if !pending && head > 0 {
+			continue
+		}
+		params := make([]string, 0, len(known))
+		for name := range known {
+			params = append(params, name)
+		}
+		block.params = params
+		out = append(out, scanJSBlock(path, block)...)
+
+		text := maskJSComments(joinLines(block.lines))
+		structure := maskJSCode(text)
+		ctrl := jsTaintedNames(block.lines, params, staticMaps)
+		for _, call := range callRe.FindAllStringSubmatchIndex(structure, -1) {
+			name := structure[call[2]:call[3]]
+			helper, ok := functions[name]
+			if !ok || call[0] > 0 && structure[call[0]-1] == '.' {
+				continue
+			}
+			open := call[1] - 1
+			close := matchClose(text, open, '(', ')')
+			if close < 0 {
+				continue
+			}
+			args := splitCallArgs(text[open+1 : close])
+			for i, arg := range args {
+				if i >= len(helper.params) || helper.params[i] == "" || !jsExprControllable(arg, ctrl) {
+					continue
+				}
+				if taintedByName[name] == nil {
+					taintedByName[name] = map[string]bool{}
+				}
+				param := helper.params[i]
+				if !taintedByName[name][param] {
+					taintedByName[name][param] = true
+					child := helper
+					child.params = []string{param}
+					queue = append(queue, child)
+				}
+			}
+		}
+	}
+	return out
+}
+
+func jsTaintedNames(lines []srcLine, seeds []string, staticMaps map[string]string) []string {
+	set := map[string]bool{}
+	for _, name := range seeds {
+		if isJSIdent(name) {
+			set[name] = true
+		}
+	}
+	assign := regexp.MustCompile(`\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^=;\n][^;\n]*)|\b([A-Za-z_$][\w$]*)\s*=\s*([^=;\n][^;\n]*)`)
+	for changed := true; changed; {
+		changed = false
+		for _, line := range lines {
+			text := maskJSComments(line.text)
+			structure := maskJSCode(text)
+			for _, m := range assign.FindAllStringSubmatchIndex(structure, -1) {
+				lhs, rhs := "", ""
+				if m[2] >= 0 {
+					lhs, rhs = structure[m[2]:m[3]], text[m[4]:m[5]]
+				} else if m[6] >= 0 {
+					lhs, rhs = structure[m[6]:m[7]], text[m[8]:m[9]]
+				}
+				if isJSIdent(lhs) && !set[lhs] && !jsStaticMapLookup(rhs, staticMaps, mapKeys(set)) && jsExprControllable(rhs, mapKeys(set)) {
+					set[lhs] = true
+					changed = true
+				}
+			}
+		}
+	}
+	return mapKeys(set)
+}
+
+func jsStaticMapNames(src string) map[string]string {
+	structure := maskJSCode(src)
+	mapStart := regexp.MustCompile(`\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\{`)
+	names := map[string]string{}
+	for _, m := range mapStart.FindAllStringSubmatchIndex(structure, -1) {
+		open := m[1] - 1
+		close := matchClose(structure, open, '{', '}')
+		if close >= 0 {
+			names[structure[m[2]:m[3]]] = structure[open+1 : close]
+		}
+	}
+	return names
+}
+
+func jsStaticMapLookup(expr string, staticMaps map[string]string, tainted []string) bool {
+	m := regexp.MustCompile(`^\s*([A-Za-z_$][\w$]*)\s*\[[^\]]+\]\s*$`).FindStringSubmatch(maskJSCode(expr))
+	if m == nil {
+		return false
+	}
+	body, ok := staticMaps[m[1]]
+	return ok && !jsControllable(body, tainted)
+}
+
+func mapKeys(set map[string]bool) []string {
+	keys := make([]string, 0, len(set))
+	for key := range set {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
 // ---------- sink scanning ----------
 
 func scanJSBlock(path string, b handlerBlock) []Issue {
 	var out []Issue
-	text := joinLines(b.lines)
+	text := maskJSComments(joinLines(b.lines))
+	structure := maskJSCode(text)
 	baseLine := b.lines[0].num
 	off2line := func(off int) int { return baseLine + strings.Count(text[:off], "\n") }
 
 	// 1. process execution
 	cmdRe := regexp.MustCompile(`\b(exec|execSync|execFile|spawn|spawnSync)\s*\(`)
-	for _, m := range cmdRe.FindAllStringIndex(text, -1) {
+	for _, m := range cmdRe.FindAllStringIndex(structure, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
 		if close < 0 {
@@ -137,13 +382,13 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 		name := sinkName(text[m[0]:m[1]])
 		firstArg, rest := splitTopComma(arg)
 		switch {
-		case jsControllable(firstArg, b.params):
+		case jsExprControllable(firstArg, b.params):
 			out = append(out, issue(path, "MCP801", "Tool argument used as the command to run", SeverityCritical, line, code,
 				"Don't let agent input choose the command. Use a fixed allow-list of commands and pass arguments as an array without a shell."))
-		case (name == "exec" || name == "execSync") && jsControllable(arg, b.params):
+		case (name == "exec" || name == "execSync") && jsExprControllable(arg, b.params):
 			out = append(out, issue(path, "MCP801", "Tool argument passed to a shell command", SeverityCritical, line, code,
 				"Avoid running a shell over agent input. Use execFile or spawn with a fixed command and an argument array, or validate against an allow-list."))
-		case jsControllable(rest, b.params) && (name == "spawn" || name == "execFile" || name == "spawnSync"):
+		case jsExprControllable(rest, b.params) && (name == "spawn" || name == "execFile" || name == "spawnSync"):
 			out = append(out, issue(path, "MCP801", "Tool argument passed to a spawned process", SeverityMedium, line, code,
 				"Validate arguments against an allow-list. A fixed command with unvalidated args can still allow argument injection."))
 		}
@@ -151,14 +396,14 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 
 	// 2. dynamic code execution
 	dynRe := regexp.MustCompile(`\b(eval|Function)\s*\(`)
-	for _, m := range dynRe.FindAllStringIndex(text, -1) {
+	for _, m := range dynRe.FindAllStringIndex(structure, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
 		arg := text[open+1 : close]
 		line := off2line(open)
 		code := lineText(b, line)
 		sev, title := SeverityHigh, "Dynamic code execution"
-		if jsControllable(arg, b.params) {
+		if jsExprControllable(arg, b.params) {
 			sev, title = SeverityCritical, "Tool argument passed to dynamic code execution"
 		}
 		out = append(out, issue(path, "MCP804", title, sev, line, code,
@@ -167,14 +412,14 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 
 	// 3. outbound network (SSRF)
 	netRe := regexp.MustCompile(`\b(fetch|got|request|axios\.(get|post|put)|https?\.get)\s*\(`)
-	for _, m := range netRe.FindAllStringIndex(text, -1) {
+	for _, m := range netRe.FindAllStringIndex(structure, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
 		arg := text[open+1 : close]
 		firstArg, _ := splitTopComma(arg)
 		line := off2line(open)
 		code := lineText(b, line)
-		if jsControllable(firstArg, b.params) && !isConstURLArg(firstArg) {
+		if jsExprControllable(firstArg, b.params) && !isConstURLArg(firstArg) {
 			out = append(out, issue(path, "MCP802", "Tool argument controls a request URL (SSRF)", SeverityHigh, line, code,
 				"Do not let agent input choose the host. Allow-list hosts or pin a constant base URL, and block metadata and private ranges."))
 		}
@@ -184,16 +429,16 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 	// A path is confined only when the exact variable that reaches a file sink
 	// is tested with .startsWith. An unrelated resolve/startsWith elsewhere in
 	// the handler does not silence the finding.
-	guarded := jsGuardedVars(text)
+	guarded := jsGuardedVars(structure)
 	fileRe := regexp.MustCompile(`\b(readFile|readFileSync|writeFile|writeFileSync|unlink|unlinkSync|createReadStream|createWriteStream)\s*\(`)
-	for _, m := range fileRe.FindAllStringIndex(text, -1) {
+	for _, m := range fileRe.FindAllStringIndex(structure, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
 		arg := text[open+1 : close]
 		firstArg, _ := splitTopComma(arg)
 		line := off2line(open)
 		code := lineText(b, line)
-		if isJSPathConfined(firstArg, guarded) || !jsControllable(firstArg, b.params) {
+		if isJSPathConfined(firstArg, guarded) || !jsExprControllable(firstArg, b.params) {
 			continue
 		}
 		out = append(out, issue(path, "MCP803", "Tool argument used as a file path", SeverityHigh, line, code,
@@ -202,13 +447,13 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 
 	// 5. dynamic require
 	reqRe := regexp.MustCompile(`\brequire\s*\(`)
-	for _, m := range reqRe.FindAllStringIndex(text, -1) {
+	for _, m := range reqRe.FindAllStringIndex(structure, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
 		arg := text[open+1 : close]
 		line := off2line(open)
 		code := lineText(b, line)
-		if !strings.ContainsAny(arg, "'\"`") && jsControllable(arg, b.params) {
+		if !strings.ContainsAny(arg, "'\"`") && jsExprControllable(arg, b.params) {
 			out = append(out, issue(path, "MCP807", "Dynamic module require with tool input", SeverityMedium, line, code,
 				"Do not require modules named by agent input. Map requests to a fixed set of modules."))
 		}
@@ -225,6 +470,60 @@ func jsControllable(expr string, params []string) bool {
 	for _, g := range []string{"arguments", "request.params", "params.arguments"} {
 		if strings.Contains(expr, g) {
 			return true
+		}
+	}
+	return false
+}
+
+// jsExprControllable ignores identifiers that appear only inside string
+// literals while preserving data-flow checks inside template interpolations.
+func jsExprControllable(expr string, params []string) bool {
+	if jsControllable(maskJSCode(expr), params) {
+		return true
+	}
+	for i := 0; i < len(expr); {
+		if expr[i] == '\'' || expr[i] == '"' {
+			quote := expr[i]
+			i++
+			for i < len(expr) {
+				if expr[i] == '\\' {
+					i += 2
+				} else if expr[i] == quote {
+					i++
+					break
+				} else {
+					i++
+				}
+			}
+			continue
+		}
+		if expr[i] != '`' {
+			i++
+			continue
+		}
+		i++
+		for i < len(expr) {
+			if expr[i] == '\\' {
+				i += 2
+				continue
+			}
+			if expr[i] == '`' {
+				i++
+				break
+			}
+			if expr[i] == '$' && i+1 < len(expr) && expr[i+1] == '{' {
+				open := i + 1
+				close := matchClose(expr, open, '{', '}')
+				if close < 0 {
+					break
+				}
+				if jsExprControllable(expr[open+1:close], params) {
+					return true
+				}
+				i = close + 1
+				continue
+			}
+			i++
 		}
 	}
 	return false

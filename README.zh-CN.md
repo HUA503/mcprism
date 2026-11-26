@@ -402,7 +402,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。Python 和 Go 会追踪本地变量别名，以及同一文件中经明确 helper 参数传递的 taint；Rust 支持官方 `rmcp` `#[tool]` 方法，并在方法内追踪简单别名；JavaScript/TypeScript 仍只在 handler 内分析。Rust 暂不追踪 helper 调用或宏展开。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
+引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。JS/TS、Python 和 Go 会追踪简单局部别名，以及传入同文件明确 helper 的参数；JS/TS 当前支持函数声明和块体箭头函数。Rust 支持官方 `rmcp` `#[tool]` 方法，并在方法内追踪简单别名，暂不追踪 helper 调用或宏展开。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
 
 - 目前不会跨文件、对象属性、返回值、动态分派或解构/导入别名追踪（例如 `import { exec as run }`、`child_process["ex"+"ec"]`）。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
 - Go 使用标准库 `go/parser` 定位 helper 函数边界，但尚未构建全程序数据流图；JS/Python 没有使用 tree-sitter。
