@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Added
 
+- Continue Python taint through helper calls and named imports across bounded,
+  same-directory modules.
 - Detect common Japanese and Korean prompt-injection directives in MCP
   metadata using deterministic offline signatures.
 

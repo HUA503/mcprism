@@ -50,11 +50,11 @@ functions. JavaScript/TypeScript helper tracking covers function declarations
 and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
 library parser to identify function boundaries and follows unique free-function
 helpers across files in the same package; selector calls into another file are
-left unresolved. Python follows explicitly imported functions from a
-same-directory module to direct sinks. JS/TS follows named imports of exported
+left unresolved. Python follows explicitly imported functions and helper calls
+across same-directory modules. JS/TS follows named imports of exported
 helpers from same-directory modules and continues through helper calls in those
-modules. JS/TS cross-module traversal is bounded by eight imports deep, 64
-source files and 16 MiB of source. Rust
+modules. Python and JS/TS cross-module traversal is bounded by eight imports
+deep, 64 source files and 16 MiB of source per analyzed entry file. Rust
 recognizes the official `rmcp` `#[tool]` macro and follows local aliases through
 unique same-file helper functions, including multi-step calls. Rust does not
 expand macros or resolve trait-based dispatch.
@@ -133,8 +133,8 @@ def shell(cmd: str):
     subprocess.run(cmd, shell=True)
 ```
 
-Python handlers can also pass tool input to a directly imported helper in a
-same-directory module:
+Python handlers can also pass tool input through imported helper chains in
+same-directory modules:
 
 ```python
 # server.py
@@ -151,8 +151,9 @@ def run_with_shell(command: str):
     subprocess.run(command, shell=True)
 ```
 
-The finding points to the sink in `local_helpers.py`. This bounded import flow
-does not continue through further helper calls inside that module.
+The finding points to the sink in `local_helpers.py`. The same analysis follows
+further unambiguous local helper calls and named imports within its resource
+limits.
 
 Vulnerable (Go), a tool argument handed to a shell:
 
@@ -466,8 +467,9 @@ Do not construct a module name or path from tool input.
 - JavaScript/TypeScript and Rust taint follows simple aliases and arguments
   passed to unambiguous same-file helpers. JS/TS also follows named imports of
   exported helpers and their local helper chains across same-directory modules,
-  with bounded depth, file count and total source size. Python follows explicitly
-  imported helpers to direct sinks there. Go follows unique
+  with bounded depth, file count and total source size. Python follows explicit
+  imports and helper chains across same-directory modules within the same limits.
+  Go follows unique
   same-package free functions across files. JS/TS helper tracking
   currently recognizes function declarations and block-bodied arrow functions;
   Rust helper resolution uses unique names and does not model trait dispatch or
