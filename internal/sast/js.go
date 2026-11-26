@@ -8,30 +8,37 @@ import (
 	"unicode"
 )
 
+const (
+	maxJSModuleDepth = 8
+	maxJSModuleFiles = 64
+	maxJSModuleBytes = 16 << 20
+)
+
+type jsFunctionScopes struct {
+	functions  map[string]map[string]handlerBlock
+	staticMaps map[string]map[string]string
+	exports    map[string]map[string]bool
+	bytes      int64
+	files      int
+}
+
 func analyzeJS(path string) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
 		return nil
 	}
 	var out []Issue
-	functions := extractJSFunctions(src)
-	localNames := map[string]bool{}
-	for name := range functions {
-		localNames[name] = true
+	scopes := &jsFunctionScopes{
+		functions:  map[string]map[string]handlerBlock{},
+		staticMaps: map[string]map[string]string{},
+		exports:    map[string]map[string]bool{},
+		bytes:      int64(len(src)),
+		files:      1,
 	}
-	declaredNameRe := regexp.MustCompile(`\b(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)`)
-	for _, m := range declaredNameRe.FindAllStringSubmatch(maskJSCode(src), -1) {
-		localNames[m[1]] = true
-	}
-	for name, helper := range functions {
-		helper.path = path
-		functions[name] = helper
-	}
-	functions = mergeJSImportedFunctions(path, src, functions, localNames)
-	staticMaps := jsStaticMapNames(src)
+	buildJSFunctionScope(path, src, 0, scopes)
 	for _, b := range extractJSHandlers(maskJSComments(src)) {
 		b.path = path
-		out = append(out, scanReachableJS(path, b, functions, staticMaps)...)
+		out = append(out, scanReachableJS(path, b, scopes)...)
 	}
 	for _, l := range maskedLines(lines, maskJSComments) {
 		out = append(out, lineSecretIssues(path, l)...)
@@ -44,20 +51,45 @@ func analyzeJS(path string) []Issue {
 var jsHandlerRe = regexp.MustCompile(`(?:\.tool|setRequestHandler|registerTool)\s*\(`)
 var jsNamedImportRe = regexp.MustCompile(`(?s)\bimport\s*\{([^}]*)\}\s*from\s*["']([^"']+)["']`)
 
+func buildJSFunctionScope(path, src string, depth int, scopes *jsFunctionScopes) map[string]handlerBlock {
+	key := filepath.Clean(path)
+	if functions, ok := scopes.functions[key]; ok {
+		return functions
+	}
+	functions := extractJSFunctions(src)
+	for name, helper := range functions {
+		helper.path = path
+		functions[name] = helper
+	}
+	// Save a partial scope before descending so circular imports terminate.
+	scopes.functions[key] = functions
+	scopes.staticMaps[key] = jsStaticMapNames(src)
+	scopes.exports[key] = jsExportedFunctionNames(src)
+	localNames := map[string]bool{}
+	for name := range functions {
+		localNames[name] = true
+	}
+	declared := regexp.MustCompile(`\b(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)`)
+	for _, m := range declared.FindAllStringSubmatch(maskJSCode(src), -1) {
+		localNames[m[1]] = true
+	}
+	if depth < maxJSModuleDepth {
+		mergeJSImportedFunctions(path, src, functions, localNames, depth, scopes)
+	}
+	return functions
+}
+
 // mergeJSImportedFunctions resolves named imports from bounded, same-directory
 // source modules. Only exported helpers imported under an unambiguous local
 // name are added; package imports, namespace imports and star exports are not.
-func mergeJSImportedFunctions(path, src string, functions map[string]handlerBlock, localNames map[string]bool) map[string]handlerBlock {
+func mergeJSImportedFunctions(path, src string, functions map[string]handlerBlock, localNames map[string]bool, depth int, scopes *jsFunctionScopes) {
 	type candidate struct {
 		block handlerBlock
 		count int
 	}
 	candidates := map[string]candidate{}
-	seenModules := map[string]map[string]handlerBlock{}
 	text := maskJSComments(src)
 	structure := maskJSCode(src)
-	totalBytes := int64(0)
-	importCount := 0
 	for _, m := range jsNamedImportRe.FindAllStringSubmatchIndex(text, -1) {
 		if m[1]-m[0] < len("import") || structure[m[0]:m[0]+len("import")] != "import" {
 			continue
@@ -67,31 +99,28 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 		if modulePath == "" {
 			continue
 		}
-		moduleFunctions, ok := seenModules[modulePath]
+		moduleKey := filepath.Clean(modulePath)
+		moduleFunctions, ok := scopes.functions[moduleKey]
 		if !ok {
+			if scopes.files >= maxJSModuleFiles || depth >= maxJSModuleDepth {
+				continue
+			}
 			info, err := os.Lstat(modulePath)
 			if err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize {
 				continue
 			}
-			totalBytes += info.Size()
-			importCount++
-			if totalBytes > 8<<20 || importCount > 32 {
-				break
+			if scopes.bytes+info.Size() > maxJSModuleBytes {
+				continue
 			}
-			_, moduleSrc := readLines(modulePath)
-			moduleFunctions = extractJSFunctions(moduleSrc)
-			exported := jsExportedFunctionNames(moduleSrc)
-			for name := range moduleFunctions {
-				if !exported[name] {
-					delete(moduleFunctions, name)
-					continue
-				}
-				helper := moduleFunctions[name]
-				helper.path = modulePath
-				moduleFunctions[name] = helper
+			moduleBytes, err := os.ReadFile(modulePath)
+			if err != nil {
+				continue
 			}
-			seenModules[modulePath] = moduleFunctions
+			scopes.bytes += int64(len(moduleBytes))
+			scopes.files++
+			moduleFunctions = buildJSFunctionScope(modulePath, string(moduleBytes), depth+1, scopes)
 		}
+		exported := scopes.exports[moduleKey]
 		for _, item := range strings.Split(text[m[2]:m[3]], ",") {
 			fields := strings.Fields(strings.TrimSpace(item))
 			if len(fields) == 0 {
@@ -104,6 +133,9 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 				continue
 			}
 			helper, exists := moduleFunctions[original]
+			if !exported[original] {
+				exists = false
+			}
 			if !exists || localNames[alias] {
 				continue
 			}
@@ -119,11 +151,10 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 			functions[alias] = c.block
 		}
 	}
-	return functions
 }
 
 func jsLocalModulePath(path, module string) string {
-	if !strings.HasPrefix(module, "./") || strings.Contains(strings.TrimPrefix(module, "./"), "/") {
+	if !strings.HasPrefix(module, "./") || strings.ContainsAny(strings.TrimPrefix(module, "./"), `/\`) {
 		return ""
 	}
 	base := filepath.Join(filepath.Dir(path), strings.TrimPrefix(module, "./"))
@@ -359,7 +390,7 @@ func isJSIdentByte(b byte) bool {
 	return b == '_' || b == '$' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= '0' && b <= '9'
 }
 
-func scanReachableJS(path string, entry handlerBlock, functions map[string]handlerBlock, staticMaps map[string]string) []Issue {
+func scanReachableJS(path string, entry handlerBlock, scopes *jsFunctionScopes) []Issue {
 	taintedByName := map[string]map[string]bool{}
 	processedByName := map[string]map[string]bool{}
 	queue := []handlerBlock{entry}
@@ -367,19 +398,27 @@ func scanReachableJS(path string, entry handlerBlock, functions map[string]handl
 	callRe := regexp.MustCompile(`\b([A-Za-z_$][\w$]*)\s*\(`)
 	for head := 0; head < len(queue); head++ {
 		block := queue[head]
+		blockPath := block.path
+		if blockPath == "" {
+			blockPath = path
+		}
+		moduleKey := filepath.Clean(blockPath)
+		functions := scopes.functions[moduleKey]
+		staticMaps := scopes.staticMaps[moduleKey]
 		seed := jsTaintedNames(block.lines, block.params, staticMaps)
-		known := taintedByName[block.name]
+		stateKey := moduleKey + "::" + block.name
+		known := taintedByName[stateKey]
 		if known == nil {
 			known = map[string]bool{}
-			taintedByName[block.name] = known
+			taintedByName[stateKey] = known
 		}
 		for _, name := range seed {
 			known[name] = true
 		}
-		processed := processedByName[block.name]
+		processed := processedByName[stateKey]
 		if processed == nil {
 			processed = map[string]bool{}
-			processedByName[block.name] = processed
+			processedByName[stateKey] = processed
 		}
 		pending := false
 		for name := range known {
@@ -402,13 +441,6 @@ func scanReachableJS(path string, entry handlerBlock, functions map[string]handl
 		}
 		out = append(out, scanJSBlock(issuePath, block)...)
 
-		blockPath := block.path
-		if blockPath == "" {
-			blockPath = path
-		}
-		if filepath.Clean(blockPath) != filepath.Clean(path) {
-			continue
-		}
 		text := maskJSComments(joinLines(block.lines))
 		structure := maskJSCode(text)
 		ctrl := jsTaintedNames(block.lines, params, staticMaps)
@@ -428,12 +460,17 @@ func scanReachableJS(path string, entry handlerBlock, functions map[string]handl
 				if i >= len(helper.params) || helper.params[i] == "" || !jsExprControllable(arg, ctrl) {
 					continue
 				}
-				if taintedByName[name] == nil {
-					taintedByName[name] = map[string]bool{}
+				helperPath := helper.path
+				if helperPath == "" {
+					helperPath = blockPath
+				}
+				helperKey := filepath.Clean(helperPath) + "::" + helper.name
+				if taintedByName[helperKey] == nil {
+					taintedByName[helperKey] = map[string]bool{}
 				}
 				param := helper.params[i]
-				if !taintedByName[name][param] {
-					taintedByName[name][param] = true
+				if !taintedByName[helperKey][param] {
+					taintedByName[helperKey][param] = true
 					child := helper
 					child.params = []string{param}
 					queue = append(queue, child)

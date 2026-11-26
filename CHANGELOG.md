@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Added
 
+- Continue JS/TS taint through helper calls and named imports across bounded,
+  same-directory modules (depth, file-count and source-size limits).
 - Follow JS/TS tool arguments into explicitly imported, exported helpers from a
   same-directory module when the helper directly reaches a recognized sink.
 - Follow Python tool arguments into explicitly imported helper functions from
