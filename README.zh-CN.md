@@ -422,7 +422,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - 配置中的凭据。可识别的凭据格式（AWS、Google、GitHub、Slack、Stripe、GitLab、OpenAI、JWT 等）会按类型标出；看起来像生成密钥的高熵值会作为疑似密钥标出。占位符和 `${ENV_VAR}` 引用不会被标记。
 - 明文传输和关闭 TLS（`http://`、`NODE_TLS_REJECT_UNAUTHORIZED=0`）。
 - 权限过宽。文件系统 server 挂载到 `/` 或用户主目录；sandbox 或权限检查被关闭。
-- 工具投毒。工具名称、描述和 schema 中常见的中英文注入指令、零宽/双向 Unicode、Unicode Tags、西里尔/希腊同形字（匹配前先做 NFKC 规范化）、隐藏 HTML/Markdown、编码块。中文检测基于明确短语特征，不做语义理解；隐晦改写仍可能漏报。正常的指导性说明不会被报；只有指令性措辞与隐藏或同形字符同时出现时才报 MCP205。resource 和 prompt 模板的元数据也会做同样检查。
+- 工具投毒。工具名称、描述和 schema 中常见的英文、中日韩注入指令、零宽/双向 Unicode、Unicode Tags、西里尔/希腊同形字（匹配前先做 NFKC 规范化）、隐藏 HTML/Markdown、编码块。多语言检测基于明确短语特征，不做语义理解；隐晦改写仍可能漏报。正常的指导性说明不会被报；只有指令性措辞与隐藏或同形字符同时出现时才报 MCP205。resource 和 prompt 模板的元数据也会做同样检查。
 - 自由格式 schema 参数。对于没有源码的在线 server，会按参数名把接受任意字符串的命令、URL（SSRF）、路径参数标为风险。
 - 危险能力组合，比如 shell 加联网、读文件加联网、写文件加 shell。
 - 网络目标。云元数据端点（`169.254.169.254`）和私有/回环地址段。

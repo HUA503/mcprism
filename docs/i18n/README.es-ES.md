@@ -107,7 +107,7 @@ mcprism vet server.py            # revisar un archivo
 - Política como código. Activa o desactiva reglas, cambia severidades, permite o bloquea paquetes/comandos/dominios y exige aislamiento de red. Los perfiles integrados ofrecen las líneas base `default`, `strict` y `ci`.
 - Registro de riesgos aceptados. Suprime hallazgos con un motivo y una fecha de caducidad. Los elementos suprimidos siguen visibles en el informe y vuelven al caducar.
 - Bloqueo del inventario de herramientas. Guarda los nombres y las huellas SHA-256 de las herramientas revisadas; si se añade, elimina o modifica una definición, la verificación falla. El archivo no contiene descripciones ni esquemas. Guardar y verificar se conecta al servidor para enumerar las herramientas, pero no ejecuta ninguna.
-- Determinista. 35 reglas asignadas a OWASP MCP01–MCP07. El análisis de metadatos de herramientas también detecta patrones habituales de inyección de prompts en chino simplificado y tradicional. Los análisis locales de configuración y código fuente funcionan sin conexión; los comandos Registry consultan metadatos públicos del registro oficial. No hay telemetría.
+- Determinista. 35 reglas asignadas a OWASP MCP01–MCP07. El análisis de metadatos de herramientas también detecta patrones habituales de inyección de prompts en chino simplificado y tradicional, japonés y coreano. Los análisis locales de configuración y código fuente funcionan sin conexión; los comandos Registry consultan metadatos públicos del registro oficial. No hay telemetría.
 - Informes para personas y máquinas: table, JSON, Markdown, HTML, SARIF, JUnit XML, SBOM CycloneDX y CSV.
 - Escanea varios destinos a la vez: archivos, directorios (de forma recursiva) y URL.
 

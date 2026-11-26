@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Detect common Japanese and Korean prompt-injection directives in MCP
+  metadata using deterministic offline signatures.
+
 ## [0.23.0] - 2026-11-26
 
 ### Added

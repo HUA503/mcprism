@@ -537,7 +537,8 @@ analyzer and manual review. Rule details and more examples are in
   `NODE_TLS_REJECT_UNAUTHORIZED=0`).
 - Over-broad permissions. Filesystem servers mounted at `/` or the home
   directory; sandbox or permission checks turned off.
-- Tool poisoning. Common English, Simplified Chinese and Traditional Chinese
+- Tool poisoning. Common English, Simplified Chinese, Traditional Chinese,
+  Japanese and Korean
   injection directives, including policy overrides, role/mode changes and
   requests to reveal hidden reasoning,
   zero-width/bidirectional Unicode,
