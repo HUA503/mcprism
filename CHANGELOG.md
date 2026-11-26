@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- Scan Rust MCP tool handlers using the official `rmcp` `#[tool]` macro for
+  process execution, `reqwest` request URLs, filesystem paths and hardcoded
+  secrets.
+
 ## [0.20.0] - 2026-11-25
 
 ### Added
