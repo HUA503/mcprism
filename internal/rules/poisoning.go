@@ -39,6 +39,23 @@ var injectionSigs = []struct {
 	{regexp.MustCompile(`(进入|進入|切换到|切換到|启用|啟用|开启|開啟).{0,6}(开发者|開發者|管理员|管理員|无限制|無限制|越狱|越獄).{0,4}模式`), SeverityHigh},
 	{regexp.MustCompile(`(把|将|將).{0,8}(以下|下面|此|这段|這段|本文).{0,6}(内容|內容|文本|訊息|消息).{0,6}(作为|作為|视为|視為|当作|當作).{0,8}(最高优先级|最高優先級|系统|系統|开发者|開發者).{0,4}(指令|提示|消息|訊息)`), SeverityHigh},
 	{regexp.MustCompile(`(显示|顯示|输出|輸出|打印|揭示|复述|複述|逐字输出|逐字輸出).{0,8}(思维链|思維鏈|推理过程|推理過程|隐藏提示词|隱藏提示詞|系统提示词|系統提示詞|开发者消息|開發者訊息)`), SeverityCritical},
+	// Japanese directives are checked with language-specific high-signal phrases;
+	// gaps allow ordinary particles without interpreting free-form text.
+	{regexp.MustCompile(`(以前|前の|これまでの|上記の|既存の).{0,4}(指示|命令|ルール|プロンプト).{0,6}(無視|忘れ|破棄)`), SeverityCritical},
+	{regexp.MustCompile(`(システムプロンプト|システム指示|内部指示|隠されたプロンプト|隠しプロンプト).{0,8}(明か|開示|表示|出力|漏ら|送信)`), SeverityCritical},
+	{regexp.MustCompile(`(明か|開示|表示|出力|漏ら).{0,8}(システムプロンプト|システム指示|内部指示|隠されたプロンプト|隠しプロンプト)`), SeverityCritical},
+	{regexp.MustCompile(`(秘密|認証情報|環境変数|ファイル|データ|コンテキスト|資格情報).{0,8}(送信|アップロード|外部送信|漏洩|盗み出)`), SeverityCritical},
+	{regexp.MustCompile(`(あなた|君)は今から|これから(あなた|君)は`), SeverityHigh},
+	{regexp.MustCompile(`(安全|システム|開発者).{0,5}(ポリシー|規則|指示).{0,5}(無視|回避|上書き|変更)`), SeverityCritical},
+	{regexp.MustCompile(`(ユーザー|利用者)に(知らせず|伝えず|通知せず)|秘密裏に|密かに(送信|実行)`), SeverityHigh},
+	// Korean equivalents cover role changes, policy overrides and exfiltration.
+	{regexp.MustCompile(`(이전|앞선|기존|위의).{0,4}(지시|명령|프롬프트).{0,6}(무시|잊어|폐기)`), SeverityCritical},
+	{regexp.MustCompile(`(시스템 프롬프트|시스템 지시|내부 지시|숨겨진 프롬프트).{0,8}(공개|표시|출력|누설|유출|전송)`), SeverityCritical},
+	{regexp.MustCompile(`(공개|표시|출력|누설|유출).{0,8}(시스템 프롬프트|시스템 지시|내부 지시|숨겨진 프롬프트)`), SeverityCritical},
+	{regexp.MustCompile(`(비밀|자격 증명|환경 변수|파일|데이터|컨텍스트).{0,8}(전송|업로드|외부 전송|유출|탈취)`), SeverityCritical},
+	{regexp.MustCompile(`(이제부터|지금부터)\s*(너는|당신은)`), SeverityHigh},
+	{regexp.MustCompile(`(안전|시스템|개발자).{0,5}(정책|규칙|지침).{0,5}(무시|우회|덮어쓰기|재정의)`), SeverityCritical},
+	{regexp.MustCompile(`(사용자에게 알리지|사용자에게 말하지|몰래|은밀히).{0,6}(전송|실행|업로드|수행)`), SeverityHigh},
 }
 
 var (
