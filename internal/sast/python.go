@@ -1,6 +1,8 @@
 package sast
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -12,8 +14,20 @@ func analyzePython(path string) []Issue {
 	}
 	var out []Issue
 	functions := extractPythonFunctions(lines)
+	localNames := map[string]bool{}
+	for _, line := range maskedPythonLines(lines) {
+		if m := pyDefRe.FindStringSubmatch(line.text); m != nil {
+			localNames[m[1]] = true
+		}
+	}
+	for name, helper := range functions {
+		helper.path = path
+		functions[name] = helper
+	}
+	functions = mergePythonImportedFunctions(path, lines, functions, localNames)
 	staticMaps := pyStaticMapNames(lines, nil)
 	for _, b := range extractPythonHandlers(lines) {
+		b.path = path
 		out = append(out, scanReachablePython(path, b, functions, staticMaps)...)
 	}
 	for _, l := range maskedPythonLines(lines) {
@@ -27,6 +41,71 @@ func analyzePython(path string) []Issue {
 var pyToolDecRe = regexp.MustCompile(`@[\w\.]+\.(tool|call_tool)\b`)
 var pyDefRe = regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
 var pyCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
+var pyFromImportRe = regexp.MustCompile(`^from\s+(\.{0,1}[A-Za-z_]\w*)\s+import\s+(.+?)\s*$`)
+
+// mergePythonImportedFunctions resolves explicit imports from a single
+// same-directory module. It only exposes directly imported functions to the
+// handler's module scope; ambiguous aliases and star imports stay unresolved.
+func mergePythonImportedFunctions(path string, lines []srcLine, functions map[string]handlerBlock, localNames map[string]bool) map[string]handlerBlock {
+	type importedHelper struct {
+		block handlerBlock
+		count int
+	}
+	candidates := map[string]importedHelper{}
+	seenModules := map[string]map[string]handlerBlock{}
+	for _, line := range maskedPythonLines(lines) {
+		m := pyFromImportRe.FindStringSubmatch(line.text)
+		if m == nil {
+			continue
+		}
+		module := strings.TrimPrefix(m[1], ".")
+		if module == "" || strings.Contains(module, ".") {
+			continue
+		}
+		modulePath := filepath.Join(filepath.Dir(path), module+".py")
+		if info, err := os.Lstat(modulePath); err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize {
+			continue
+		}
+		moduleFunctions, ok := seenModules[modulePath]
+		if !ok {
+			moduleLines, _ := readLines(modulePath)
+			moduleFunctions = extractPythonFunctions(moduleLines)
+			for name, helper := range moduleFunctions {
+				helper.path = modulePath
+				moduleFunctions[name] = helper
+			}
+			seenModules[modulePath] = moduleFunctions
+		}
+		for _, item := range strings.Split(strings.Trim(strings.TrimSpace(m[2]), "()"), ",") {
+			fields := strings.Fields(strings.TrimSpace(item))
+			if len(fields) == 0 || fields[0] == "*" {
+				continue
+			}
+			original, alias := fields[0], fields[0]
+			if len(fields) == 3 && fields[1] == "as" {
+				alias = fields[2]
+			} else if len(fields) != 1 {
+				continue
+			}
+			helper, exists := moduleFunctions[original]
+			if !exists || localNames[alias] {
+				continue
+			}
+			helper.name = alias
+			candidate := candidates[alias]
+			candidate.block = helper
+			candidate.count++
+			candidates[alias] = candidate
+		}
+	}
+	for alias, candidate := range candidates {
+		if candidate.count != 1 || localNames[alias] {
+			continue
+		}
+		functions[alias] = candidate.block
+	}
+	return functions
+}
 
 func extractPythonHandlers(lines []srcLine) []handlerBlock {
 	var blocks []handlerBlock
@@ -155,13 +234,28 @@ func scanReachablePython(path string, entry handlerBlock, functions map[string]h
 			params = append(params, name)
 		}
 		block.params = params
-		out = append(out, scanPythonBlock(path, block)...)
+		issuePath := block.path
+		if issuePath == "" {
+			issuePath = path
+		}
+		out = append(out, scanPythonBlock(issuePath, block)...)
 
+		blockPath := block.path
+		if blockPath == "" {
+			blockPath = path
+		}
+		if filepath.Clean(blockPath) != filepath.Clean(path) {
+			continue
+		}
 		text := maskPythonComments(joinLines(block.lines))
 		for _, call := range pyCallRe.FindAllStringSubmatchIndex(text, -1) {
 			name := text[call[2]:call[3]]
 			helper, ok := functions[name]
 			if !ok {
+				continue
+			}
+			if call[0] > 0 && text[call[0]-1] == '.' && helper.path != "" &&
+				filepath.Clean(helper.path) != filepath.Clean(blockPath) {
 				continue
 			}
 			open := call[1] - 1

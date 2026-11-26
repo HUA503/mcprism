@@ -322,7 +322,7 @@ Para cada herramienta trata los argumentos del manejador como controlados por un
 
 Reconoce los patrones seguros habituales y guarda silencio cuando aparecen, para reducir falsos positivos:
 
-JavaScript/TypeScript, Python, Go y Rust siguen alias locales sencillos y argumentos pasados a funciones auxiliares inequívocas. Go también sigue funciones libres únicas en distintos archivos del mismo paquete. JS/TS reconoce declaraciones de función y funciones flecha con cuerpo de bloque; Rust sigue helpers con nombres únicos incluso en varias llamadas. Rust reconoce los métodos oficiales `rmcp #[tool]`, pero no resuelve macros ni despacho de traits.
+JavaScript/TypeScript, Python, Go y Rust siguen alias locales sencillos y argumentos pasados a funciones auxiliares inequívocas. Python también sigue funciones auxiliares importadas explícitamente desde un módulo del mismo directorio hasta sumideros directos. Go sigue funciones libres únicas en distintos archivos del mismo paquete. JS/TS reconoce declaraciones de función y funciones flecha con cuerpo de bloque; Rust sigue helpers con nombres únicos incluso en varias llamadas. Rust reconoce los métodos oficiales `rmcp #[tool]`, pero no resuelve macros ni despacho de traits.
 
 - Un comando fijo con argumentos pasados como array (`execFile(cmd, args)`, `subprocess.run([...])`) en lugar de una cadena de shell.
 - Confinamiento de rutas: `path.resolve(base, name)` comprobado con `startsWith(base)`, o `realpath` + `startswith` en Python.
