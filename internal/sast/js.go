@@ -162,7 +162,7 @@ func jsLocalModulePath(path, module string) string {
 	candidates := []string{base}
 	switch ext {
 	case "":
-		for _, candidateExt := range []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"} {
+		for _, candidateExt := range []string{".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"} {
 			candidates = append(candidates, base+candidateExt)
 		}
 	case ".js":

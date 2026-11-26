@@ -8,6 +8,9 @@ semantic versioning.
 
 ### Added
 
+- Detect and analyze `.mts` and `.cts` TypeScript source files in project scans
+  and `vet`, and recognize all supported JS/TS and Rust source suffixes when
+  discovering standalone source trees and files.
 - Continue JS/TS taint through helper calls and named imports across bounded,
   same-directory modules (depth, file-count and source-size limits).
 - Follow JS/TS tool arguments into explicitly imported, exported helpers from a
