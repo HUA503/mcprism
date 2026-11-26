@@ -53,6 +53,7 @@ var pyToolDecRe = regexp.MustCompile(`@[\w\.]+\.(tool|call_tool)\b`)
 var pyDefRe = regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
 var pyCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
 var pyFromImportRe = regexp.MustCompile(`^from\s+(\.{0,1}[A-Za-z_]\w*)\s+import\s+(.+?)\s*$`)
+var pyImportRe = regexp.MustCompile(`^import\s+(.+?)\s*$`)
 
 func buildPythonFunctionScope(path string, lines []srcLine, depth int, scopes *pythonFunctionScopes) map[string]handlerBlock {
 	key := filepath.Clean(path)
@@ -89,6 +90,43 @@ func mergePythonImportedFunctions(path string, lines []srcLine, functions map[st
 	}
 	candidates := map[string]importedHelper{}
 	for _, line := range maskedPythonLines(lines) {
+		if m := pyImportRe.FindStringSubmatch(line.text); m != nil {
+			for _, item := range strings.Split(m[1], ",") {
+				fields := strings.Fields(strings.TrimSpace(item))
+				if len(fields) == 0 || (len(fields) != 1 && (len(fields) != 3 || fields[1] != "as")) {
+					continue
+				}
+				module := fields[0]
+				alias := module
+				if len(fields) == 3 {
+					alias = fields[2]
+				} else if dot := strings.LastIndexByte(alias, '.'); dot >= 0 {
+					alias = alias[dot+1:]
+				}
+				modulePath := pythonLocalModulePath(path, module)
+				if modulePath == "" || localNames[alias] {
+					continue
+				}
+				moduleFunctions, ok := pythonImportedScope(modulePath, depth, scopes)
+				if !ok {
+					continue
+				}
+				for name, helper := range moduleFunctions {
+					// Import only definitions from the target module itself. Dotted
+					// keys already represent its own explicitly imported helpers.
+					if strings.Contains(name, ".") {
+						continue
+					}
+					key := alias + "." + name
+					if localNames[key] {
+						continue
+					}
+					helper.name = key
+					functions[key] = helper
+				}
+			}
+			continue
+		}
 		m := pyFromImportRe.FindStringSubmatch(line.text)
 		if m == nil {
 			continue
@@ -97,24 +135,9 @@ func mergePythonImportedFunctions(path string, lines []srcLine, functions map[st
 		if modulePath == "" {
 			continue
 		}
-		moduleKey := filepath.Clean(modulePath)
-		moduleFunctions, ok := scopes.functions[moduleKey]
+		moduleFunctions, ok := pythonImportedScope(modulePath, depth, scopes)
 		if !ok {
-			if scopes.files >= maxPythonModuleFiles || depth >= maxPythonModuleDepth {
-				continue
-			}
-			info, err := os.Lstat(modulePath)
-			if err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize ||
-				scopes.bytes+info.Size() > maxPythonModuleBytes {
-				continue
-			}
-			moduleLines, moduleSrc := readLines(modulePath)
-			if moduleSrc == "" || scopes.bytes+int64(len(moduleSrc)) > maxPythonModuleBytes {
-				continue
-			}
-			scopes.bytes += info.Size()
-			scopes.files++
-			moduleFunctions = buildPythonFunctionScope(modulePath, moduleLines, depth+1, scopes)
+			continue
 		}
 		for _, item := range strings.Split(strings.Trim(strings.TrimSpace(m[2]), "()"), ",") {
 			fields := strings.Fields(strings.TrimSpace(item))
@@ -144,6 +167,28 @@ func mergePythonImportedFunctions(path string, lines []srcLine, functions map[st
 		}
 		functions[alias] = candidate.block
 	}
+}
+
+func pythonImportedScope(modulePath string, depth int, scopes *pythonFunctionScopes) (map[string]handlerBlock, bool) {
+	moduleKey := filepath.Clean(modulePath)
+	if functions, ok := scopes.functions[moduleKey]; ok {
+		return functions, true
+	}
+	if scopes.files >= maxPythonModuleFiles || depth >= maxPythonModuleDepth {
+		return nil, false
+	}
+	info, err := os.Lstat(modulePath)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize ||
+		scopes.bytes+info.Size() > maxPythonModuleBytes {
+		return nil, false
+	}
+	moduleLines, moduleSrc := readLines(modulePath)
+	if moduleSrc == "" || scopes.bytes+int64(len(moduleSrc)) > maxPythonModuleBytes {
+		return nil, false
+	}
+	scopes.bytes += info.Size()
+	scopes.files++
+	return buildPythonFunctionScope(modulePath, moduleLines, depth+1, scopes), true
 }
 
 func pythonLocalModulePath(path, module string) string {
@@ -304,11 +349,23 @@ func scanReachablePython(path string, entry handlerBlock, scopes *pythonFunction
 		for _, call := range pyCallRe.FindAllStringSubmatchIndex(text, -1) {
 			name := text[call[2]:call[3]]
 			helper, ok := functions[name]
-			if !ok {
-				continue
+			if call[0] > 0 && text[call[0]-1] == '.' {
+				// Resolve only an explicitly imported module alias. Other selector
+				// calls may be methods on unrelated objects with the same name.
+				selectorStart := call[0] - 1
+				for selectorStart > 0 && (isIdentByte(text[selectorStart-1]) || text[selectorStart-1] == '.') {
+					selectorStart--
+				}
+				selector := strings.Trim(text[selectorStart:call[0]-1], ".") + "." + name
+				resolved, explicit := functions[selector]
+				if explicit {
+					helper = resolved
+					ok = true
+				} else if !ok || (helper.path != "" && filepath.Clean(helper.path) != filepath.Clean(blockPath)) {
+					continue
+				}
 			}
-			if call[0] > 0 && text[call[0]-1] == '.' && helper.path != "" &&
-				filepath.Clean(helper.path) != filepath.Clean(blockPath) {
+			if !ok {
 				continue
 			}
 			open := call[1] - 1
