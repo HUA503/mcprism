@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-11-26
+
 ### Added
 
 - Follow JS/TS tool-input flows through local aliases and unambiguous same-file
