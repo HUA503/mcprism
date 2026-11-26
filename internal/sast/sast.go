@@ -24,6 +24,7 @@ const (
 func Analyze(root string) ([]Issue, error) {
 	var issues []Issue
 	var totalBytes int64
+	goFunctionsByPackage := map[string]map[string]handlerBlock{}
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -49,6 +50,19 @@ func Analyze(root string) ([]Issue, error) {
 			totalBytes += info.Size()
 			if totalBytes > maxTotalSourceBytes {
 				return filepath.SkipAll
+			}
+		}
+		if strings.EqualFold(filepath.Ext(p), ".go") {
+			pkg, ok := goPackageName(p)
+			if ok {
+				key := filepath.Dir(p) + "|" + pkg
+				functions, exists := goFunctionsByPackage[key]
+				if !exists {
+					_, functions = extractGoPackageFunctions(p)
+					goFunctionsByPackage[key] = functions
+				}
+				issues = append(issues, analyzeGoWithFunctions(p, functions)...)
+				return nil
 			}
 		}
 		issues = append(issues, AnalyzeFile(p)...)
