@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Added
 
+- Follow JS/TS tool-input flows through local aliases and unambiguous same-file
+  function and block-bodied arrow helpers; ignore commented-out sink examples.
 - Scan Rust MCP tool handlers using the official `rmcp` `#[tool]` macro for
   process execution, `reqwest` request URLs, filesystem paths and hardcoded
   secrets.
