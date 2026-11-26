@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-26
+
 ### Added
 
 - Expand Chinese and Traditional Chinese prompt-injection signatures to cover
