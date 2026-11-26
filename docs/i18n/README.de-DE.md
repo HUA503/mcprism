@@ -311,7 +311,7 @@ Er erkennt gängige SDKs und Frameworks:
 
 Für jedes Tool behandelt er die Handler-Argumente als von einem Angreifer steuerbar und verfolgt sie mit heuristischer Analyse bis zu einer Senke. Befunde nennen Datei und Zeile, zeigen den Code und erklären die Korrektur:
 
-Python und Go verfolgen außerdem lokale Aliase und über eindeutige Helper-Aufrufe übergebene Argumente innerhalb derselben Datei. Rust erkennt die offiziellen `rmcp #[tool]`-Methoden und verfolgt lokale Aliase innerhalb der Methode; Helper-Aufrufe und Makroexpansion werden nicht verfolgt. JavaScript/TypeScript wird weiterhin nur innerhalb des jeweiligen Handlers analysiert.
+JavaScript/TypeScript, Python und Go verfolgen einfache lokale Aliase sowie Argumente, die an eindeutige Helper-Funktionen in derselben Datei übergeben werden. JS/TS erkennt Funktionsdeklarationen und Pfeilfunktionen mit Blockkörper. Rust erkennt die offiziellen `rmcp #[tool]`-Methoden und verfolgt lokale Aliase innerhalb der Methode; Helper-Aufrufe und Makroexpansion werden nicht verfolgt.
 
 | Regel | Senke | Standard |
 |---|---|---|
