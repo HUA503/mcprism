@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-26
+
 ### Added
 
 - Continue Python taint through helper calls and named imports across bounded,
