@@ -345,9 +345,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-JS/TS, Python, Go, Rust 분석은 단순한 로컬 별칭과 같은 파일의 명확한 helper 함수에 전달되는 인수를 추적합니다. JS/TS는 함수 선언과 블록 본문 화살표 함수를, Rust는 여러 단계의 고유한 helper 호출을 인식합니다. Rust는 공식 `rmcp #[tool]` 메서드를 인식하지만 매크로 확장이나 trait 디스패치는 해석하지 않습니다. 엔진은 서드파티 파서 없이 패턴 기반 휴리스틱 분석을 수행해 바이너리가 작고 자기완결적입니다. 완전한 데이터 흐름 분석기를 대체하지 않으며 특이한 코드에서는 누락이나 오탐이 발생할 수 있습니다. 규칙 세부 사항과 더 많은 예시는 [docs/SAST.md](../SAST.md)에 있습니다.
+JS/TS, Python, Go, Rust 분석은 단순한 로컬 별칭과 명확한 helper 함수에 전달되는 인수를 추적합니다. Go는 같은 package의 여러 파일에 정의된 고유한 일반 함수도 추적합니다. JS/TS는 함수 선언과 블록 본문 화살표 함수를, Rust는 여러 단계의 고유한 helper 호출을 인식합니다. Rust는 공식 `rmcp #[tool]` 메서드를 인식하지만 매크로 확장이나 trait 디스패치는 해석하지 않습니다. 엔진은 서드파티 파서 없이 패턴 기반 휴리스틱 분석을 수행해 바이너리가 작고 자기완결적입니다. 완전한 데이터 흐름 분석기를 대체하지 않으며 특이한 코드에서는 누락이나 오탐이 발생할 수 있습니다. 규칙 세부 사항과 더 많은 예시는 [docs/SAST.md](../SAST.md)에 있습니다.
 
-Python과 Go는 같은 파일 안의 로컬 별칭 및 명확하게 식별되는 helper 호출로 전달되는 인자도 추적합니다. Rust는 공식 `rmcp #[tool]` 메서드를 인식하고 메서드 내부의 로컬 별칭을 추적하지만 helper 호출과 매크로 확장은 추적하지 않습니다. JavaScript/TypeScript 분석은 각 handler 내부로 제한됩니다.
+전체 프로그램 데이터 흐름 분석기는 아닙니다. Go의 동일 package 일반 함수 호출을 제외하면 파일 사이의 값 흐름은 추적하지 않으며, 객체 속성·반환값·동적 디스패치·가져오기 별칭도 추적하지 않습니다. Go의 다른 파일 receiver 메서드 분해, Rust 매크로 확장과 trait 디스패치는 지원하지 않습니다.
 
 <p align="center">
   <img src="../../assets/sast.png" alt="mcprism source-code review findings" width="94%">
