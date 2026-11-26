@@ -6,6 +6,15 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Follow Python tool input into helpers called through explicit same-directory
+  module imports such as `import helpers as h; h.run(...)`, within the existing
+  bounded source traversal limits.
+- Detect additional Simplified and Traditional Chinese prompt-injection
+  directives that forbid refusals, demand unconditional obedience, bypass
+  safety checks or claim elevated privileges.
+
 ## [0.24.0] - 2026-11-26
 
 ### Added

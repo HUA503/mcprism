@@ -50,11 +50,12 @@ functions. JavaScript/TypeScript helper tracking covers function declarations
 and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
 library parser to identify function boundaries and follows unique free-function
 helpers across files in the same package; selector calls into another file are
-left unresolved. Python follows explicitly imported functions and helper calls
-across same-directory modules. JS/TS follows named imports of exported
-helpers from same-directory modules and continues through helper calls in those
-modules. Python and JS/TS cross-module traversal is bounded by eight imports
-deep, 64 source files and 16 MiB of source per analyzed entry file. Rust
+left unresolved. Python follows explicitly imported functions and helpers
+called through explicit module aliases across same-directory modules.
+JS/TS follows named imports of exported helpers from same-directory modules and
+continues through helper calls in those modules. Python and JS/TS cross-module
+traversal is bounded by eight imports deep, 64 source files and 16 MiB of source
+per analyzed entry file. Rust
 recognizes the official `rmcp` `#[tool]` macro and follows local aliases through
 unique same-file helper functions, including multi-step calls. Rust does not
 expand macros or resolve trait-based dispatch.
@@ -63,10 +64,11 @@ where implemented.
 
 This is not a full-program data-flow analyzer. Cross-file tracking is limited to
 bounded Go same-package free-function calls and explicitly imported Python and
-JS/TS helpers. JS/TS follows named imports and local helper calls in imported
-modules within the limits above. It does not track object properties, returned
-values, dynamic dispatch, re-exports or other import forms. The bounded analysis
-keeps the scanner dependency-free and predictable.
+JS/TS helpers. Python supports named imports and direct module imports with an
+alias; JS/TS follows named imports and local helper calls in imported modules
+within the limits above. It does not track object properties, returned values,
+dynamic dispatch, re-exports, package resolution or arbitrary import forms. The
+bounded analysis keeps the scanner dependency-free and predictable.
 
 ---
 
@@ -120,6 +122,20 @@ The finding points to the sink in `local-helpers.js`. If `runWithShell` calls
 another same-module helper with the controlled argument, analysis follows that
 call as well. The same applies to further named imports within the traversal
 limits.
+
+An explicitly imported module alias is also followed:
+
+```python
+# server.py
+import local_helpers as helpers
+
+@mcp.tool()
+def run(command: str):
+    helpers.run_with_shell(command)
+```
+
+This is limited to an unambiguous local module file and the same traversal
+budgets. Package imports and dynamic module names are not resolved.
 
 Vulnerable (Python):
 

@@ -39,6 +39,10 @@ var injectionSigs = []struct {
 	{regexp.MustCompile(`(进入|進入|切换到|切換到|启用|啟用|开启|開啟).{0,6}(开发者|開發者|管理员|管理員|无限制|無限制|越狱|越獄).{0,4}模式`), SeverityHigh},
 	{regexp.MustCompile(`(把|将|將).{0,8}(以下|下面|此|这段|這段|本文).{0,6}(内容|內容|文本|訊息|消息).{0,6}(作为|作為|视为|視為|当作|當作).{0,8}(最高优先级|最高優先級|系统|系統|开发者|開發者).{0,4}(指令|提示|消息|訊息)`), SeverityHigh},
 	{regexp.MustCompile(`(显示|顯示|输出|輸出|打印|揭示|复述|複述|逐字输出|逐字輸出).{0,8}(思维链|思維鏈|推理过程|推理過程|隐藏提示词|隱藏提示詞|系统提示词|系統提示詞|开发者消息|開發者訊息)`), SeverityCritical},
+	{regexp.MustCompile(`(不要|不得|禁止|不准).{0,5}(拒绝|拒絕|拒答).{0,8}(用户|用戶|请求|請求|命令|指令)?`), SeverityHigh},
+	{regexp.MustCompile(`(无条件|無條件|绝对|絕對|必须|必須).{0,5}(服从|服從|遵从|遵從).{0,8}(用户|用戶|请求|請求|命令|指令)`), SeverityHigh},
+	{regexp.MustCompile(`(绕过|繞過|规避|規避|禁用|停用).{0,6}(拒绝|拒絕|安全审查|安全審查|内容限制|內容限制|安全限制)`), SeverityCritical},
+	{regexp.MustCompile(`(获得|取得|拥有|擁有|授予).{0,8}(最高|管理员|管理員|root).{0,6}(权限|權限)`), SeverityHigh},
 	// Japanese directives are checked with language-specific high-signal phrases;
 	// gaps allow ordinary particles without interpreting free-form text.
 	{regexp.MustCompile(`(以前|前の|これまでの|上記の|既存の).{0,4}(指示|命令|ルール|プロンプト).{0,6}(無視|忘れ|破棄)`), SeverityCritical},
