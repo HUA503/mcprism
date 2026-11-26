@@ -322,7 +322,7 @@ Pour chaque outil, il considère les arguments du gestionnaire comme contrôlés
 
 Il reconnaît les motifs sûrs habituels et reste silencieux quand ils sont présents, pour limiter les faux positifs :
 
-JavaScript/TypeScript, Python et Go suivent les alias locaux simples ainsi que les arguments transmis à des fonctions auxiliaires non ambiguës dans le même fichier. JS/TS reconnaît les déclarations de fonction et les fonctions fléchées avec un corps bloc. Rust reconnaît les méthodes officielles `rmcp #[tool]` et suit les alias locaux dans chaque méthode, mais pas les appels auxiliaires ni l’expansion des macros.
+JavaScript/TypeScript, Python, Go et Rust suivent les alias locaux simples ainsi que les arguments transmis à des fonctions auxiliaires non ambiguës dans le même fichier. JS/TS reconnaît les déclarations de fonction et les fonctions fléchées avec un corps bloc ; Rust suit aussi les helpers aux noms uniques sur plusieurs appels. Rust reconnaît les méthodes officielles `rmcp #[tool]`, mais ne résout ni les macros ni la répartition des traits.
 
 - Une commande fixe avec des arguments passés en tableau (`execFile(cmd, args)`, `subprocess.run([...])`) au lieu d'une chaîne shell.
 - Confinement des chemins : `path.resolve(base, name)` vérifié par `startsWith(base)`, ou `realpath` + `startswith` en Python.

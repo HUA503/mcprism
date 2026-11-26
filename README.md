@@ -444,11 +444,11 @@ It recognizes the common SDKs and frameworks:
 - Go: mcp-go `server.AddTool` / `mcp.AddTool` callbacks.
 - Rust: `#[tool]` methods from the official `rmcp` SDK.
 
-For each tool it treats handler arguments as attacker-controlled data. Python
-and Go analysis follows local aliases and same-file helper arguments. Rust
-analysis follows simple local aliases inside the `#[tool]` method; JavaScript
-and TypeScript analysis currently follows values within the handler. Findings
-name the file and line, show the code, and say how to fix it:
+For each tool it treats handler arguments as attacker-controlled data. JS/TS,
+Python, Go and Rust analysis follows simple local aliases and arguments passed
+to unambiguous helpers in the same file. Rust recognizes unique helper function
+names, including multi-step call chains. Findings name the file and line, show
+the code, and say how to fix it:
 
 | Rule | Sink | Default |
 |---|---|---|
@@ -496,7 +496,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   small and self-contained. JS/TS, Python and Go taint tracking follows local
   aliases and arguments passed through unambiguous helper functions in the same
   file. JS/TS recognizes function declarations and block-bodied arrow helpers.
-  Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods.
+  Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods
+  and through unique same-file helpers.
   Be aware of the known limits; a clean report is not proof of safety:
 - Taint is not tracked across files, object properties, returned values,
   dynamic dispatch or destructuring/import aliases (`import { exec as run }`,
@@ -506,8 +507,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   it does not build a full-program data-flow graph. JS/Python do not use
   tree-sitter.
 - Rust analysis recognizes the official `rmcp` `#[tool]` macro and common
-  process, `reqwest`, filesystem and secret patterns. It does not follow helper
-  calls or macro expansion.
+  process, `reqwest`, filesystem and secret patterns. It follows uniquely named
+  same-file helpers but does not expand macros or resolve trait dispatch.
 - Only JavaScript/TypeScript, Python, Go and Rust are analyzed; servers in other
   languages get config- and metadata-level checks only.
 

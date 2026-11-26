@@ -5,9 +5,9 @@ import (
 	"strings"
 )
 
-// analyzeRust supports the official rmcp #[tool] macro. It deliberately keeps
-// the analysis bounded to a tool method: Rust's macro expansion and trait-based
-// dispatch are not reconstructed by this dependency-free scanner.
+// analyzeRust supports the official rmcp #[tool] macro and bounded taint flow
+// through unambiguous same-file helpers. It does not expand macros or resolve
+// trait-based dispatch.
 func analyzeRust(path string) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
@@ -16,8 +16,9 @@ func analyzeRust(path string) []Issue {
 	code := maskRustCode(src)
 	var out []Issue
 	if strings.Contains(code, "rmcp") {
+		functions := extractRustFunctions(src, code)
 		for _, block := range extractRustHandlers(src, code) {
-			out = append(out, scanRustBlock(path, src, block)...)
+			out = append(out, scanReachableRust(path, src, block, functions)...)
 		}
 	}
 	for _, line := range maskedLines(lines, maskRustComments) {
@@ -59,6 +60,162 @@ func extractRustHandlers(src, code string) []handlerBlock {
 			name: fnName, params: params,
 			lines: linesRange(src, bodyOpen, bodyClose+1),
 		})
+	}
+	return out
+}
+
+var rustFunctionRe = regexp.MustCompile(`\bfn\s+([A-Za-z_]\w*)(?:\s*<[^>{}]*>)?\s*\(`)
+
+// extractRustFunctions indexes same-file functions with unique names. A helper
+// whose name is repeated (for example, methods on multiple types) is omitted
+// rather than resolving a call to the wrong body.
+func extractRustFunctions(src, code string) map[string]handlerBlock {
+	functions := map[string]handlerBlock{}
+	ambiguous := map[string]bool{}
+	toolNames := map[string]bool{}
+	for _, handler := range extractRustHandlers(src, code) {
+		toolNames[handler.name] = true
+	}
+	for _, m := range rustFunctionRe.FindAllStringSubmatchIndex(code, -1) {
+		name := code[m[2]:m[3]]
+		if toolNames[name] || ambiguous[name] {
+			continue
+		}
+		open := m[1] - 1
+		close := rustMatchClose(code, open, '(', ')')
+		if close < 0 {
+			continue
+		}
+		bodyOpen := strings.IndexByte(code[close+1:], '{')
+		if bodyOpen < 0 {
+			continue
+		}
+		bodyOpen += close + 1
+		bodyClose := rustMatchClose(code, bodyOpen, '{', '}')
+		if bodyClose < 0 {
+			continue
+		}
+		if _, exists := functions[name]; exists {
+			delete(functions, name)
+			ambiguous[name] = true
+			continue
+		}
+		functions[name] = handlerBlock{
+			name: name, params: rustFunctionParameters(code[open+1 : close]),
+			lines: linesRange(src, bodyOpen, bodyClose+1),
+		}
+	}
+	return functions
+}
+
+func rustFunctionParameters(src string) []string {
+	var names []string
+	for _, param := range splitRustComma(src) {
+		param = strings.TrimSpace(param)
+		if param == "" {
+			continue
+		}
+		if param == "self" || strings.HasPrefix(param, "self:") || strings.HasPrefix(param, "&self") || strings.HasPrefix(param, "&mut self") {
+			continue
+		}
+		pattern := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(rustPatternBeforeType(param), "mut "), "ref "))
+		if isRustIdent(pattern) {
+			names = append(names, pattern)
+		} else {
+			// Preserve argument positions for unsupported destructuring patterns.
+			names = append(names, "")
+		}
+	}
+	return names
+}
+
+func scanReachableRust(path, src string, entry handlerBlock, functions map[string]handlerBlock) []Issue {
+	taintedByName := map[string]map[string]bool{}
+	processedByName := map[string]map[string]bool{}
+	queue := []handlerBlock{entry}
+	callRe := regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
+	var out []Issue
+	for head := 0; head < len(queue); head++ {
+		block := queue[head]
+		seed := rustTaintedNames(block.lines, block.params)
+		known := taintedByName[block.name]
+		if known == nil {
+			known = map[string]bool{}
+			taintedByName[block.name] = known
+		}
+		for name := range seed {
+			known[name] = true
+		}
+		processed := processedByName[block.name]
+		if processed == nil {
+			processed = map[string]bool{}
+			processedByName[block.name] = processed
+		}
+		pending := false
+		for name := range known {
+			if !processed[name] {
+				pending = true
+				processed[name] = true
+			}
+		}
+		if !pending && head > 0 {
+			continue
+		}
+		params := make([]string, 0, len(known))
+		for name := range known {
+			params = append(params, name)
+		}
+		block.params = params
+		out = append(out, scanRustBlock(path, src, block)...)
+
+		text := maskRustCode(joinLines(block.lines))
+		ctrl := rustTaintedNames(block.lines, params)
+		for _, call := range callRe.FindAllStringSubmatchIndex(text, -1) {
+			name := text[call[2]:call[3]]
+			helper, ok := functions[name]
+			if !ok || call[0] > 0 && text[call[0]-1] == ':' {
+				continue
+			}
+			if call[0] > 0 && text[call[0]-1] == '.' {
+				receiver := strings.TrimSpace(text[:call[0]-1])
+				if !strings.HasSuffix(receiver, "self") {
+					continue
+				}
+				receiver = strings.TrimSuffix(receiver, "self")
+				if receiver != "" {
+					last := receiver[len(receiver)-1]
+					if isRustIdent(string(last)) || last == '.' {
+						continue
+					}
+				}
+			}
+			open := call[1] - 1
+			close := rustMatchClose(text, open, '(', ')')
+			if close < 0 {
+				continue
+			}
+			args := splitRustComma(text[open+1 : close])
+			for i, param := range helper.params {
+				if i >= len(args) {
+					break
+				}
+				if param == "" {
+					continue
+				}
+				if !rustControllable(args[i], ctrl) {
+					continue
+				}
+				if taintedByName[name] == nil {
+					taintedByName[name] = map[string]bool{}
+				}
+				if !taintedByName[name][param] {
+					taintedByName[name][param] = true
+					child := helper
+					child.params = []string{param}
+					queue = append(queue, child)
+				}
+			}
+		}
 	}
 	return out
 }

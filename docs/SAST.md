@@ -49,8 +49,9 @@ assignments and propagates taint through arguments passed to unambiguous helper
 functions in the same source file. JavaScript/TypeScript helper tracking covers
 function declarations and block-bodied `const`/`let`/`var` arrow functions. Go
 uses the standard-library parser to identify function boundaries; Rust
-recognizes the official `rmcp` `#[tool]` macro and follows simple local aliases
-inside a tool method. Rust does not follow helper calls or macro expansion.
+recognizes the official `rmcp` `#[tool]` macro and follows local aliases through
+unique same-file helper functions, including multi-step calls. Rust does not
+expand macros or resolve trait-based dispatch.
 Sink recognition remains pattern-based. Common safe patterns are recognized
 where implemented.
 
@@ -116,12 +117,19 @@ s.AddTool(mcp.NewTool("run_command",
 Vulnerable (Rust, official `rmcp` SDK):
 
 ```rust
+fn run_with_shell(command: String) {
+    Command::new("sh").arg("-c").arg(command).output().unwrap();
+}
+
 #[tool]
 async fn run(&self, Parameters(args): Parameters<RunArgs>) -> String {
-    Command::new("sh").arg("-c").arg(args.command).output().unwrap();
+    run_with_shell(args.command);
     "done".into()
 }
 ```
+
+mcprism follows the tool argument through the local helper and flags the shell
+sink in `run_with_shell`.
 
 Fixed: keep a fixed set of commands and pass arguments without a shell.
 
@@ -402,13 +410,13 @@ Do not construct a module name or path from tool input.
 
 ## Limits
 
-- JavaScript/TypeScript, Python and Go taint follows simple aliases and
-  same-file helper arguments; Rust follows local aliases inside recognized
-  `rmcp #[tool]` methods, but not helper calls or macro expansion. Helper
-  resolution is limited to unambiguous same-file functions. Values passed
+- JavaScript/TypeScript, Python, Go and Rust taint follows simple aliases and
+  arguments passed to unambiguous same-file helpers. JS/TS helper tracking
+  currently recognizes function declarations and block-bodied arrow functions;
+  Rust helper resolution uses unique names and does not model trait dispatch or
+  macro expansion. Values passed
   through files, object properties, return values, dynamic dispatch or import
-  aliases may be missed. JS/TS helper tracking currently recognizes function
-  declarations and block-bodied arrow functions.
+  aliases may be missed.
 - Sink detection is pattern-based, not a full AST/data-flow analysis. Unusual
   formatting or a framework not listed above can hide or misclassify a sink.
   Common low-level patterns (`exec(`, `fetch(`, `open(`) are also matched.

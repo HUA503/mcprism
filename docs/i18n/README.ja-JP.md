@@ -322,7 +322,7 @@ mcprism vet ./mcp-server/src/tool.ts
 
 誤検出を減らすため、一般的な安全パターンを認識し、それらがある場合は報告しません。
 
-JavaScript/TypeScript、Python、Go では、単純なローカルエイリアスと、同じファイル内の一意なヘルパー関数へ渡される引数を追跡します。JS/TS は関数宣言とブロック本体を持つアロー関数を認識します。Rust は公式 `rmcp #[tool]` メソッドを認識し、メソッド内のローカルエイリアスを追跡しますが、ヘルパー呼び出しやマクロ展開は追跡しません。
+JavaScript/TypeScript、Python、Go、Rust では、単純なローカルエイリアスと同じファイル内の一意なヘルパー関数へ渡される引数を追跡します。JS/TS は関数宣言とブロック本体を持つアロー関数を、Rust は複数段の一意なヘルパー呼び出しを認識します。Rust は公式 `rmcp #[tool]` メソッドを認識しますが、マクロ展開や trait のディスパッチは解決しません。
 
 - 固定コマンドと配列で渡された引数（`execFile(cmd, args)`、`subprocess.run([...])`）。シェル文字列ではなく。
 - パスの制限：`path.resolve(base, name)` を `startsWith(base)` で確認、Python では `realpath` + `startswith`。

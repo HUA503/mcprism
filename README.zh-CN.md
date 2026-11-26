@@ -363,7 +363,7 @@ mcprism vet ./mcp-server/src/tool.ts
 - Go：mcp-go 的 `server.AddTool` / `mcp.AddTool` 回调。
 - Rust：官方 `rmcp` SDK 的 `#[tool]` 方法。
 
-对每个工具，它把 handler 参数当作攻击者可控的数据。Python 和 Go 会追踪局部别名及同文件 helper 参数；Rust 会在 `#[tool]` 方法内追踪简单局部别名。发现会标明文件和行号、展示代码、给出修复方式：
+对每个工具，它把 handler 参数当作攻击者可控的数据。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入同文件明确 helper 的参数；Rust 支持多层 helper 调用。发现会标明文件和行号、展示代码、给出修复方式：
 
 | 规则 | sink | 默认级别 |
 |---|---|---|
@@ -402,7 +402,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。JS/TS、Python 和 Go 会追踪简单局部别名，以及传入同文件明确 helper 的参数；JS/TS 当前支持函数声明和块体箭头函数。Rust 支持官方 `rmcp` `#[tool]` 方法，并在方法内追踪简单别名，暂不追踪 helper 调用或宏展开。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
+引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。JS/TS、Python、Go 和 Rust 会追踪简单局部别名，以及传入同文件明确 helper 的参数；JS/TS 当前支持函数声明和块体箭头函数，Rust 可追踪多层、唯一命名的 helper。Rust 不展开宏或解析 trait 分派。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
 
 - 目前不会跨文件、对象属性、返回值、动态分派或解构/导入别名追踪（例如 `import { exec as run }`、`child_process["ex"+"ec"]`）。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
 - Go 使用标准库 `go/parser` 定位 helper 函数边界，但尚未构建全程序数据流图；JS/Python 没有使用 tree-sitter。
