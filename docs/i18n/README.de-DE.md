@@ -311,7 +311,7 @@ Er erkennt gängige SDKs und Frameworks:
 
 Für jedes Tool behandelt er die Handler-Argumente als von einem Angreifer steuerbar und verfolgt sie mit heuristischer Analyse bis zu einer Senke. Befunde nennen Datei und Zeile, zeigen den Code und erklären die Korrektur:
 
-JavaScript/TypeScript, Python, Go und Rust verfolgen einfache lokale Aliase und Argumente, die an eindeutige Helper-Funktionen übergeben werden. Go verfolgt zusätzlich eindeutige freie Funktionen über mehrere Dateien desselben Pakets hinweg. JS/TS erkennt Funktionsdeklarationen und Pfeilfunktionen mit Blockkörper; Rust folgt eindeutigen Helper-Funktionen auch über mehrere Aufrufe. Rust erkennt die offiziellen `rmcp #[tool]`-Methoden, löst aber keine Makros oder Trait-Dispatch auf.
+JavaScript/TypeScript, Python, Go und Rust verfolgen einfache lokale Aliase und Argumente, die an eindeutige Helper-Funktionen übergeben werden. Python verfolgt außerdem explizit importierte Helper aus einem Modul im selben Verzeichnis bis zu direkten Senken. Go verfolgt eindeutige freie Funktionen über mehrere Dateien desselben Pakets hinweg. JS/TS erkennt Funktionsdeklarationen und Pfeilfunktionen mit Blockkörper; Rust folgt eindeutigen Helper-Funktionen auch über mehrere Aufrufe. Rust erkennt die offiziellen `rmcp #[tool]`-Methoden, löst aber keine Makros oder Trait-Dispatch auf.
 
 | Regel | Senke | Standard |
 |---|---|---|

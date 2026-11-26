@@ -50,18 +50,20 @@ functions. JavaScript/TypeScript helper tracking covers function declarations
 and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
 library parser to identify function boundaries and follows unique free-function
 helpers across files in the same package; selector calls into another file are
-left unresolved. Rust
+left unresolved. Python follows explicitly imported functions from a
+same-directory module to direct sinks, but does not continue into another
+helper call in that imported module. Rust
 recognizes the official `rmcp` `#[tool]` macro and follows local aliases through
 unique same-file helper functions, including multi-step calls. Rust does not
 expand macros or resolve trait-based dispatch.
 Sink recognition remains pattern-based. Common safe patterns are recognized
 where implemented.
 
-This is not a full-program data-flow analyzer. Except for bounded Go
-same-package free-function calls, it does not follow values across files. It
-also does not track object properties, returned values, dynamic dispatch or
-import aliases. The bounded analysis keeps the scanner dependency-free and
-predictable.
+This is not a full-program data-flow analyzer. Cross-file tracking is limited
+to bounded Go same-package free-function calls and directly imported Python
+helpers. It also does not track object properties, returned values, dynamic
+dispatch or general import aliases. The bounded analysis keeps the scanner
+dependency-free and predictable.
 
 ---
 
@@ -103,6 +105,27 @@ def run(command: str):
 def shell(cmd: str):
     subprocess.run(cmd, shell=True)
 ```
+
+Python handlers can also pass tool input to a directly imported helper in a
+same-directory module:
+
+```python
+# server.py
+from local_helpers import run_with_shell as run_local
+
+@mcp.tool()
+def run(command: str):
+    run_local(command)
+```
+
+```python
+# local_helpers.py
+def run_with_shell(command: str):
+    subprocess.run(command, shell=True)
+```
+
+The finding points to the sink in `local_helpers.py`. This bounded import flow
+does not continue through further helper calls inside that module.
 
 Vulnerable (Go), a tool argument handed to a shell:
 
@@ -413,14 +436,14 @@ Do not construct a module name or path from tool input.
 
 ## Limits
 
-- JavaScript/TypeScript, Python and Rust taint follows simple aliases and
-  arguments passed to unambiguous same-file helpers. Go also follows unique
+- JavaScript/TypeScript and Rust taint follows simple aliases and arguments
+  passed to unambiguous same-file helpers. Python also follows explicitly
+  imported helpers to direct sinks in same-directory modules. Go follows unique
   same-package free functions across files. JS/TS helper tracking
   currently recognizes function declarations and block-bodied arrow functions;
   Rust helper resolution uses unique names and does not model trait dispatch or
-  macro expansion. Values passed
-  through files, object properties, return values, dynamic dispatch or import
-  aliases may be missed.
+  macro expansion. Other values passed through files, object properties,
+  return values, dynamic dispatch or import aliases may be missed.
 - Sink detection is pattern-based, not a full AST/data-flow analysis. Unusual
   formatting or a framework not listed above can hide or misclassify a sink.
   Common low-level patterns (`exec(`, `fetch(`, `open(`) are also matched.

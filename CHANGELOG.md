@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Follow Python tool arguments into explicitly imported helper functions from
+  a same-directory module when the helper directly reaches a recognized sink.
+
 ## [0.22.0] - 2026-11-26
 
 ### Added
