@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Added
 
+- Follow JS/TS tool arguments into explicitly imported, exported helpers from a
+  same-directory module when the helper directly reaches a recognized sink.
 - Follow Python tool arguments into explicitly imported helper functions from
   a same-directory module when the helper directly reaches a recognized sink.
 

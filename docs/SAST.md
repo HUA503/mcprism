@@ -51,18 +51,19 @@ and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
 library parser to identify function boundaries and follows unique free-function
 helpers across files in the same package; selector calls into another file are
 left unresolved. Python follows explicitly imported functions from a
-same-directory module to direct sinks, but does not continue into another
-helper call in that imported module. Rust
+same-directory module to direct sinks. JS/TS follows named imports of exported
+helpers from same-directory modules to direct sinks. Neither language continues
+into another helper call in that imported module. Rust
 recognizes the official `rmcp` `#[tool]` macro and follows local aliases through
 unique same-file helper functions, including multi-step calls. Rust does not
 expand macros or resolve trait-based dispatch.
 Sink recognition remains pattern-based. Common safe patterns are recognized
 where implemented.
 
-This is not a full-program data-flow analyzer. Cross-file tracking is limited
-to bounded Go same-package free-function calls and directly imported Python
-helpers. It also does not track object properties, returned values, dynamic
-dispatch or general import aliases. The bounded analysis keeps the scanner
+This is not a full-program data-flow analyzer. Cross-file tracking is limited to
+bounded Go same-package free-function calls and directly imported Python and
+JS/TS helpers. It also does not track object properties, returned values,
+dynamic dispatch or other import forms. The bounded analysis keeps the scanner
 dependency-free and predictable.
 
 ---
@@ -93,6 +94,28 @@ server.tool("run", { command: z.string() }, async ({ command }) => {
   runCommand(command);
 });
 ```
+
+JS/TS can also follow a named import of an exported helper in a neighboring
+source file to a direct sink:
+
+```js
+// server.js
+import { runWithShell as runLocal } from "./local-helpers.js";
+
+server.tool("run", { command: z.string() }, async ({ command }) => {
+  runLocal(command);
+});
+```
+
+```js
+// local-helpers.js
+export function runWithShell(command) {
+  exec(command, (err, stdout) => callback(stdout));
+}
+```
+
+The finding points to the sink in `local-helpers.js`. Cross-file tracking does
+not continue through more helper calls inside the imported module.
 
 Vulnerable (Python):
 
@@ -437,8 +460,9 @@ Do not construct a module name or path from tool input.
 ## Limits
 
 - JavaScript/TypeScript and Rust taint follows simple aliases and arguments
-  passed to unambiguous same-file helpers. Python also follows explicitly
-  imported helpers to direct sinks in same-directory modules. Go follows unique
+  passed to unambiguous same-file helpers. JS/TS also follows named imports of
+  exported helpers to direct sinks in same-directory modules. Python follows
+  explicitly imported helpers to direct sinks there. Go follows unique
   same-package free functions across files. JS/TS helper tracking
   currently recognizes function declarations and block-bodied arrow functions;
   Rust helper resolution uses unique names and does not model trait dispatch or

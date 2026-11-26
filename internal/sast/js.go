@@ -1,6 +1,8 @@
 package sast
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode"
@@ -13,8 +15,22 @@ func analyzeJS(path string) []Issue {
 	}
 	var out []Issue
 	functions := extractJSFunctions(src)
+	localNames := map[string]bool{}
+	for name := range functions {
+		localNames[name] = true
+	}
+	declaredNameRe := regexp.MustCompile(`\b(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)`)
+	for _, m := range declaredNameRe.FindAllStringSubmatch(maskJSCode(src), -1) {
+		localNames[m[1]] = true
+	}
+	for name, helper := range functions {
+		helper.path = path
+		functions[name] = helper
+	}
+	functions = mergeJSImportedFunctions(path, src, functions, localNames)
 	staticMaps := jsStaticMapNames(src)
 	for _, b := range extractJSHandlers(maskJSComments(src)) {
+		b.path = path
 		out = append(out, scanReachableJS(path, b, functions, staticMaps)...)
 	}
 	for _, l := range maskedLines(lines, maskJSComments) {
@@ -26,6 +42,125 @@ func analyzeJS(path string) []Issue {
 // ---------- handler extraction ----------
 
 var jsHandlerRe = regexp.MustCompile(`(?:\.tool|setRequestHandler|registerTool)\s*\(`)
+var jsNamedImportRe = regexp.MustCompile(`(?s)\bimport\s*\{([^}]*)\}\s*from\s*["']([^"']+)["']`)
+
+// mergeJSImportedFunctions resolves named imports from bounded, same-directory
+// source modules. Only exported helpers imported under an unambiguous local
+// name are added; package imports, namespace imports and star exports are not.
+func mergeJSImportedFunctions(path, src string, functions map[string]handlerBlock, localNames map[string]bool) map[string]handlerBlock {
+	type candidate struct {
+		block handlerBlock
+		count int
+	}
+	candidates := map[string]candidate{}
+	seenModules := map[string]map[string]handlerBlock{}
+	text := maskJSComments(src)
+	structure := maskJSCode(src)
+	totalBytes := int64(0)
+	importCount := 0
+	for _, m := range jsNamedImportRe.FindAllStringSubmatchIndex(text, -1) {
+		if m[1]-m[0] < len("import") || structure[m[0]:m[0]+len("import")] != "import" {
+			continue
+		}
+		module := text[m[4]:m[5]]
+		modulePath := jsLocalModulePath(path, module)
+		if modulePath == "" {
+			continue
+		}
+		moduleFunctions, ok := seenModules[modulePath]
+		if !ok {
+			info, err := os.Lstat(modulePath)
+			if err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize {
+				continue
+			}
+			totalBytes += info.Size()
+			importCount++
+			if totalBytes > 8<<20 || importCount > 32 {
+				break
+			}
+			_, moduleSrc := readLines(modulePath)
+			moduleFunctions = extractJSFunctions(moduleSrc)
+			exported := jsExportedFunctionNames(moduleSrc)
+			for name := range moduleFunctions {
+				if !exported[name] {
+					delete(moduleFunctions, name)
+					continue
+				}
+				helper := moduleFunctions[name]
+				helper.path = modulePath
+				moduleFunctions[name] = helper
+			}
+			seenModules[modulePath] = moduleFunctions
+		}
+		for _, item := range strings.Split(text[m[2]:m[3]], ",") {
+			fields := strings.Fields(strings.TrimSpace(item))
+			if len(fields) == 0 {
+				continue
+			}
+			original, alias := fields[0], fields[0]
+			if len(fields) == 3 && fields[1] == "as" {
+				alias = fields[2]
+			} else if len(fields) != 1 {
+				continue
+			}
+			helper, exists := moduleFunctions[original]
+			if !exists || localNames[alias] {
+				continue
+			}
+			helper.name = alias
+			c := candidates[alias]
+			c.block = helper
+			c.count++
+			candidates[alias] = c
+		}
+	}
+	for alias, c := range candidates {
+		if c.count == 1 && !localNames[alias] {
+			functions[alias] = c.block
+		}
+	}
+	return functions
+}
+
+func jsLocalModulePath(path, module string) string {
+	if !strings.HasPrefix(module, "./") || strings.Contains(strings.TrimPrefix(module, "./"), "/") {
+		return ""
+	}
+	base := filepath.Join(filepath.Dir(path), strings.TrimPrefix(module, "./"))
+	ext := filepath.Ext(base)
+	candidates := []string{base}
+	switch ext {
+	case "":
+		for _, candidateExt := range []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"} {
+			candidates = append(candidates, base+candidateExt)
+		}
+	case ".js":
+		candidates = append(candidates, strings.TrimSuffix(base, ext)+".ts", strings.TrimSuffix(base, ext)+".tsx")
+	case ".mjs":
+		candidates = append(candidates, strings.TrimSuffix(base, ext)+".mts")
+	case ".cjs":
+		candidates = append(candidates, strings.TrimSuffix(base, ext)+".cts")
+	}
+	for _, candidate := range candidates {
+		if info, err := os.Lstat(candidate); err == nil && info.Mode().IsRegular() && info.Size() <= maxSourceFileSize {
+			return candidate
+		}
+	}
+	return ""
+}
+
+func jsExportedFunctionNames(src string) map[string]bool {
+	structure := maskJSCode(src)
+	names := map[string]bool{}
+	exportFunction := regexp.MustCompile(`\bexport\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(`)
+	exportVariable := regexp.MustCompile(`\bexport\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=`)
+	for _, re := range []*regexp.Regexp{exportFunction, exportVariable} {
+		for _, m := range re.FindAllStringSubmatch(structure, -1) {
+			names[m[1]] = true
+		}
+	}
+	return names
+}
 
 func extractJSHandlers(src string) []handlerBlock {
 	var blocks []handlerBlock
@@ -261,8 +396,19 @@ func scanReachableJS(path string, entry handlerBlock, functions map[string]handl
 			params = append(params, name)
 		}
 		block.params = params
-		out = append(out, scanJSBlock(path, block)...)
+		issuePath := block.path
+		if issuePath == "" {
+			issuePath = path
+		}
+		out = append(out, scanJSBlock(issuePath, block)...)
 
+		blockPath := block.path
+		if blockPath == "" {
+			blockPath = path
+		}
+		if filepath.Clean(blockPath) != filepath.Clean(path) {
+			continue
+		}
 		text := maskJSComments(joinLines(block.lines))
 		structure := maskJSCode(text)
 		ctrl := jsTaintedNames(block.lines, params, staticMaps)
