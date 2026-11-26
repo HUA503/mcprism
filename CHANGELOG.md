@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Follow Rust `rmcp #[tool]` argument flows through local aliases and unique
+  same-file helper functions, including multi-step calls.
+
 ## [0.21.0] - 2026-11-26
 
 ### Added
