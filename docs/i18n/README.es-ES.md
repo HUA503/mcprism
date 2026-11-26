@@ -250,7 +250,7 @@ Añade el comando al perfil del shell para habilitarlo en las próximas sesiones
 Escaneo de dos servidores locales en modo estático:
 
 ```text
-◆ mcprism   v0.22.0 · 2026-11-26
+◆ mcprism   v0.23.0 · 2026-11-26
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -348,7 +348,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-El motor se basa en patrones con un nivel de rastreo de contaminación y sin analizadores de terceros, así el binario se mantiene pequeño y autónomo. No detecta todo lo que vería un análisis de flujo completo; apunta a los caminos cortos y directos del manejador al sumidero, donde están la mayoría de los fallos de los servidores MCP. Los detalles de las reglas y más ejemplos están en [docs/SAST.md](../SAST.md).
+El motor se basa en patrones con seguimiento acotado de contaminación y sin analizadores de terceros, así el binario se mantiene pequeño y autónomo. No detecta todo lo que vería un análisis de flujo completo; apunta a los caminos cortos y directos del manejador al sumidero, donde están la mayoría de los fallos de los servidores MCP. Los detalles de las reglas y más ejemplos están en [docs/SAST.md](../SAST.md).
 
 <p align="center">
   <img src="../../assets/sast.png" alt="mcprism source-code review findings" width="94%">
