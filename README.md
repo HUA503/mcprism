@@ -24,7 +24,7 @@ servers. It looks at a server from three angles:
    cleartext transport, credentials in config, cloud metadata and private
    network targets.
 2. **Source code** — when the implementation is on disk, it reads the
-   JS/TS/Python/Go tool handlers and traces arguments an agent can control into
+   JS/TS/Python/Go/Rust tool handlers and traces arguments an agent can control into
    dangerous sinks: process execution, outbound requests (SSRF) and filesystem
    paths, along with eval, unsafe deserialization and hardcoded secrets.
 3. **Runtime** — it negotiates the current stateless MCP protocol or the legacy
@@ -148,7 +148,7 @@ below, with no network needed.
 ## What it does
 
 - One binary. No Python or Node setup, no LLM API key, no account.
-- Static by default. It reads the config and reviews JS/TS/Python/Go source.
+- Static by default. It reads the config and reviews JS/TS/Python/Go/Rust source.
   Pass `--dynamic` to negotiate with current or legacy MCP servers and list
   tools, resources and prompts. It never calls a tool.
 - Schema-aware. For a live server you have no source for, a string parameter
@@ -442,9 +442,11 @@ It recognizes the common SDKs and frameworks:
 - Python: the `FastMCP` `@mcp.tool()` decorator and the low-level `call_tool`
   handler.
 - Go: mcp-go `server.AddTool` / `mcp.AddTool` callbacks.
+- Rust: `#[tool]` methods from the official `rmcp` SDK.
 
 For each tool it treats handler arguments as attacker-controlled data. Python
-and Go analysis follows local aliases and same-file helper arguments; JavaScript
+and Go analysis follows local aliases and same-file helper arguments. Rust
+analysis follows simple local aliases inside the `#[tool]` method; JavaScript
 and TypeScript analysis currently follows values within the handler. Findings
 name the file and line, show the code, and say how to fix it:
 
@@ -493,6 +495,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - The engine uses pattern matching and no third-party parser, keeping the binary
   small and self-contained. Python and Go taint tracking follows local aliases
   and arguments passed through unambiguous helper functions in the same file.
+  Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods.
   JavaScript/TypeScript tracking remains handler-local. Be aware of the known
   limits so you do not read a clean report as a proof of safety:
 - Taint is not tracked across files, object properties, returned values,
@@ -502,7 +505,10 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - Go uses the standard-library `go/parser` to locate helper function boundaries;
   it does not build a full-program data-flow graph. JS/Python do not use
   tree-sitter.
-- Only JavaScript/TypeScript, Python and Go are analyzed; servers in other
+- Rust analysis recognizes the official `rmcp` `#[tool]` macro and common
+  process, `reqwest`, filesystem and secret patterns. It does not follow helper
+  calls or macro expansion.
+- Only JavaScript/TypeScript, Python, Go and Rust are analyzed; servers in other
   languages get config- and metadata-level checks only.
 
 For assurance on a high-risk server, pair mcprism with a full data-flow
@@ -540,9 +546,10 @@ analyzer and manual review. Rule details and more examples are in
 - Supply-chain risk: unpinned packages, typosquat look-alikes, and code run
   straight from a remote URL.
 - Policy violations: denied packages/commands/domains and broken network isolation.
-- Source-code flaws in JS/TS/Python/Go handlers: tool arguments reaching command,
-  network and file sinks, eval/exec, unsafe deserialization and hardcoded
-  secrets. See [Source-code review](#source-code-review-sast).
+- Source-code flaws: JS/TS/Python/Go handlers are checked for command, network,
+  file, dynamic-code and deserialization risks; Rust `rmcp #[tool]` handlers
+  are checked for process, `reqwest` URL, filesystem and hardcoded-secret risks.
+  See [Source-code review](#source-code-review-sast).
 - Cross-server tool name collisions, and classified connectivity failures
   (DNS / TLS / refused / timeout / command not found).
 
@@ -793,7 +800,8 @@ so only run servers you trust.
 - [x] Scoop package
 - [x] Homebrew formula
 - [x] Nix package
-- [ ] More SAST languages (Rust, Java, C#)
+- [x] Rust `rmcp` tool SAST
+- [ ] More SAST languages (Java, C#)
 - [ ] Cross-file, object-flow and JavaScript inter-procedural taint tracking
 - [ ] Built-in sandbox wrapper for live probes
 

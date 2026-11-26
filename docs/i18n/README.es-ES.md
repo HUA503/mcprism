@@ -13,7 +13,7 @@ Si usas servidores MCP con Claude, Cursor, VS Code u otro cliente de IA, mcprism
 mcprism es un escáner de seguridad para servidores del [Model Context Protocol](https://modelcontextprotocol.io/). Examina un servidor desde tres ángulos:
 
 1. **Configuración** — cómo un cliente lo inicia o conecta: paquetes fijados por versión, transporte en texto plano, credenciales dentro de la configuración y destinos a metadatos de la nube y redes privadas.
-2. **Código fuente** — si la implementación está en el disco, lee los manejadores de herramientas en JS/TS/Python/Go y rastrea los argumentos que un agente puede controlar hasta sumideros peligrosos: ejecución de procesos, solicitudes salientes (SSRF) y rutas de archivos, además de eval, deserialización insegura y secretos codificados.
+2. **Código fuente** — si la implementación está en el disco, lee los manejadores de herramientas en JS/TS/Python/Go/Rust y rastrea los argumentos que un agente puede controlar hasta sumideros peligrosos: ejecución de procesos, solicitudes salientes (SSRF) y rutas de archivos, además de eval, deserialización insegura y secretos codificados.
 3. **Ejecución** — realiza el saludo MCP para listar herramientas, recursos e indicaciones, y comprueba el envenenamiento de los metadatos de las herramientas. Nunca llama a una herramienta.
 
 Cada servidor recibe hallazgos, una puntuación de 0 a 100 y una calificación de A a F. mcprism es un único binario Go sin dependencias de ejecución. Los análisis locales de configuración y código fuente funcionan sin conexión; los comandos Registry obtienen metadatos públicos del MCP Registry oficial.
@@ -103,7 +103,7 @@ mcprism vet server.py            # revisar un archivo
 ## Funciones
 
 - Un único binario. Sin instalación de Python o Node, sin clave de API de LLM y sin cuenta.
-- Comprobaciones estática, de código y en vivo. Lee la configuración, revisa el código JS/TS/Python/Go cuando hay un árbol de código y hace el saludo MCP para listar herramientas, recursos e indicaciones. Nunca llama a una herramienta.
+- Comprobaciones estática, de código y en vivo. Lee la configuración, revisa el código JS/TS/Python/Go/Rust cuando hay un árbol de código y hace el saludo MCP para listar herramientas, recursos e indicaciones. Nunca llama a una herramienta.
 - Política como código. Activa o desactiva reglas, cambia severidades, permite o bloquea paquetes/comandos/dominios y exige aislamiento de red. Los perfiles integrados ofrecen las líneas base `default`, `strict` y `ci`.
 - Registro de riesgos aceptados. Suprime hallazgos con un motivo y una fecha de caducidad. Los elementos suprimidos siguen visibles en el informe y vuelven al caducar.
 - Bloqueo del inventario de herramientas. Guarda los nombres y las huellas SHA-256 de las herramientas revisadas; si se añade, elimina o modifica una definición, la verificación falla. El archivo no contiene descripciones ni esquemas. Guardar y verificar se conecta al servidor para enumerar las herramientas, pero no ejecuta ninguna.
@@ -322,7 +322,7 @@ Para cada herramienta trata los argumentos del manejador como controlados por un
 
 Reconoce los patrones seguros habituales y guarda silencio cuando aparecen, para reducir falsos positivos:
 
-Python y Go también siguen alias locales y argumentos transferidos mediante llamadas inequívocas a funciones auxiliares dentro del mismo archivo. JavaScript/TypeScript sigue analizándose únicamente dentro de cada handler.
+Python y Go también siguen alias locales y argumentos transferidos mediante llamadas inequívocas a funciones auxiliares dentro del mismo archivo. Rust reconoce los métodos oficiales `rmcp #[tool]` y sigue alias locales dentro de cada método, pero no llamadas auxiliares ni expansión de macros. JavaScript/TypeScript sigue analizándose únicamente dentro de cada handler.
 
 - Un comando fijo con argumentos pasados como array (`execFile(cmd, args)`, `subprocess.run([...])`) en lugar de una cadena de shell.
 - Confinamiento de rutas: `path.resolve(base, name)` comprobado con `startsWith(base)`, o `realpath` + `startswith` en Python.
@@ -364,7 +364,8 @@ El motor se basa en patrones con un nivel de rastreo de contaminación y sin ana
 - Destinos de red. Puntos de metadatos de la nube (`169.254.169.254`) y rangos privados/de bucle local.
 - Riesgo de cadena de suministro: paquetes no fijados, nombres parecidos por typosquat y código ejecutado directo desde una URL remota.
 - Infracciones de política: paquetes/comandos/dominios bloqueados y aislamiento de red roto.
-- Fallos de código en manejadores JS/TS/Python/Go: argumentos de herramientas que llegan a sumideros de comando, red y archivos, eval/exec, deserialización insegura y secretos codificados. Ver [Revisión de código fuente](#revisión-de-código-fuente-sast).
+- Fallos de código en manejadores JS/TS/Python/Go/Rust: argumentos de herramientas que llegan a sumideros de comando, red y archivos, eval/exec, deserialización insegura y secretos codificados. Ver [Revisión de código fuente](#revisión-de-código-fuente-sast).
+- La compatibilidad con Rust se limita a métodos oficiales `rmcp #[tool]` y a revisar procesos, URL de `reqwest`, archivos y secretos.
 - Colisiones de nombres de herramientas entre servidores y fallos de conexión clasificados (DNS / TLS / rechazada / tiempo límite / sin comando).
 
 La lista completa con la correspondencia OWASP está en [docs/RULES.md](../RULES.md).
@@ -483,7 +484,8 @@ No. mcprism notifica riesgos conocidos y observables. No puede probar que un ser
 - [x] Paquete Scoop
 - [x] Fórmula de Homebrew
 - [x] Paquete Nix
-- [ ] Ampliar los lenguajes de SAST (Rust, Java y C#)
+- [x] SAST de Rust para herramientas `rmcp`
+- [ ] Ampliar los lenguajes de SAST (Java y C#)
 - [ ] Seguimiento de taint opcional entre varios saltos y procedimientos
 - [ ] Entorno aislado integrado para sondeos en vivo
 

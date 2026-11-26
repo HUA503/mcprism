@@ -29,10 +29,12 @@ mcprism vet ./path/to/server.py   # one file
 | JavaScript / TypeScript | `McpServer.tool(...)`, `Server.setRequestHandler(CallToolRequestSchema, ...)`, generic `.tool(...)` registrations |
 | Python | `FastMCP` `@mcp.tool()`, low-level `call_tool` handler |
 | Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` callbacks |
+| Rust | official `rmcp` SDK methods marked with `#[tool]` |
 
-Files with the extensions `.js .jsx .ts .tsx .mjs .cjs`, `.py` and `.go` are
-reviewed. Dependency and build directories (`node_modules`, `dist`, `venv`,
-`__pycache__`, and similar) are skipped.
+Files with the extensions `.js .jsx .ts .tsx .mjs .cjs`, `.py`, `.go` and `.rs`
+are reviewed. Cargo projects are recognized through `Cargo.toml`, and Rust
+build output under `target/` is skipped. Other dependency and build directories
+(`node_modules`, `dist`, `venv`, `__pycache__`, and similar) are skipped.
 
 For Go, tool arguments are read through `req.RequireString`, `req.GetString` or
 `req.Params.Arguments[...]`. Go has no `eval` and no standard-library
@@ -44,10 +46,12 @@ the command, SSRF, path and secret rules (MCP801/802/803/806) are.
 For every registered tool, the handler parameters are marked as controlled by
 the agent. Python and Go analysis follows simple local assignments and propagates
 taint through arguments passed to unambiguous helper functions in the same source
-file. Go uses the standard-library parser to identify function boundaries; sink
-recognition remains pattern-based. JavaScript/TypeScript analysis currently
-tracks values within the handler. Common safe patterns are recognized where
-implemented.
+file. Go uses the standard-library parser to identify function boundaries; Rust
+recognizes the official `rmcp` `#[tool]` macro and follows simple local aliases
+inside a tool method. Rust does not follow helper calls or macro expansion.
+Sink recognition remains pattern-based. JavaScript/TypeScript analysis
+currently tracks values within the handler. Common safe patterns are
+recognized where implemented.
 
 This is not a full-program data-flow analyzer. It does not follow values across
 files, object properties, returned values, dynamic dispatch or import aliases.
@@ -94,6 +98,16 @@ s.AddTool(mcp.NewTool("run_command",
 		out, _ := c.Output()
 		return mcp.NewToolResultText(string(out)), nil
 	})
+```
+
+Vulnerable (Rust, official `rmcp` SDK):
+
+```rust
+#[tool]
+async fn run(&self, Parameters(args): Parameters<RunArgs>) -> String {
+    Command::new("sh").arg("-c").arg(args.command).output().unwrap();
+    "done".into()
+}
 ```
 
 Fixed: keep a fixed set of commands and pass arguments without a shell.
@@ -158,6 +172,15 @@ s.AddTool(mcp.NewTool("fetch_page",
 	})
 ```
 
+Vulnerable (Rust, official `rmcp` SDK):
+
+```rust
+#[tool]
+async fn fetch(&self, Parameters(args): Parameters<FetchArgs>) -> String {
+    reqwest::get(args.url).await.unwrap().text().await.unwrap()
+}
+```
+
 Fixed: pin a constant base URL or allow-list hosts, and block metadata and
 private address ranges.
 
@@ -203,6 +226,15 @@ s.AddTool(mcp.NewTool("read_file",
 		}
 		return mcp.NewToolResultText(string(data)), nil
 	})
+```
+
+Vulnerable (Rust, official `rmcp` SDK):
+
+```rust
+#[tool]
+async fn read_file(&self, Parameters(args): Parameters<ReadArgs>) -> String {
+    tokio::fs::read_to_string(args.path).await.unwrap()
+}
 ```
 
 Fixed: resolve the path and confirm it stays inside one base directory.
@@ -357,9 +389,11 @@ Do not construct a module name or path from tool input.
 
 ## Limits
 
-- Python and Go taint follows simple aliases and same-file helper arguments, but
-  values passed through files, object properties, return values, dynamic dispatch
-  or import aliases may be missed. JavaScript/TypeScript remains handler-local.
+- Python and Go taint follows simple aliases and same-file helper arguments; Rust
+  follows local aliases inside recognized `rmcp #[tool]` methods, but not helper
+  calls or macro expansion. Values passed through files, object properties,
+  return values, dynamic dispatch or import aliases may be missed.
+  JavaScript/TypeScript remains handler-local.
 - Sink detection is pattern-based, not a full AST/data-flow analysis. Unusual
   formatting or a framework not listed above can hide or misclassify a sink.
   Common low-level patterns (`exec(`, `fetch(`, `open(`) are also matched.

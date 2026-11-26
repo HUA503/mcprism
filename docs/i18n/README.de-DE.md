@@ -13,7 +13,7 @@ Wenn Sie MCP-Server mit Claude, Cursor, VS Code oder einem anderen KI-Client nut
 mcprism ist ein Sicherheits-Scanner für [Model Context Protocol](https://modelcontextprotocol.io/)-Server. Er betrachtet einen Server aus drei Blickwinkeln:
 
 1. **Konfiguration** — wie ein Client ihn startet oder verbindet: versionsfixierte Pakete, unverschlüsselte Übertragung, Anmeldedaten in der Konfiguration sowie Ziele auf Cloud-Metadaten und private Netzwerke.
-2. **Quellcode** — liegt die Implementierung auf der Platte, liest er JS/TS/Python/Go-Tool-Handler und verfolgt von einem Agenten steuerbare Argumente bis zu gefährlichen Senken: Prozessausführung, ausgehende Anfragen (SSRF) und Dateisystempfade, außerdem eval, unsichere Deserialisierung und fest codierte Geheimnisse.
+2. **Quellcode** — liegt die Implementierung auf der Platte, liest er JS/TS/Python/Go/Rust-Tool-Handler und verfolgt von einem Agenten steuerbare Argumente bis zu gefährlichen Senken: Prozessausführung, ausgehende Anfragen (SSRF) und Dateisystempfade, außerdem eval, unsichere Deserialisierung und fest codierte Geheimnisse.
 3. **Laufzeit** — er führt den MCP-Handshake durch, listet Tools, Ressourcen und Prompts auf und prüft das Poisoning der Tool-Metadaten. Er ruft nie ein Tool auf.
 
 Jeder Server erhält Befunde, eine Punktzahl von 0 bis 100 und eine Note von A bis F. mcprism ist eine einzelne Go-Binärdatei ohne Laufzeitabhängigkeiten. Lokale Konfigurations- und Quellcodeprüfungen laufen offline; Registry-Befehle rufen öffentliche Metadaten aus der offiziellen MCP Registry ab.
@@ -103,7 +103,7 @@ mcprism vet server.py            # eine Datei prüfen
 ## Funktionen
 
 - Eine einzelne Binärdatei. Kein Python- oder Node-Setup, kein LLM-API-Schlüssel, kein Konto.
-- Statische, Quell- und Live-Prüfung. Liest die Konfiguration, prüft JS/TS/Python/Go-Quellcode, wenn ein Checkout vorhanden ist, und führt den MCP-Handshake durch, um Tools, Ressourcen und Prompts aufzulisten. Er ruft nie ein Tool auf.
+- Statische, Quell- und Live-Prüfung. Liest die Konfiguration, prüft JS/TS/Python/Go/Rust-Quellcode, wenn ein Checkout vorhanden ist, und führt den MCP-Handshake durch, um Tools, Ressourcen und Prompts aufzulisten. Er ruft nie ein Tool auf.
 - Policy als Code. Regeln ein-/ausschalten, Schweregrade ändern, Pakete/Befehle/Domains erlauben oder ablehnen und Netzwerkisolation verlangen. Die eingebauten Profile bieten die Baselines `default`, `strict` und `ci`.
 - Risikoakzeptanz-Register. Befunde mit Grund und Ablaufdatum unterdrücken. Unterdrückte Einträge bleiben im Bericht sichtbar und kehren nach Ablauf zurück.
 - Tool-Inventar sperren. Speichern Sie Namen und SHA-256-Fingerprints geprüfter Tools; hinzugefügte, entfernte oder geänderte Definitionen lassen die Prüfung fehlschlagen. Die Sperrdatei enthält weder Beschreibungen noch Schemas. Speichern und Prüfen verbinden sich zum Auflisten der Tools mit dem Server, rufen aber kein Tool auf.
@@ -311,7 +311,7 @@ Er erkennt gängige SDKs und Frameworks:
 
 Für jedes Tool behandelt er die Handler-Argumente als von einem Angreifer steuerbar und verfolgt sie mit heuristischer Analyse bis zu einer Senke. Befunde nennen Datei und Zeile, zeigen den Code und erklären die Korrektur:
 
-Python und Go verfolgen außerdem lokale Aliase und über eindeutige Helper-Aufrufe übergebene Argumente innerhalb derselben Datei. JavaScript/TypeScript wird weiterhin nur innerhalb des jeweiligen Handlers analysiert.
+Python und Go verfolgen außerdem lokale Aliase und über eindeutige Helper-Aufrufe übergebene Argumente innerhalb derselben Datei. Rust erkennt die offiziellen `rmcp #[tool]`-Methoden und verfolgt lokale Aliase innerhalb der Methode; Helper-Aufrufe und Makroexpansion werden nicht verfolgt. JavaScript/TypeScript wird weiterhin nur innerhalb des jeweiligen Handlers analysiert.
 
 | Regel | Senke | Standard |
 |---|---|---|
@@ -364,7 +364,8 @@ Die Engine arbeitet musterbasiert mit einer Ebene Taint-Verfolgung und ohne Drit
 - Netzwerkziele. Cloud-Metadaten-Endpunkte (`169.254.169.254`) und private/Loopback-Bereiche.
 - Lieferkettenrisiken: nicht fixierte Pakete, typosquat-ähnliche Namen und Code, der direkt von einer Remote-URL ausgeführt wird.
 - Policy-Verstöße: abgelehnte Pakete/Befehle/Domains und verletzte Netzwerkisolation.
-- Quellcode-Fehler in JS/TS/Python/Go-Handlern: Tool-Argumente, die Befehls-, Netzwerk- und Dateisenken erreichen, eval/exec, unsichere Deserialisierung und fest codierte Geheimnisse. Siehe [Quellcode-Prüfung](#quellcode-prüfung-sast).
+- Quellcode-Fehler in JS/TS/Python/Go/Rust-Handlern: Tool-Argumente, die Befehls-, Netzwerk- und Dateisenken erreichen, eval/exec, unsichere Deserialisierung und fest codierte Geheimnisse. Siehe [Quellcode-Prüfung](#quellcode-prüfung-sast).
+- Rust-Unterstützung ist auf offizielle `rmcp #[tool]`-Methoden sowie Prozess-, `reqwest`-URL-, Dateisystem- und Geheimnisprüfungen beschränkt.
 - Tool-Namenskollisionen zwischen Servern und klassifizierte Verbindungsfehler (DNS / TLS / abgelehnt / Timeout / kein Befehl).
 
 Die vollständige Liste mit OWASP-Abgleich steht in [docs/RULES.md](../RULES.md).
@@ -483,7 +484,8 @@ Nein. mcprism meldet bekannte, beobachtbare Risiken. Es kann nicht beweisen, das
 - [x] Scoop-Paket
 - [x] Homebrew-Formel
 - [x] Nix-Paket
-- [ ] Mehr Sprachen für die SAST-Analyse (Rust, Java, C#)
+- [x] Rust-SAST für `rmcp`-Tools
+- [ ] Mehr Sprachen für die SAST-Analyse (Java, C#)
 - [ ] Optionale mehrstufige/interprozedurale Taint-Verfolgung
 - [ ] Integrierter Sandbox-Wrapper für Live-Prüfungen
 

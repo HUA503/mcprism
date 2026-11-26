@@ -67,7 +67,7 @@ func depthOf(rel string) int {
 
 func sourceExtSupported(name string) bool {
 	switch strings.ToLower(filepath.Ext(name)) {
-	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".go":
+	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".go", ".rs":
 		return true
 	}
 	return false
@@ -89,6 +89,8 @@ func AnalyzeFile(path string) []Issue {
 		return analyzePython(path)
 	case ".go":
 		return analyzeGo(path)
+	case ".rs":
+		return analyzeRust(path)
 	}
 	return nil
 }
@@ -96,7 +98,7 @@ func AnalyzeFile(path string) []Issue {
 // IsSourceProject reports whether a directory looks like an MCP server source
 // tree: it contains a JS/Python manifest or at least one source file.
 func IsSourceProject(dir string) bool {
-	if hasFile(dir, "package.json") || hasFile(dir, "pyproject.toml") ||
+	if hasFile(dir, "package.json") || hasFile(dir, "pyproject.toml") || hasFile(dir, "Cargo.toml") ||
 		hasFile(dir, "setup.py") || hasFile(dir, "go.mod") {
 		return true
 	}
@@ -112,7 +114,7 @@ func IsSourceProject(dir string) bool {
 			return nil
 		}
 		switch strings.ToLower(filepath.Ext(d.Name())) {
-		case ".js", ".ts", ".py", ".go":
+		case ".js", ".ts", ".py", ".go", ".rs":
 			found = true
 		}
 		return nil
@@ -127,7 +129,7 @@ func hasFile(dir, name string) bool {
 
 func skipDir(n string) bool {
 	switch n {
-	case "node_modules", ".git", "dist", "build", "vendor", "venv", ".venv",
+	case "node_modules", ".git", "dist", "build", "target", "vendor", "venv", ".venv",
 		"__pycache__", ".cache", ".mypy_cache", ".pytest_cache", "eggs", ".eggs":
 		return true
 	}

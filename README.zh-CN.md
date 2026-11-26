@@ -15,7 +15,7 @@ MCP server 把 AI 助手连接到 GitHub、文件、数据库等外部工具和�
 mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server 的安全扫描器。它从三个角度审查一个 server：
 
 1. **配置**：客户端如何启动或连接它——版本是否固定、是否明文传输、配置里有没有凭据、是否指向云元数据或内网。
-2. **源码**：当实现代码就在本地时，读取 JS/TS/Python/Go 的工具 handler，追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及 eval、不安全反序列化和硬编码密钥。
+2. **源码**：当实现代码就在本地时，读取 JS/TS/Python/Go/Rust 的工具 handler，追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及 eval、不安全反序列化和硬编码密钥。
 3. **运行时**：自动协商新版无状态 MCP 协议或旧版握手，列出 tools、resources、prompts，并检查工具元数据是否被投毒。它不会调用任何工具。
 
 每个 server 都会得到一份发现清单、一个 0–100 的分数和一个 A–F 的评级。整个工具是一个 Go 二进制，没有运行时依赖。本地配置和源码扫描完全离线；`registry` 命令会主动连接官方 Registry 获取公开元数据，但不会启动或连接条目中的 server。动态探测必须显式开启（`--dynamic` / `--probe`）。
@@ -117,7 +117,7 @@ mcprism vet server.py            # 审查单个文件
 ## 功能
 
 - 单个二进制。不用装 Python 或 Node，不需要 LLM API key，也不用注册账号。
-- 默认静态。它读取配置，在有本地代码时审查 JS/TS/Python/Go 源码；加 `--dynamic` 才会自动协商新旧 MCP 协议并列出 tools/resources/prompts，但不会调用任何工具。
+- 默认静态。它读取配置，在有本地代码时审查 JS/TS/Python/Go/Rust 源码；加 `--dynamic` 才会自动协商新旧 MCP 协议并列出 tools/resources/prompts，但不会调用任何工具。
 - 看 schema。对于没有源码的在线 server，如果名为 command、url、path 之类的字符串参数接受任意值，会按命令执行、SSRF、路径风险报出；用 enum、const、pattern 约束过的参数不报。
 - 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套配置。
 - 风险接受清单。可以带理由和到期时间抑制发现，也可以用 `--baseline` 接受整份旧报告，只让新问题卡住构建；被抑制项仍显示在报告里，过期后自动重新出现。
@@ -361,8 +361,9 @@ mcprism vet ./mcp-server/src/tool.ts
 - JavaScript/TypeScript：`@modelcontextprotocol/sdk` 的 `McpServer`、底层的 `Server.setRequestHandler`，以及各类 `.tool(...)` 注册。
 - Python：`FastMCP` 的 `@mcp.tool()` 装饰器和底层的 `call_tool` handler。
 - Go：mcp-go 的 `server.AddTool` / `mcp.AddTool` 回调。
+- Rust：官方 `rmcp` SDK 的 `#[tool]` 方法。
 
-对每个工具，它把 handler 参数当作攻击者可控的数据，向 sink 追踪一层。发现会标明文件和行号、展示代码、给出修复方式：
+对每个工具，它把 handler 参数当作攻击者可控的数据。Python 和 Go 会追踪局部别名及同文件 helper 参数；Rust 会在 `#[tool]` 方法内追踪简单局部别名。发现会标明文件和行号、展示代码、给出修复方式：
 
 | 规则 | sink | 默认级别 |
 |---|---|---|
@@ -401,11 +402,12 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。Python 和 Go 会追踪本地变量别名，以及同一文件中经明确 helper 参数传递的 taint；JavaScript/TypeScript 仍只在 handler 内分析。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
+引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。Python 和 Go 会追踪本地变量别名，以及同一文件中经明确 helper 参数传递的 taint；Rust 支持官方 `rmcp` `#[tool]` 方法，并在方法内追踪简单别名；JavaScript/TypeScript 仍只在 handler 内分析。Rust 暂不追踪 helper 调用或宏展开。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
 
 - 目前不会跨文件、对象属性、返回值、动态分派或解构/导入别名追踪（例如 `import { exec as run }`、`child_process["ex"+"ec"]`）。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
 - Go 使用标准库 `go/parser` 定位 helper 函数边界，但尚未构建全程序数据流图；JS/Python 没有使用 tree-sitter。
-- 只分析 JavaScript/TypeScript、Python、Go；其他语言写的 server 只做配置和元数据层面的检查。
+- Rust 识别 `rmcp` 的 `#[tool]` 宏，以及常见进程、`reqwest`、文件系统和密钥模式。
+- 只分析 JavaScript/TypeScript、Python、Go、Rust；其他语言写的 server 只做配置和元数据层面的检查。
 
 对高风险 server，请配合完整数据流分析工具和人工复核一起使用。规则细节和更多示例见 [docs/SAST.md](docs/SAST.md)。
 
@@ -423,7 +425,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - 危险能力组合，比如 shell 加联网、读文件加联网、写文件加 shell。
 - 网络目标。云元数据端点（`169.254.169.254`）和私有/回环地址段。
 - 供应链风险：未固定版本的包、近似的仿冒包名、直接从远程 URL 运行代码。
-- JS/TS/Python/Go handler 里的源码问题：工具参数流入命令、网络、文件 sink，eval/exec、不安全反序列化和硬编码密钥。见[源码分析（SAST）](#源码分析sast)。
+- 源码风险：JS/TS/Python/Go handler 会检查命令、网络、文件、动态代码和反序列化风险；Rust `rmcp #[tool]` handler 会检查进程、`reqwest` URL、文件系统和硬编码密钥风险。见[源码分析（SAST）](#源码分析sast)。
 - 策略违规：被拒绝的包·命令·域名，以及违反网络隔离。
 - 跨 server 工具名冲突，以及分类后的连接失败（DNS / TLS / 拒绝连接 / 超时 / 命令不存在）。
 
@@ -598,7 +600,8 @@ flowchart TD
 - [x] Scoop 包
 - [x] Homebrew 公式
 - [x] Nix 包
-- [ ] 支持更多 SAST 语言（Rust、Java、C#）
+- [x] Rust `rmcp` MCP 工具的 SAST 支持
+- [ ] 支持更多 SAST 语言（Java、C#）
 - [ ] 跨文件、对象流转和 JavaScript 跨函数污点追踪
 - [ ] 为实时探测提供内置沙箱封装
 
