@@ -4,25 +4,134 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode"
 )
 
 func analyzeGo(path string) []Issue {
+	_, functions := extractGoPackageFunctions(path)
+	return analyzeGoWithFunctions(path, functions)
+}
+
+func analyzeGoWithFunctions(path string, functions map[string]handlerBlock) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
 		return nil
 	}
+	// Keep same-file method helpers available while package-level discovery is
+	// limited to free functions whose receiver does not need resolving.
+	allFunctions := make(map[string]handlerBlock, len(functions))
+	for name, helper := range functions {
+		allFunctions[name] = helper
+	}
+	for name, helper := range extractGoFunctions(src) {
+		if _, exists := allFunctions[name]; !exists {
+			helper.path = path
+			allFunctions[name] = helper
+		}
+	}
 	var out []Issue
-	functions := extractGoFunctions(src)
 	for _, b := range extractGoHandlers(maskGoComments(src)) {
-		out = append(out, scanReachableGo(path, b, functions)...)
+		b.path = path
+		out = append(out, scanReachableGo(path, b, allFunctions)...)
 	}
 	for _, l := range maskedGoLines(lines) {
 		out = append(out, goLineSecretIssues(path, l)...)
 	}
 	return dedupIssues(out)
+}
+
+// goPackageName returns a source file's declared package name.
+func goPackageName(path string) (string, bool) {
+	src, err := os.ReadFile(path)
+	if err != nil || len(src) > maxSourceFileSize {
+		return "", false
+	}
+	fset := token.NewFileSet()
+	file, _ := parser.ParseFile(fset, path, src, parser.PackageClauseOnly)
+	if file == nil || file.Name == nil {
+		return "", false
+	}
+	return file.Name.Name, true
+}
+
+// extractGoPackageFunctions includes same-package free functions from sibling
+// files. Methods from sibling files are excluded because short-name matching
+// cannot resolve their receiver type. Size and file-count caps keep package
+// discovery bounded for hostile source trees.
+func extractGoPackageFunctions(path string) (string, map[string]handlerBlock) {
+	functions := map[string]handlerBlock{}
+	counts := map[string]int{}
+	pkgName, ok := goPackageName(path)
+	if !ok {
+		return "", functions
+	}
+	dirEntries, err := os.ReadDir(filepath.Dir(path))
+	if err != nil || len(dirEntries) > 256 {
+		return pkgName, extractGoFunctionsFromPath(path)
+	}
+	var total int64
+	for _, entry := range dirEntries {
+		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".go") {
+			continue
+		}
+		filePath := filepath.Join(filepath.Dir(path), entry.Name())
+		info, err := entry.Info()
+		if err != nil || info.Size() > maxSourceFileSize {
+			continue
+		}
+		total += info.Size()
+		if total > 16<<20 {
+			break
+		}
+		src, err := os.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+		fset := token.NewFileSet()
+		file, _ := parser.ParseFile(fset, filePath, src, parser.ParseComments|parser.AllErrors)
+		if file == nil || file.Name == nil || file.Name.Name != pkgName {
+			continue
+		}
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body == nil || fn.Recv != nil {
+				continue
+			}
+			name := fn.Name.Name
+			counts[name]++
+			if counts[name] > 1 {
+				delete(functions, name)
+				continue
+			}
+			var params []string
+			if fn.Type.Params != nil {
+				for _, field := range fn.Type.Params.List {
+					if len(field.Names) == 0 {
+						params = append(params, "")
+						continue
+					}
+					for _, param := range field.Names {
+						params = append(params, param.Name)
+					}
+				}
+			}
+			bodyOpen := fset.Position(fn.Body.Lbrace).Offset
+			bodyClose := fset.Position(fn.Body.Rbrace).Offset
+			functions[name] = handlerBlock{
+				name: name, params: params, lines: linesRange(string(src), bodyOpen, bodyClose+1), path: filePath,
+			}
+		}
+	}
+	return pkgName, functions
+}
+
+func extractGoFunctionsFromPath(path string) map[string]handlerBlock {
+	_, src := readLines(path)
+	return extractGoFunctions(src)
 }
 
 // ---------- handler extraction ----------
@@ -149,7 +258,11 @@ func scanReachableGo(path string, entry handlerBlock, functions map[string]handl
 			params = append(params, name)
 		}
 		block.params = params
-		out = append(out, scanGoBlockWithTaint(path, block, params)...)
+		issuePath := block.path
+		if issuePath == "" {
+			issuePath = path
+		}
+		out = append(out, scanGoBlockWithTaint(issuePath, block, params)...)
 
 		text := maskGoComments(joinLines(block.lines))
 		ctrl := goTaintedNames(block.lines, params)
@@ -157,6 +270,12 @@ func scanReachableGo(path string, entry handlerBlock, functions map[string]handl
 			name := text[call[2]:call[3]]
 			helper, ok := functions[name]
 			if !ok {
+				continue
+			}
+			if call[0] > 0 && text[call[0]-1] == '.' &&
+				helper.path != "" && filepath.Clean(helper.path) != filepath.Clean(path) {
+				// A selector call may be a method on an unrelated receiver. Do not
+				// resolve it to a same-named free helper from another file.
 				continue
 			}
 			open := call[1] - 1

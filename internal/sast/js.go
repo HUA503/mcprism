@@ -597,6 +597,7 @@ type handlerBlock struct {
 	name   string
 	params []string
 	lines  []srcLine
+	path   string
 }
 
 // matchClose returns the index of the closing character for the opener at

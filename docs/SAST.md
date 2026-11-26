@@ -46,19 +46,22 @@ the command, SSRF, path and secret rules (MCP801/802/803/806) are.
 For every registered tool, the handler parameters are marked as controlled by
 the agent. JavaScript/TypeScript, Python and Go analysis follows simple local
 assignments and propagates taint through arguments passed to unambiguous helper
-functions in the same source file. JavaScript/TypeScript helper tracking covers
-function declarations and block-bodied `const`/`let`/`var` arrow functions. Go
-uses the standard-library parser to identify function boundaries; Rust
+functions. JavaScript/TypeScript helper tracking covers function declarations
+and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
+library parser to identify function boundaries and follows unique free-function
+helpers across files in the same package; selector calls into another file are
+left unresolved. Rust
 recognizes the official `rmcp` `#[tool]` macro and follows local aliases through
 unique same-file helper functions, including multi-step calls. Rust does not
 expand macros or resolve trait-based dispatch.
 Sink recognition remains pattern-based. Common safe patterns are recognized
 where implemented.
 
-This is not a full-program data-flow analyzer. It does not follow values across
-files, object properties, returned values, dynamic dispatch or import aliases.
-The bounded same-file analysis improves helper coverage while keeping the
-scanner dependency-free and predictable.
+This is not a full-program data-flow analyzer. Except for bounded Go
+same-package free-function calls, it does not follow values across files. It
+also does not track object properties, returned values, dynamic dispatch or
+import aliases. The bounded analysis keeps the scanner dependency-free and
+predictable.
 
 ---
 
@@ -410,8 +413,9 @@ Do not construct a module name or path from tool input.
 
 ## Limits
 
-- JavaScript/TypeScript, Python, Go and Rust taint follows simple aliases and
-  arguments passed to unambiguous same-file helpers. JS/TS helper tracking
+- JavaScript/TypeScript, Python and Rust taint follows simple aliases and
+  arguments passed to unambiguous same-file helpers. Go also follows unique
+  same-package free functions across files. JS/TS helper tracking
   currently recognizes function declarations and block-bodied arrow functions;
   Rust helper resolution uses unique names and does not model trait dispatch or
   macro expansion. Values passed

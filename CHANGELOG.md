@@ -11,6 +11,8 @@ semantic versioning.
 - Expand Chinese and Traditional Chinese prompt-injection signatures to cover
   safety-policy overrides, role/mode changes, instruction reclassification and
   hidden-reasoning disclosure.
+- Follow Go MCP tool arguments into unique same-package free-function helpers
+  across source files.
 - Follow Rust `rmcp #[tool]` argument flows through local aliases and unique
   same-file helper functions, including multi-step calls.
 
