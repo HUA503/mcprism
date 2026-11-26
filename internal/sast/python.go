@@ -7,28 +7,39 @@ import (
 	"strings"
 )
 
+const (
+	maxPythonModuleDepth = 8
+	maxPythonModuleFiles = 64
+	maxPythonModuleBytes = 16 << 20
+)
+
+type pythonFunctionScopes struct {
+	functions  map[string]map[string]handlerBlock
+	staticMaps map[string]map[string]bool
+	bytes      int64
+	files      int
+}
+
 func analyzePython(path string) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
 		return nil
 	}
 	var out []Issue
-	functions := extractPythonFunctions(lines)
-	localNames := map[string]bool{}
-	for _, line := range maskedPythonLines(lines) {
-		if m := pyDefRe.FindStringSubmatch(line.text); m != nil {
-			localNames[m[1]] = true
-		}
+	rootBytes := int64(len(src))
+	if info, err := os.Stat(path); err == nil {
+		rootBytes = info.Size()
 	}
-	for name, helper := range functions {
-		helper.path = path
-		functions[name] = helper
+	scopes := &pythonFunctionScopes{
+		functions:  map[string]map[string]handlerBlock{},
+		staticMaps: map[string]map[string]bool{},
+		bytes:      rootBytes,
+		files:      1,
 	}
-	functions = mergePythonImportedFunctions(path, lines, functions, localNames)
-	staticMaps := pyStaticMapNames(lines, nil)
+	buildPythonFunctionScope(path, lines, 0, scopes)
 	for _, b := range extractPythonHandlers(lines) {
 		b.path = path
-		out = append(out, scanReachablePython(path, b, functions, staticMaps)...)
+		out = append(out, scanReachablePython(path, b, scopes)...)
 	}
 	for _, l := range maskedPythonLines(lines) {
 		out = append(out, lineSecretIssues(path, l)...)
@@ -43,38 +54,67 @@ var pyDefRe = regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
 var pyCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
 var pyFromImportRe = regexp.MustCompile(`^from\s+(\.{0,1}[A-Za-z_]\w*)\s+import\s+(.+?)\s*$`)
 
-// mergePythonImportedFunctions resolves explicit imports from a single
-// same-directory module. It only exposes directly imported functions to the
-// handler's module scope; ambiguous aliases and star imports stay unresolved.
-func mergePythonImportedFunctions(path string, lines []srcLine, functions map[string]handlerBlock, localNames map[string]bool) map[string]handlerBlock {
+func buildPythonFunctionScope(path string, lines []srcLine, depth int, scopes *pythonFunctionScopes) map[string]handlerBlock {
+	key := filepath.Clean(path)
+	if functions, ok := scopes.functions[key]; ok {
+		return functions
+	}
+	functions := extractPythonFunctions(lines)
+	for name, helper := range functions {
+		helper.path = path
+		functions[name] = helper
+	}
+	// Store the partial scope before recursion so circular imports terminate.
+	scopes.functions[key] = functions
+	scopes.staticMaps[key] = pyStaticMapNames(lines, nil)
+	localNames := map[string]bool{}
+	for _, line := range maskedPythonLines(lines) {
+		if m := pyDefRe.FindStringSubmatch(line.text); m != nil {
+			localNames[m[1]] = true
+		}
+	}
+	if depth < maxPythonModuleDepth {
+		mergePythonImportedFunctions(path, lines, functions, localNames, depth, scopes)
+	}
+	return functions
+}
+
+// mergePythonImportedFunctions resolves explicit imports from bounded,
+// same-directory Python modules. Ambiguous aliases and star imports stay
+// unresolved.
+func mergePythonImportedFunctions(path string, lines []srcLine, functions map[string]handlerBlock, localNames map[string]bool, depth int, scopes *pythonFunctionScopes) {
 	type importedHelper struct {
 		block handlerBlock
 		count int
 	}
 	candidates := map[string]importedHelper{}
-	seenModules := map[string]map[string]handlerBlock{}
 	for _, line := range maskedPythonLines(lines) {
 		m := pyFromImportRe.FindStringSubmatch(line.text)
 		if m == nil {
 			continue
 		}
-		module := strings.TrimPrefix(m[1], ".")
-		if module == "" || strings.Contains(module, ".") {
+		modulePath := pythonLocalModulePath(path, m[1])
+		if modulePath == "" {
 			continue
 		}
-		modulePath := filepath.Join(filepath.Dir(path), module+".py")
-		if info, err := os.Lstat(modulePath); err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize {
-			continue
-		}
-		moduleFunctions, ok := seenModules[modulePath]
+		moduleKey := filepath.Clean(modulePath)
+		moduleFunctions, ok := scopes.functions[moduleKey]
 		if !ok {
-			moduleLines, _ := readLines(modulePath)
-			moduleFunctions = extractPythonFunctions(moduleLines)
-			for name, helper := range moduleFunctions {
-				helper.path = modulePath
-				moduleFunctions[name] = helper
+			if scopes.files >= maxPythonModuleFiles || depth >= maxPythonModuleDepth {
+				continue
 			}
-			seenModules[modulePath] = moduleFunctions
+			info, err := os.Lstat(modulePath)
+			if err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize ||
+				scopes.bytes+info.Size() > maxPythonModuleBytes {
+				continue
+			}
+			moduleLines, moduleSrc := readLines(modulePath)
+			if moduleSrc == "" || scopes.bytes+int64(len(moduleSrc)) > maxPythonModuleBytes {
+				continue
+			}
+			scopes.bytes += info.Size()
+			scopes.files++
+			moduleFunctions = buildPythonFunctionScope(modulePath, moduleLines, depth+1, scopes)
 		}
 		for _, item := range strings.Split(strings.Trim(strings.TrimSpace(m[2]), "()"), ",") {
 			fields := strings.Fields(strings.TrimSpace(item))
@@ -104,7 +144,19 @@ func mergePythonImportedFunctions(path string, lines []srcLine, functions map[st
 		}
 		functions[alias] = candidate.block
 	}
-	return functions
+}
+
+func pythonLocalModulePath(path, module string) string {
+	name := strings.TrimPrefix(module, ".")
+	if name == "" || strings.Contains(name, ".") || strings.ContainsAny(name, `/\\`) {
+		return ""
+	}
+	candidate := filepath.Join(filepath.Dir(path), name+".py")
+	info, err := os.Lstat(candidate)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize {
+		return ""
+	}
+	return candidate
 }
 
 func extractPythonHandlers(lines []srcLine) []handlerBlock {
@@ -196,28 +248,36 @@ func extractPythonFunctions(lines []srcLine) map[string]handlerBlock {
 }
 
 // scanReachablePython follows tainted positional/keyword arguments through
-// unambiguous helper functions in the same source file. Each helper is scanned
-// only for parameters reached from an MCP tool argument.
-func scanReachablePython(path string, entry handlerBlock, functions map[string]handlerBlock, staticMaps map[string]bool) []Issue {
+// unambiguous same-file helpers and explicitly imported, same-directory
+// modules. Each helper is scanned only for parameters reached from tool input.
+func scanReachablePython(path string, entry handlerBlock, scopes *pythonFunctionScopes) []Issue {
 	taintedByName := map[string]map[string]bool{}
 	processedByName := map[string]map[string]bool{}
 	queue := []handlerBlock{entry}
 	var out []Issue
 	for head := 0; head < len(queue); head++ {
 		block := queue[head]
+		blockPath := block.path
+		if blockPath == "" {
+			blockPath = path
+		}
+		moduleKey := filepath.Clean(blockPath)
+		functions := scopes.functions[moduleKey]
+		staticMaps := scopes.staticMaps[moduleKey]
 		seed := pyTaintedNames(block.lines, block.params, staticMaps)
-		known := taintedByName[block.name]
+		stateKey := moduleKey + "::" + block.name
+		known := taintedByName[stateKey]
 		if known == nil {
 			known = map[string]bool{}
-			taintedByName[block.name] = known
+			taintedByName[stateKey] = known
 		}
 		for _, name := range seed {
 			known[name] = true
 		}
-		processed := processedByName[block.name]
+		processed := processedByName[stateKey]
 		if processed == nil {
 			processed = map[string]bool{}
-			processedByName[block.name] = processed
+			processedByName[stateKey] = processed
 		}
 		pending := false
 		for name := range known {
@@ -240,13 +300,6 @@ func scanReachablePython(path string, entry handlerBlock, functions map[string]h
 		}
 		out = append(out, scanPythonBlock(issuePath, block)...)
 
-		blockPath := block.path
-		if blockPath == "" {
-			blockPath = path
-		}
-		if filepath.Clean(blockPath) != filepath.Clean(path) {
-			continue
-		}
 		text := maskPythonComments(joinLines(block.lines))
 		for _, call := range pyCallRe.FindAllStringSubmatchIndex(text, -1) {
 			name := text[call[2]:call[3]]
@@ -269,11 +322,16 @@ func scanReachablePython(path string, entry handlerBlock, functions map[string]h
 				if param == "" || !pyControllable(arg, params) {
 					continue
 				}
-				if taintedByName[name] == nil {
-					taintedByName[name] = map[string]bool{}
+				helperPath := helper.path
+				if helperPath == "" {
+					helperPath = blockPath
 				}
-				if !taintedByName[name][param] {
-					taintedByName[name][param] = true
+				helperKey := filepath.Clean(helperPath) + "::" + helper.name
+				if taintedByName[helperKey] == nil {
+					taintedByName[helperKey] = map[string]bool{}
+				}
+				if !taintedByName[helperKey][param] {
+					taintedByName[helperKey][param] = true
 					child := helper
 					child.params = []string{param}
 					queue = append(queue, child)

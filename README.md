@@ -499,14 +499,14 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   recognizes function declarations and block-bodied arrow helpers. JS/TS also
   follows named imports of exported helpers and their helper chains across
   same-directory modules, within bounded depth, file count and source size.
-  Python follows explicitly imported helpers from a
-  same-directory module to sinks.
+  Python follows explicitly imported helpers and their helper chains across
+  same-directory modules, within bounded depth, file count and source size.
   Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods
   and through unique same-file helpers.
   Be aware of the known limits; a clean report is not proof of safety:
 - Cross-file taint tracking is limited to Go same-package free-function helpers
-  and explicitly imported Python/JS/TS helpers. JS/TS module traversal is
-  bounded. The engine does not track re-exports, object properties, returned
+  and explicitly imported Python/JS/TS helpers. Python and JS/TS module traversal
+  is bounded. The engine does not track re-exports, object properties, returned
   values, dynamic dispatch, JS/TS default or namespace imports, or package
   imports. Sink matching is pattern-based, so unusual formatting and generated
   code can still be missed or misclassified.
