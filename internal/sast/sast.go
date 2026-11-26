@@ -81,7 +81,7 @@ func depthOf(rel string) int {
 
 func sourceExtSupported(name string) bool {
 	switch strings.ToLower(filepath.Ext(name)) {
-	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".go", ".rs":
+	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs":
 		return true
 	}
 	return false
@@ -97,7 +97,7 @@ func AnalyzeFile(path string) []Issue {
 		return nil
 	}
 	switch strings.ToLower(filepath.Ext(path)) {
-	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs":
+	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs":
 		return analyzeJS(path)
 	case ".py":
 		return analyzePython(path)
@@ -128,7 +128,7 @@ func IsSourceProject(dir string) bool {
 			return nil
 		}
 		switch strings.ToLower(filepath.Ext(d.Name())) {
-		case ".js", ".ts", ".py", ".go", ".rs":
+		case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs":
 			found = true
 		}
 		return nil

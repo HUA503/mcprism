@@ -31,9 +31,9 @@ mcprism vet ./path/to/server.py   # one file
 | Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` callbacks |
 | Rust | official `rmcp` SDK methods marked with `#[tool]` |
 
-Files with the extensions `.js .jsx .ts .tsx .mjs .cjs`, `.py`, `.go` and `.rs`
-are reviewed. Cargo projects are recognized through `Cargo.toml`, and Rust
-build output under `target/` is skipped. Other dependency and build directories
+Files with the extensions `.js .jsx .ts .tsx .mts .cts .mjs .cjs`, `.py`, `.go`
+and `.rs` are reviewed. Cargo projects are recognized through `Cargo.toml`, and
+Rust build output under `target/` is skipped. Other dependency and build directories
 (`node_modules`, `dist`, `venv`, `__pycache__`, and similar) are skipped.
 
 For Go, tool arguments are read through `req.RequireString`, `req.GetString` or

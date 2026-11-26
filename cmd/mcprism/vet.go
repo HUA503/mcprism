@@ -152,7 +152,7 @@ func fileServer(file string) *config.Server {
 
 func isSourceFileName(a string) bool {
 	switch strings.ToLower(filepath.Ext(a)) {
-	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".go":
+	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs":
 		return true
 	}
 	return false
