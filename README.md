@@ -496,15 +496,17 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   small and self-contained. JS/TS, Python and Go taint tracking follows local
   aliases and arguments passed through unambiguous helper functions. Go also
   follows unique free functions across files in the same package. JS/TS
-  recognizes function declarations and block-bodied arrow helpers. Python also
-  follows explicitly imported helpers from a same-directory module to sinks.
+  recognizes function declarations and block-bodied arrow helpers. JS/TS also
+  follows explicitly imported, exported helpers from a same-directory module
+  to direct sinks. Python follows explicitly imported helpers from a
+  same-directory module to sinks.
   Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods
   and through unique same-file helpers.
   Be aware of the known limits; a clean report is not proof of safety:
 - Taint is not tracked across files outside Go same-package free-function
-  helpers and directly imported Python helpers, object properties, returned
-  values, dynamic dispatch or other import forms such as JS/TS destructuring
-  aliases (`import { exec as run }`, `child_process["ex"+"ec"]`). Sink matching
+  helpers and directly imported Python/JS/TS helpers, object properties,
+  returned values, dynamic dispatch, JS/TS default or namespace imports, or
+  imports from packages instead of same-directory source files. Sink matching
   is pattern-based, so unusual formatting and generated code can still be
   missed or misclassified.
 - Go uses the standard-library `go/parser` to locate helper function boundaries;
