@@ -8,6 +8,9 @@ semantic versioning.
 
 ### Added
 
+- Expand Chinese and Traditional Chinese prompt-injection signatures to cover
+  safety-policy overrides, role/mode changes, instruction reclassification and
+  hidden-reasoning disclosure.
 - Follow Rust `rmcp #[tool]` argument flows through local aliases and unique
   same-file helper functions, including multi-step calls.
 

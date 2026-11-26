@@ -382,6 +382,8 @@ mcprism vet ./mcp-server/src/tool.ts
 - 固定的 URL 前缀而不是让 agent 选 host，以及 `yaml.safe_load` / `SafeLoader`。
 - Go 里用参数全为常量、不经过 shell 的 `exec.Command`，固定 URL，以及用 `strings.HasPrefix` 校验的 `filepath.Join`。
 
+元数据投毒规则还覆盖常见简体和繁体中文诱导语句，例如要求忽略安全策略、切换角色/模式、把普通内容重新解释为高优先级指令，以及要求输出隐藏推理内容。它仍是确定性的特征匹配，不会理解所有语义变体。
+
 下面这个 handler 会因为 agent 能控制命令而被标记 MCP801：
 
 ```js
