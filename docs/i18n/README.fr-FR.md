@@ -250,7 +250,7 @@ Ajoutez la commande à votre profil shell pour l’activer dans les prochaines s
 Scan de deux serveurs locaux en mode statique :
 
 ```text
-◆ mcprism   v0.22.0 · 2026-11-26
+◆ mcprism   v0.23.0 · 2026-11-26
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -348,7 +348,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-Le moteur est fondé sur des motifs avec un niveau de suivi de propagation et sans analyseur tiers, donc le binaire reste petit et autonome. Il ne détecte pas tout ce qu'un analyseur de flux complet verrait ; il vise les trajets courts et directs du gestionnaire au point de sortie, à l'origine de la plupart des bogues de serveurs MCP. Les détails des règles et d'autres exemples sont dans [docs/SAST.md](../SAST.md).
+Le moteur est fondé sur des motifs avec un suivi borné de propagation et sans analyseur tiers, donc le binaire reste petit et autonome. Il ne détecte pas tout ce qu'un analyseur de flux complet verrait ; il vise les trajets courts et directs du gestionnaire au point de sortie, à l'origine de la plupart des bogues de serveurs MCP. Les détails des règles et d'autres exemples sont dans [docs/SAST.md](../SAST.md).
 
 <p align="center">
   <img src="../../assets/sast.png" alt="mcprism source-code review findings" width="94%">

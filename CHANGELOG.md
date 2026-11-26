@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-26
+
 ### Added
 
 - Detect and analyze `.mts` and `.cts` TypeScript source files in project scans
