@@ -32,7 +32,8 @@ func skipDirName(name string) bool {
 
 // WalkDir recursively finds and parses MCP config files under root. It looks
 // for the common config names, Codex TOML config files, Gemini CLI settings,
-// OpenCode configs, and any *.mcp.json file, skipping dependency and build directories.
+// OpenCode and JetBrains Air configs, and any *.mcp.json file, skipping
+// dependency and build directories.
 func WalkDir(root string) ([]*ClientFile, error) {
 	var out []*ClientFile
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
@@ -54,6 +55,7 @@ func WalkDir(root string) ([]*ClientFile, error) {
 		isJunieConfig := d.Name() == "mcp.json" &&
 			filepath.Base(filepath.Dir(p)) == "mcp" &&
 			filepath.Base(filepath.Dir(filepath.Dir(p))) == ".junie"
+		isJetBrainsAirConfig := d.Name() == "mcp.json" && filepath.Base(filepath.Dir(p)) == ".air"
 		isRooCodeConfig := d.Name() == "mcp.json" && filepath.Base(filepath.Dir(p)) == ".roo"
 		isCopilotProjectConfig := d.Name() == "mcp.json" && filepath.Base(filepath.Dir(p)) == ".github"
 		isZedConfig := d.Name() == "settings.json" && filepath.Base(filepath.Dir(p)) == ".zed"
@@ -69,6 +71,8 @@ func WalkDir(root string) ([]*ClientFile, error) {
 			client = "opencode"
 		} else if isJunieConfig {
 			client = "junie"
+		} else if isJetBrainsAirConfig {
+			client = "jetbrains-air"
 		} else if isRooCodeConfig {
 			client = "roo-code"
 		} else if isCopilotProjectConfig {
