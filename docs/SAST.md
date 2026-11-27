@@ -57,7 +57,9 @@ module, and packages outside the scanned tree are not resolved.
 Python sink checks follow explicit import aliases for `os`, `subprocess`,
 `requests`, `httpx`, `urllib`, `pathlib`, `pickle`, `marshal` and `yaml`,
 including both `import module as alias` and `from module import function as
-alias` forms.
+alias` forms. They also follow simple local callable assignments such as
+`run = subprocess.run` and chains of those assignments; reassignments and
+dynamic callable expressions are not resolved.
 
 JavaScript/TypeScript command and request checks follow named ES imports and
 destructured CommonJS imports from `child_process`, `axios`, `http`, `https`,

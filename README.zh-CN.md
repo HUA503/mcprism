@@ -414,7 +414,7 @@ mcprism vet ./mcp-server/src/tool.ts
 - 固定的 URL 前缀而不是让 agent 选 host，以及 `yaml.safe_load` / `SafeLoader`。
 - Go 里用参数全为常量、不经过 shell 的 `exec.Command`，固定 URL，以及用 `strings.HasPrefix` 校验的 `filepath.Join`。
 
-元数据投毒规则还覆盖常见简体和繁体中文诱导语句，例如要求忽略安全策略、切换角色/模式、把普通内容重新解释为高优先级指令，以及要求输出隐藏推理内容。它仍是确定性的特征匹配，不会理解所有语义变体。
+元数据投毒规则覆盖常见英文、简体和繁体中文、日文及韩文诱导语句。例如，它会检查要求忽略安全策略、切换角色/模式、伪造指令优先级、声称安全规则只是参考，以及要求输出隐藏推理内容的表达。规则是离线确定性的特征匹配：可以发现已知表达，不能理解所有改写或证明元数据安全。
 
 下面这个 handler 会因为 agent 能控制命令而被标记 MCP801：
 
@@ -438,7 +438,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 可跨同一 package 追踪唯一普通函数，以及 receiver 类型能从同文件声明、字面量、唯一的同 package 构造函数返回类型或当前方法 receiver 推断的方法（包括 handler 闭包捕获的对象）；目录扫描时，还会根据 `go.mod` 解析扫描树内本地 package 的显式导入，并追踪已导出的函数及其 helper 链（每个入口最多 8 层、64 个源码文件、16 MiB）。Python 和 JS/TS 可沿同目录模块的显式导入及 helper 调用链追踪（同样有深度、文件数和源码大小上限）；Python 还支持 `__init__.py` 标记包中的多层相对导入。Rust 在 Cargo 项目目录扫描时，还会跟踪通过 `crate`、`self`、`super` 显式导入的唯一命名跨文件自由函数（每个入口最多 8 层、64 个源码文件、16 MiB）；不解析分组导入、重导出、直接限定路径调用、宏或 trait 分派。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
 
-Python 的 sink 规则会识别 `os`、`subprocess`、`requests`、`httpx`、`urllib`、`pathlib`、`pickle`、`marshal` 和 `yaml` 的显式模块/函数导入别名。
+Python 的 sink 规则会识别 `os`、`subprocess`、`requests`、`httpx`、`urllib`、`pathlib`、`pickle`、`marshal` 和 `yaml` 的显式模块/函数导入别名，也会跟踪 `run = subprocess.run` 这类简单的本地函数别名及其赋值链；动态表达式和重新赋值不在分析范围内。
 
 JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`http`、`https`、`got`、`request`、`node-fetch` 和 `undici` 的具名 ES 导入及解构式 CommonJS 导入别名；支持的请求库还可通过静态模块别名调用。
 
