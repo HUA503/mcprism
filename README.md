@@ -507,7 +507,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   Be aware of the known limits; a clean report is not proof of safety:
 - Cross-file taint tracking is limited to Go same-package free functions and
   methods with an inferable receiver type, plus explicitly imported Python/JS/TS
-  helpers. Go leaves calls on opaque or captured receivers unresolved. Python
+  helpers. Go leaves calls on opaque or ambiguous receivers unresolved. Python
   and JS/TS module traversal is bounded. The engine does not track re-exports,
   object properties, returned values, dynamic dispatch, JS/TS default or
   namespace imports, or package imports. Sink matching is pattern-based, so

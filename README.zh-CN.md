@@ -404,9 +404,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 可跨同一 package 追踪唯一普通函数，以及 receiver 类型能从局部声明、字面量或当前方法 receiver 推断的方法。Python 和 JS/TS 可沿同目录模块的显式导入及 helper 调用链追踪（每个入口最多 8 层、64 个源码文件、总计 16 MiB），Rust 可追踪多层、唯一命名的同文件 helper。Rust 不展开宏或解析 trait 分派。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
+引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 可跨同一 package 追踪唯一普通函数，以及 receiver 类型能从同文件声明、字面量或当前方法 receiver 推断的方法（包括 handler 闭包捕获的对象）。Python 和 JS/TS 可沿同目录模块的显式导入及 helper 调用链追踪（每个入口最多 8 层、64 个源码文件、总计 16 MiB），Rust 可追踪多层、唯一命名的同文件 helper。Rust 不展开宏或解析 trait 分派。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
 
-- 跨文件追踪覆盖 Go 同 package 普通函数，以及能从局部声明或字面量推断 receiver 类型的方法；Python/JS/TS 跟踪显式导入的 helper，其中 Python/JS/TS 有深度、文件数和源码体积上限，且不追踪重新导出。Go 无法识别 receiver 类型的 method 调用仍不会追踪。引擎也不追踪对象属性、返回值、动态分派、JS/TS 默认或命名空间导入，以及 npm 等包导入。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
+- 跨文件追踪覆盖 Go 同 package 普通函数，以及能从同文件声明或字面量推断 receiver 类型的方法；Python/JS/TS 跟踪显式导入的 helper，其中 Python/JS/TS 有深度、文件数和源码体积上限，且不追踪重新导出。Go 无法识别或无法唯一确定 receiver 类型的 method 调用仍不会追踪。引擎也不追踪对象属性、返回值、动态分派、JS/TS 默认或命名空间导入，以及 npm 等包导入。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
 - Go 使用标准库 `go/parser` 定位 helper 函数边界，但尚未构建全程序数据流图；JS/Python 没有使用 tree-sitter。
 - Rust 识别 `rmcp` 的 `#[tool]` 宏，以及常见进程、`reqwest`、文件系统和密钥模式。
 - 只分析 JavaScript/TypeScript、Python、Go、Rust；其他语言写的 server 只做配置和元数据层面的检查。
