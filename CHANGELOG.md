@@ -10,6 +10,8 @@ semantic versioning.
 
 - Follow JavaScript/TypeScript helpers imported through destructured CommonJS
   `require()` bindings from bounded same-directory modules.
+- Follow direct named helper calls through statically required CommonJS module
+  objects in bounded same-directory modules.
 
 ## [0.26.0] - 2026-11-27
 

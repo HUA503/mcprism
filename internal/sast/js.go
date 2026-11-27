@@ -79,10 +79,10 @@ func buildJSFunctionScope(path, src string, depth int, scopes *jsFunctionScopes)
 	return functions
 }
 
-// mergeJSImportedFunctions resolves named ES imports and destructured CommonJS
+// mergeJSImportedFunctions resolves named ES imports and static CommonJS
 // require imports from bounded, same-directory source modules. Only exported
-// helpers imported under an unambiguous local name are added; package imports,
-// namespace imports and star exports are not.
+// helpers imported under unambiguous local names are added; package imports
+// and star exports are not.
 func mergeJSImportedFunctions(path, src string, functions map[string]handlerBlock, localNames map[string]bool, depth int, scopes *jsFunctionScopes) {
 	type binding struct {
 		original string
@@ -95,33 +95,35 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 	candidates := map[string]candidate{}
 	text := maskJSComments(src)
 	structure := maskJSCode(src)
-	merge := func(module string, bindings []binding) {
+	loadModule := func(module string) (map[string]handlerBlock, map[string]bool) {
 		modulePath := jsLocalModulePath(path, module)
 		if modulePath == "" {
-			return
+			return nil, nil
 		}
 		moduleKey := filepath.Clean(modulePath)
 		moduleFunctions, ok := scopes.functions[moduleKey]
 		if !ok {
 			if scopes.files >= maxJSModuleFiles || depth >= maxJSModuleDepth {
-				return
+				return nil, nil
 			}
 			info, err := os.Lstat(modulePath)
 			if err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize {
-				return
+				return nil, nil
 			}
 			if scopes.bytes+info.Size() > maxJSModuleBytes {
-				return
+				return nil, nil
 			}
 			moduleBytes, err := os.ReadFile(modulePath)
 			if err != nil {
-				return
+				return nil, nil
 			}
 			scopes.bytes += int64(len(moduleBytes))
 			scopes.files++
 			moduleFunctions = buildJSFunctionScope(modulePath, string(moduleBytes), depth+1, scopes)
 		}
-		exported := scopes.exports[moduleKey]
+		return moduleFunctions, scopes.exports[moduleKey]
+	}
+	addBindings := func(moduleFunctions map[string]handlerBlock, exported map[string]bool, bindings []binding) {
 		for _, item := range bindings {
 			helper, exists := moduleFunctions[item.original]
 			if !exported[item.original] {
@@ -136,6 +138,10 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 			c.count++
 			candidates[item.alias] = c
 		}
+	}
+	merge := func(module string, bindings []binding) {
+		moduleFunctions, exported := loadModule(module)
+		addBindings(moduleFunctions, exported, bindings)
 	}
 	parseBindings := func(items string, separator string) []binding {
 		var bindings []binding
@@ -188,6 +194,28 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 			continue
 		}
 		merge(text[m[4]:m[5]], parseBindings(text[m[2]:m[3]], ":"))
+	}
+
+	// Static module-object requires are followed only for direct named property
+	// calls such as helpers.run(command).
+	requireModule := regexp.MustCompile(`\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)`)
+	for _, m := range requireModule.FindAllStringSubmatchIndex(text, -1) {
+		fields := strings.Fields(structure[m[0]:m[1]])
+		if len(fields) == 0 {
+			continue
+		}
+		declaration := fields[0]
+		if declaration != "const" && declaration != "let" && declaration != "var" {
+			continue
+		}
+		moduleFunctions, exported := loadModule(text[m[4]:m[5]])
+		var bindings []binding
+		for name := range exported {
+			if _, ok := moduleFunctions[name]; ok {
+				bindings = append(bindings, binding{original: name, alias: text[m[2]:m[3]] + "." + name})
+			}
+		}
+		addBindings(moduleFunctions, exported, bindings)
 	}
 	for alias, c := range candidates {
 		if c.count == 1 && !localNames[alias] {
@@ -508,8 +536,20 @@ func scanReachableJS(path string, entry handlerBlock, scopes *jsFunctionScopes) 
 		ctrl := jsTaintedNames(block.lines, params, staticMaps)
 		for _, call := range callRe.FindAllStringSubmatchIndex(structure, -1) {
 			name := structure[call[2]:call[3]]
-			helper, ok := functions[name]
-			if !ok || call[0] > 0 && structure[call[0]-1] == '.' {
+			helperName := name
+			if call[0] > 0 && structure[call[0]-1] == '.' {
+				receiverEnd := call[0] - 1
+				receiverStart := receiverEnd
+				for receiverStart > 0 && isJSIdentByte(structure[receiverStart-1]) {
+					receiverStart--
+				}
+				if receiverStart == receiverEnd || receiverStart > 0 && (isJSIdentByte(structure[receiverStart-1]) || structure[receiverStart-1] == '.') {
+					continue
+				}
+				helperName = structure[receiverStart:call[3]]
+			}
+			helper, ok := functions[helperName]
+			if !ok {
 				continue
 			}
 			open := call[1] - 1
