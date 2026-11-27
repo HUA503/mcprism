@@ -46,6 +46,11 @@ Python sink checks follow explicit import aliases for `os`, `subprocess`,
 including both `import module as alias` and `from module import function as
 alias` forms.
 
+JavaScript/TypeScript command and request checks follow named ES imports and
+destructured CommonJS imports from `child_process`, `axios`, `http`, `https`,
+`got`, `request`, `node-fetch` and `undici`. Statically imported module objects
+are also recognized for the supported request libraries.
+
 ## How taint is tracked
 
 For every registered tool, the handler parameters are marked as controlled by
