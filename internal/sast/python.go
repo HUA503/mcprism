@@ -1,9 +1,11 @@
 package sast
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -16,8 +18,16 @@ const (
 type pythonFunctionScopes struct {
 	functions  map[string]map[string]handlerBlock
 	staticMaps map[string]map[string]bool
+	imports    map[string]pythonImports
 	bytes      int64
 	files      int
+}
+
+type pythonImports struct {
+	modules          map[string]string
+	calls            map[string]string
+	ambiguousModules map[string]bool
+	ambiguousCalls   map[string]bool
 }
 
 func analyzePython(path string) []Issue {
@@ -33,6 +43,7 @@ func analyzePython(path string) []Issue {
 	scopes := &pythonFunctionScopes{
 		functions:  map[string]map[string]handlerBlock{},
 		staticMaps: map[string]map[string]bool{},
+		imports:    map[string]pythonImports{},
 		bytes:      rootBytes,
 		files:      1,
 	}
@@ -52,10 +63,139 @@ func analyzePython(path string) []Issue {
 var pyToolDecRe = regexp.MustCompile(`@[\w\.]+\.(tool|call_tool)\b`)
 var pyDefRe = regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
 var pyCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
-var pyFromImportRe = regexp.MustCompile(`^from\s+(\.{0,1}[A-Za-z_]\w*)\s+import\s+(.+?)\s*$`)
+var pyFromImportRe = regexp.MustCompile(`^from\s+(\.{0,1}[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\s+(.+?)\s*$`)
 var pyImportRe = regexp.MustCompile(`^import\s+(.+?)\s*$`)
 var pyFieldAssignRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*|\s*\[\s*['"][A-Za-z_]\w*['"]\s*\]))\s*=\s*(.*)$`)
 var pyFieldBaseRe = regexp.MustCompile(`^([A-Za-z_]\w*)\s*(?:\.|\[)`)
+
+func parsePythonImports(lines []srcLine, topLevelOnly bool) pythonImports {
+	imports := pythonImports{
+		modules: map[string]string{}, calls: map[string]string{},
+		ambiguousModules: map[string]bool{}, ambiguousCalls: map[string]bool{},
+	}
+	add := func(dst map[string]string, ambiguous map[string]bool, alias, target string) {
+		if alias == "" || ambiguous[alias] {
+			return
+		}
+		if prior, exists := dst[alias]; exists && prior != target {
+			delete(dst, alias)
+			ambiguous[alias] = true
+			return
+		}
+		dst[alias] = target
+	}
+	for _, line := range maskedPythonLines(lines) {
+		if topLevelOnly && strings.TrimSpace(line.text) != "" && indentOf(line.text) != 0 {
+			continue
+		}
+		text := strings.TrimSpace(line.text)
+		if m := pyImportRe.FindStringSubmatch(text); m != nil {
+			for _, item := range strings.Split(m[1], ",") {
+				fields := strings.Fields(strings.TrimSpace(item))
+				if len(fields) == 0 || (len(fields) != 1 && (len(fields) != 3 || fields[1] != "as")) {
+					continue
+				}
+				module := fields[0]
+				if len(fields) == 3 {
+					add(imports.modules, imports.ambiguousModules, fields[2], module)
+				} else if len(fields) == 1 && !strings.Contains(module, ".") {
+					add(imports.modules, imports.ambiguousModules, module, module)
+				}
+			}
+			continue
+		}
+		m := pyFromImportRe.FindStringSubmatch(text)
+		if m == nil || strings.HasPrefix(m[1], ".") {
+			continue
+		}
+		for _, item := range strings.Split(strings.Trim(strings.TrimSpace(m[2]), "()"), ",") {
+			fields := strings.Fields(strings.TrimSpace(item))
+			if len(fields) == 0 || (len(fields) != 1 && (len(fields) != 3 || fields[1] != "as")) {
+				continue
+			}
+			name, alias := fields[0], fields[0]
+			if len(fields) == 3 {
+				alias = fields[2]
+			}
+			if isIdent(name) && isIdent(alias) {
+				add(imports.calls, imports.ambiguousCalls, alias, m[1]+"."+name)
+			}
+		}
+	}
+	return imports
+}
+
+type pythonCall struct {
+	start, end int
+	canonical  string
+}
+
+func pythonCalls(text string, imports pythonImports, targets ...string) []pythonCall {
+	var calls []pythonCall
+	seen := map[string]bool{}
+	for _, target := range targets {
+		names := map[string]bool{target: true}
+		for alias, canonical := range imports.calls {
+			if canonical == target {
+				names[alias] = true
+			}
+		}
+		for alias, module := range imports.modules {
+			if strings.HasPrefix(target, module+".") {
+				names[alias+strings.TrimPrefix(target, module)] = true
+			}
+		}
+		alternatives := make([]string, 0, len(names))
+		for name := range names {
+			alternatives = append(alternatives, regexp.QuoteMeta(name))
+		}
+		re := regexp.MustCompile(`\b(?:` + strings.Join(alternatives, "|") + `)\s*\(`)
+		for _, match := range re.FindAllStringIndex(text, -1) {
+			key := fmt.Sprintf("%d:%d:%s", match[0], match[1], target)
+			if !seen[key] {
+				seen[key] = true
+				calls = append(calls, pythonCall{start: match[0], end: match[1], canonical: target})
+			}
+		}
+	}
+	sort.Slice(calls, func(i, j int) bool { return calls[i].start < calls[j].start })
+	return calls
+}
+
+func mergePythonImports(base, local pythonImports) pythonImports {
+	merged := pythonImports{
+		modules: map[string]string{}, calls: map[string]string{},
+		ambiguousModules: map[string]bool{}, ambiguousCalls: map[string]bool{},
+	}
+	for alias, target := range base.modules {
+		merged.modules[alias] = target
+	}
+	for alias, target := range local.modules {
+		merged.modules[alias] = target
+	}
+	for alias, target := range base.calls {
+		merged.calls[alias] = target
+	}
+	for alias := range local.ambiguousModules {
+		delete(merged.modules, alias)
+		merged.ambiguousModules[alias] = true
+	}
+	for alias := range local.ambiguousCalls {
+		delete(merged.calls, alias)
+		merged.ambiguousCalls[alias] = true
+	}
+	for alias, target := range local.calls {
+		if !merged.ambiguousCalls[alias] {
+			merged.calls[alias] = target
+		}
+	}
+	for alias, target := range local.modules {
+		if !merged.ambiguousModules[alias] {
+			merged.modules[alias] = target
+		}
+	}
+	return merged
+}
 
 func buildPythonFunctionScope(path string, lines []srcLine, depth int, scopes *pythonFunctionScopes) map[string]handlerBlock {
 	key := filepath.Clean(path)
@@ -70,6 +210,7 @@ func buildPythonFunctionScope(path string, lines []srcLine, depth int, scopes *p
 	// Store the partial scope before recursion so circular imports terminate.
 	scopes.functions[key] = functions
 	scopes.staticMaps[key] = pyStaticMapNames(lines, nil)
+	scopes.imports[key] = parsePythonImports(lines, true)
 	localNames := map[string]bool{}
 	for _, line := range maskedPythonLines(lines) {
 		if m := pyDefRe.FindStringSubmatch(line.text); m != nil {
@@ -345,7 +486,8 @@ func scanReachablePython(path string, entry handlerBlock, scopes *pythonFunction
 		if issuePath == "" {
 			issuePath = path
 		}
-		out = append(out, scanPythonBlock(issuePath, block)...)
+		imports := mergePythonImports(scopes.imports[moduleKey], parsePythonImports(block.lines, false))
+		out = append(out, scanPythonBlock(issuePath, block, imports)...)
 
 		text := maskPythonComments(joinLines(block.lines))
 		for _, call := range pyCallRe.FindAllStringSubmatchIndex(text, -1) {
@@ -528,27 +670,26 @@ func indentOf(s string) int {
 
 // ---------- sink scanning ----------
 
-func scanPythonBlock(path string, b handlerBlock) []Issue {
+func scanPythonBlock(path string, b handlerBlock, imports pythonImports) []Issue {
 	var out []Issue
 	text := maskPythonComments(joinLines(b.lines))
 	baseLine := b.lines[0].num
 	off2line := func(off int) int { return baseLine + strings.Count(text[:off], "\n") }
 
 	// 1. process execution
-	cmdRe := regexp.MustCompile(`\b(os\.system|os\.popen|subprocess\.(run|call|Popen|check_output|check_call))\s*\(`)
-	for _, m := range cmdRe.FindAllStringIndex(text, -1) {
-		open := m[1] - 1
+	cmdTargets := []string{"os.system", "os.popen", "subprocess.run", "subprocess.call", "subprocess.Popen", "subprocess.check_output", "subprocess.check_call"}
+	for _, call := range pythonCalls(text, imports, cmdTargets...) {
+		open := call.end - 1
 		close := matchClose(text, open, '(', ')')
 		if close < 0 {
 			continue
 		}
 		arg := text[open+1 : close]
 		firstArg, rest := splitTopComma(arg)
-		raw := text[m[0]:m[1]]
-		line := off2line(m[0])
+		line := off2line(call.start)
 		code := lineText(b, line)
 		switch {
-		case strings.HasPrefix(raw, "os.system") || strings.HasPrefix(raw, "os.popen"):
+		case call.canonical == "os.system" || call.canonical == "os.popen":
 			if pyControllable(firstArg, b.params) {
 				out = append(out, issue(path, "MCP801", "Tool argument passed to an OS shell", SeverityCritical, line, code,
 					"Don't run a shell over agent input. Use subprocess with a fixed command and an argument list, or an allow-list."))
@@ -582,13 +723,13 @@ func scanPythonBlock(path string, b handlerBlock) []Issue {
 	}
 
 	// 3. outbound network (SSRF)
-	netRe := regexp.MustCompile(`\b(requests\.(get|post|put|request)|httpx\.(get|post|put)|urlopen)\s*\(`)
-	for _, m := range netRe.FindAllStringIndex(text, -1) {
-		open := m[1] - 1
+	netTargets := []string{"requests.get", "requests.post", "requests.put", "requests.request", "httpx.get", "httpx.post", "httpx.put", "urllib.request.urlopen", "urllib.urlopen", "urlopen"}
+	for _, call := range pythonCalls(text, imports, netTargets...) {
+		open := call.end - 1
 		close := matchClose(text, open, '(', ')')
 		arg := text[open+1 : close]
 		firstArg, _ := splitTopComma(arg)
-		line := off2line(m[0])
+		line := off2line(call.start)
 		code := lineText(b, line)
 		if pyControllable(firstArg, b.params) && !isConstURLArg(firstArg) {
 			out = append(out, issue(path, "MCP802", "Tool argument controls a request URL (SSRF)", SeverityHigh, line, code,
@@ -635,20 +776,19 @@ func scanPythonBlock(path string, b handlerBlock) []Issue {
 	}
 
 	// 5. unsafe deserialization
-	deserRe := regexp.MustCompile(`\b(pickle\.(loads|load)|marshal\.loads|yaml\.load)\s*\(`)
-	for _, m := range deserRe.FindAllStringIndex(text, -1) {
-		open := m[1] - 1
+	deserTargets := []string{"pickle.loads", "pickle.load", "marshal.loads", "yaml.load"}
+	for _, call := range pythonCalls(text, imports, deserTargets...) {
+		open := call.end - 1
 		close := matchClose(text, open, '(', ')')
 		arg := text[open+1 : close]
-		raw := text[m[0]:m[1]]
-		line := off2line(m[0])
+		line := off2line(call.start)
 		code := lineText(b, line)
-		if strings.HasPrefix(raw, "yaml.load") && strings.Contains(arg, "SafeLoader") {
+		if call.canonical == "yaml.load" && strings.Contains(arg, "SafeLoader") {
 			continue
 		}
 		title := "Unsafe deserialization of untrusted data"
 		advice := "Do not deserialize untrusted data with pickle/marshal. For YAML use safe_load or SafeLoader."
-		if strings.HasPrefix(raw, "yaml.load") {
+		if call.canonical == "yaml.load" {
 			title = "yaml.load without a safe loader"
 			advice = "Use yaml.safe_load or yaml.load(..., Loader=yaml.SafeLoader)."
 		}
