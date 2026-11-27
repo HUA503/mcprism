@@ -498,8 +498,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   follows unique free functions and methods with inferable receiver types
   across files in the same package. JS/TS
   recognizes function declarations and block-bodied arrow helpers. JS/TS also
-  follows named imports of exported helpers and their helper chains across
-  same-directory modules, within bounded depth, file count and source size.
+  follows named ES imports and destructured CommonJS `require()` imports of
+  exported helpers and their helper chains across same-directory modules,
+  within bounded depth, file count and source size.
   Python follows explicitly imported helpers and their helper chains across
   same-directory modules, within bounded depth, file count and source size.
   Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods
@@ -510,8 +511,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   helpers. Go leaves calls on opaque or ambiguous receivers unresolved. Python
   and JS/TS module traversal is bounded. The engine does not track re-exports,
   object properties, returned values, dynamic dispatch, JS/TS default or
-  namespace imports, or package imports. Sink matching is pattern-based, so
-  unusual formatting and generated code can still be missed or misclassified.
+  namespace imports, module-object `require()` calls, or package imports. Sink
+  matching is pattern-based, so unusual formatting and generated code can still
+  be missed or misclassified.
 - Go uses the standard-library `go/parser` to locate helper function boundaries;
   it does not build a full-program data-flow graph. JS/Python do not use
   tree-sitter.

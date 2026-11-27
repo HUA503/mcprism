@@ -52,13 +52,14 @@ library parser to identify function boundaries and follows unique free-function
 helpers plus receiver-type-matched methods across files in the same package.
 Method calls are followed when the receiver type can be identified from a
 same-file declaration or composite literal, a unique same-package constructor
-return type, or the current method receiver. Python follows explicitly imported functions and helpers called
-through explicit module aliases across same-directory modules.
-JS/TS follows named imports of exported helpers from same-directory modules and
-continues through helper calls in those modules. Python and JS/TS cross-module
-traversal is bounded by eight imports deep, 64 source files and 16 MiB of source
-per analyzed entry file. Rust
-recognizes the official `rmcp` `#[tool]` macro and follows local aliases through
+return type, or the current method receiver. Python follows explicitly imported
+functions and helpers called through explicit module aliases across
+same-directory modules.
+JS/TS follows named ES imports and destructured CommonJS `require()` imports of
+exported helpers from same-directory modules, then continues through helper
+calls in those modules. Python and JS/TS cross-module traversal is bounded by
+eight imports deep, 64 source files and 16 MiB of source per analyzed entry
+file. Rust recognizes the official `rmcp` `#[tool]` macro and follows local aliases through
 unique same-file helper functions, including multi-step calls. Rust does not
 expand macros or resolve trait-based dispatch.
 Sink recognition remains pattern-based. Common safe patterns are recognized
@@ -70,11 +71,13 @@ receiver type, plus explicitly imported Python and JS/TS helpers. Go leaves
 method calls on opaque or ambiguous receivers unresolved. Captured receivers
 are followed when their type has a unique same-file declaration or constructor.
 Python supports
-named imports and direct module imports with an alias; JS/TS follows named
-imports and local helper calls in imported modules within the limits above. The
-analyzers do not track object properties, returned values, dynamic dispatch,
-re-exports, package resolution or arbitrary import forms. The bounded analysis
-keeps the scanner dependency-free and predictable.
+named imports and direct module imports with an alias; JS/TS follows named ES
+imports and destructured CommonJS `require()` imports plus local helper calls
+in imported modules within the limits above. Namespace imports, module-object
+`require()` calls, re-exports, package resolution and other import forms are not
+resolved. The analyzers do not track object properties, returned values or
+dynamic dispatch. The bounded analysis keeps the scanner dependency-free and
+predictable.
 
 ---
 
@@ -128,6 +131,29 @@ The finding points to the sink in `local-helpers.js`. If `runWithShell` calls
 another same-module helper with the controlled argument, analysis follows that
 call as well. The same applies to further named imports within the traversal
 limits.
+
+CommonJS named exports and destructured `require()` imports are also followed:
+
+```js
+// server.cjs
+const { runWithShell: runLocal } = require("./local-helpers.cjs");
+
+server.tool("run", { command: z.string() }, async ({ command }) => {
+  runLocal(command);
+});
+```
+
+```js
+// local-helpers.cjs
+function runWithShell(command) {
+  exec(command, (err, stdout) => callback(stdout));
+}
+
+module.exports = { runWithShell };
+```
+
+The scanner resolves quoted relative module paths and unambiguous named
+bindings; it does not resolve package names or `const helpers = require(...)`.
 
 An explicitly imported module alias is also followed:
 
@@ -506,17 +532,18 @@ Do not construct a module name or path from tool input.
 ## Limits
 
 - JavaScript/TypeScript and Rust taint follows simple aliases and arguments
-  passed to unambiguous same-file helpers. JS/TS also follows named imports of
-  exported helpers and their local helper chains across same-directory modules,
-  with bounded depth, file count and total source size. Python follows explicit
+  passed to unambiguous same-file helpers. JS/TS also follows named ES imports
+  and destructured CommonJS `require()` imports of exported helpers and their
+  local helper chains across same-directory modules, with bounded depth, file
+  count and total source size. Python follows explicit
   imports and helper chains across same-directory modules within the same limits.
   Go follows unique same-package free functions and receiver-type-matched
   methods across files. JS/TS helper tracking
   currently recognizes function declarations and block-bodied arrow functions;
   Rust helper resolution uses unique names and does not model trait dispatch or
   macro expansion. Other values passed through files, object properties,
-  return values, dynamic dispatch, re-exports and unsupported import forms may
-  be missed.
+  return values, dynamic dispatch, re-exports, module-object `require()` calls
+  and unsupported import forms may be missed.
 - Sink detection is pattern-based, not a full AST/data-flow analysis. Unusual
   formatting or a framework not listed above can hide or misclassify a sink.
   Common low-level patterns (`exec(`, `fetch(`, `open(`) are also matched.
