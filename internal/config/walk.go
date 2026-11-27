@@ -51,6 +51,9 @@ func WalkDir(root string) ([]*ClientFile, error) {
 			(filepath.Base(filepath.Dir(p)) == ".gemini" ||
 				(filepath.Base(root) == ".gemini" && filepath.Clean(filepath.Dir(p)) == filepath.Clean(root)))
 		isOpenCodeConfig := d.Name() == "opencode.json" || d.Name() == "opencode.jsonc"
+		isJunieConfig := d.Name() == "mcp.json" &&
+			filepath.Base(filepath.Dir(p)) == "mcp" &&
+			filepath.Base(filepath.Dir(filepath.Dir(p))) == ".junie"
 		isRooCodeConfig := d.Name() == "mcp.json" && filepath.Base(filepath.Dir(p)) == ".roo"
 		isCopilotProjectConfig := d.Name() == "mcp.json" && filepath.Base(filepath.Dir(p)) == ".github"
 		isZedConfig := d.Name() == "settings.json" && filepath.Base(filepath.Dir(p)) == ".zed"
@@ -64,6 +67,8 @@ func WalkDir(root string) ([]*ClientFile, error) {
 			client = "gemini-cli"
 		} else if isOpenCodeConfig {
 			client = "opencode"
+		} else if isJunieConfig {
+			client = "junie"
 		} else if isRooCodeConfig {
 			client = "roo-code"
 		} else if isCopilotProjectConfig {

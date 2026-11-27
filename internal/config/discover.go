@@ -135,6 +135,13 @@ func globalCandidates() []candPath {
 		add("opencode", "global", filepath.Join(openCodeUserDir, name))
 	}
 
+	// Junie CLI and the JetBrains IDE plugin share this MCP configuration.
+	junieHome := os.Getenv("JUNIE_HOME")
+	if junieHome == "" {
+		junieHome = filepath.Join(home, ".junie")
+	}
+	add("junie", "global", filepath.Join(junieHome, "mcp", "mcp.json"))
+
 	// Gemini CLI supports system defaults and system overrides. The documented
 	// environment variables replace the corresponding platform default paths.
 	geminiDefaults := os.Getenv("GEMINI_CLI_SYSTEM_DEFAULTS_PATH")
@@ -220,6 +227,7 @@ func projectCandidates(dir string) []candPath {
 	for d != "" {
 		out = append(out,
 			candPath{filepath.Join(d, ".mcp.json"), "generic", "project"},
+			candPath{filepath.Join(d, ".junie", "mcp", "mcp.json"), "junie", "project"},
 			candPath{filepath.Join(d, ".github", "mcp.json"), "github-copilot-cli", "project"},
 			candPath{filepath.Join(d, ".zed", "settings.json"), "zed", "project"},
 			candPath{filepath.Join(d, ".cursor", "mcp.json"), "cursor", "project"},
