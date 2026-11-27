@@ -536,7 +536,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   small and self-contained. JS/TS, Python and Go taint tracking follows local
   aliases and arguments passed through unambiguous helper functions. Go also
   follows unique free functions and methods with inferable receiver types
-  across files in the same package. JS/TS
+  across files in the same package, plus exported helpers imported from local
+  packages in the scanned Go module (up to eight package hops, 64 files and
+  16 MiB per entry). JS/TS
   recognizes function declarations and block-bodied arrow helpers. JS/TS also
   follows named and namespace ES imports and static CommonJS `require()` calls,
   including destructured bindings and direct named calls through a module object, of
@@ -550,10 +552,11 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods
   and through unique same-file helpers.
   Be aware of the known limits; a clean report is not proof of safety:
-- Cross-file taint tracking is limited to Go same-package free functions and
-  methods with an inferable receiver type, plus explicitly imported Python/JS/TS
-  helpers. Go leaves calls on opaque or ambiguous receivers unresolved. Python
-  and JS/TS module traversal is bounded. The engine does not model arbitrary
+- Cross-file taint tracking is limited to Go same-package free functions,
+  inferable methods, and exported free functions in local module packages, plus
+  explicitly imported Python/JS/TS helpers. Go leaves imported methods and
+  calls on opaque or ambiguous receivers unresolved. Python and JS/TS module
+  traversal is bounded. The engine does not model arbitrary
   object graphs, returned values, dynamic dispatch, JS/TS ES default imports,
   computed module-object calls, or package imports. Sink
   matching is pattern-based, so unusual formatting and generated code can still

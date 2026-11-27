@@ -8,6 +8,11 @@ semantic versioning.
 
 ### Improved
 
+- Follow tainted Go tool arguments through exported helpers imported from
+  source packages in the scanned module, within bounded traversal limits.
+
+### Improved
+
 - Extend the bundled live-probe fixture with safe, fixed prompt and resource
   bodies so users can try `--read-content` end to end.
 - Clarify when live probing requests resource data or rendered prompt text.
