@@ -11,7 +11,7 @@ $requestedVersion = $env:MC_PRISM_VERSION
 if ([string]::IsNullOrWhiteSpace($requestedVersion) -or $requestedVersion -eq "latest") {
     $releaseBase = "https://github.com/$repository/releases/latest/download"
 } else {
-    if ($requestedVersion -cnotmatch '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$') {
+    if ($requestedVersion -cnotmatch '\Av?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?\z') {
         throw "Invalid MC_PRISM_VERSION '$requestedVersion'. Expected 'latest' or a version such as 'v0.30.0'."
     }
     if (-not $requestedVersion.StartsWith("v", [System.StringComparison]::Ordinal)) {
