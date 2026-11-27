@@ -68,10 +68,10 @@ same-directory modules, including parent-package modules reached through
 explicit relative imports. Parent traversal requires an `__init__.py` marker
 at each package level, so a crafted import cannot expand a single-file scan
 into unrelated parent directories.
-JS/TS follows named ES imports, destructured CommonJS `require()` imports, and
-direct named calls through a statically required CommonJS module object when
-they reference exported helpers from same-directory modules. It continues
-through helper calls in those modules. Python and JS/TS cross-module traversal
+JS/TS follows named and namespace ES imports, destructured CommonJS
+`require()` imports, and direct named calls through a statically required
+CommonJS module object when they reference exported helpers from same-directory
+modules. It continues through helper calls in those modules. Python and JS/TS cross-module traversal
 is bounded by eight imports deep, 64 source files and 16 MiB of source per
 analyzed entry file. Rust recognizes the official `rmcp` `#[tool]` macro and
 follows local aliases through unique same-file helper functions, including
@@ -92,9 +92,9 @@ method calls on opaque or ambiguous receivers unresolved. Captured receivers
 are followed when their type has a unique same-file declaration or constructor.
 Python supports
 named imports and direct module imports with an alias, including multi-level
-relative imports inside marked packages; JS/TS follows named ES
-imports and CommonJS `require()` imports plus local helper calls in imported
-modules within the limits above. ES namespace imports, computed module-object
+relative imports inside marked packages; JS/TS follows named and namespace ES
+imports plus CommonJS `require()` imports and local helper calls in imported
+modules within the limits above. Default ES imports, computed module-object
 properties, re-exports, package resolution and other import forms are not
 resolved. The analyzers do not model arbitrary object graphs, returned values
 or dynamic dispatch. Field tracking is limited to direct, statically named
@@ -153,6 +153,17 @@ The finding points to the sink in `local-helpers.js`. If `runWithShell` calls
 another same-module helper with the controlled argument, analysis follows that
 call as well. The same applies to further named imports within the traversal
 limits.
+
+Namespace imports are followed when the call directly names an exported
+helper:
+
+```ts
+import * as localHelpers from "./local-helpers.js";
+
+server.tool("run", { command: z.string() }, async ({ command }) => {
+  localHelpers.runWithShell(command);
+});
+```
 
 CommonJS named exports and destructured `require()` imports are also followed:
 

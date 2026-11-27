@@ -392,6 +392,24 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 		merge(text[m[4]:m[5]], parseBindings(text[m[2]:m[3]], "as"))
 	}
 
+	// Namespace imports expose exported helpers through a static property
+	// selector, e.g. `import * as helpers from "./helpers"; helpers.run(x)`.
+	namespaceImport := regexp.MustCompile(`\bimport\s*\*\s+as\s+([A-Za-z_$][\w$]*)\s+from\s*["']([^"']+)["']`)
+	for _, m := range namespaceImport.FindAllStringSubmatchIndex(text, -1) {
+		if m[1]-m[0] < len("import") || structure[m[0]:m[0]+len("import")] != "import" {
+			continue
+		}
+		moduleFunctions, exported := loadModule(text[m[4]:m[5]])
+		namespace := text[m[2]:m[3]]
+		var bindings []binding
+		for name := range exported {
+			if _, ok := moduleFunctions[name]; ok {
+				bindings = append(bindings, binding{original: name, alias: namespace + "." + name})
+			}
+		}
+		addBindings(moduleFunctions, exported, bindings)
+	}
+
 	// CommonJS destructured requires are static only when the requested module
 	// is a quoted relative path and the binding appears in a variable declaration.
 	requireImport := regexp.MustCompile(`\b(?:const|let|var)\s*\{([^}]*)\}\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)`)
