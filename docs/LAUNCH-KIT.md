@@ -5,7 +5,7 @@ The post text is written in first person because these communities expect a
 person, not a press release. Adapt each post to the channel and your own voice;
 don't cross-post identical text everywhere.
 
-**Current release: [v0.20.0](https://github.com/HUA503/mcprism/releases/tag/v0.20.0).**
+**Current release: [v0.26.0](https://github.com/HUA503/mcprism/releases/tag/v0.26.0).**
 The copy below reflects the current product and privacy boundaries.
 
 ## The hook
@@ -23,8 +23,8 @@ mcprism is one Go binary with no runtime dependencies. Local config and source
 scans run offline; Registry commands fetch public metadata from the official MCP
 Registry; live probing is opt-in. When probing, it lists tools without invoking
 them. It brings policy and CI checks to MCP server review, and automatically
-discovers configs from clients such as Gemini CLI, OpenCode, Roo Code, and the
-Cline CLI.
+discovers configs from Claude, Codex, Cursor, VS Code, Windsurf, Cline, Roo Code,
+Gemini CLI, OpenCode, Kiro, Amazon Q, GitHub Copilot CLI, and Zed.
 For ongoing review, `inventory save` and `inventory verify` detect changes to
 tool definitions; the lock stores tool names and fingerprints, not the
 definitions themselves. The GitHub Action can enforce that check in CI.
@@ -53,9 +53,10 @@ Hi HN. I built mcprism, a security scanner for MCP (Model Context Protocol) serv
 
 MCP is built into Claude, Cursor, VS Code and others. Adding a tool usually means running a third-party package on your machine - npx -y @someone/..., a pip/uv package, or a remote URL. That process runs as your user, inherits your environment (often AWS, GitHub and OpenAI keys), can run shell commands, and can reach the network. A typo-squatted or republished package is a supply-chain problem, and the client doesn't review it.
 
-mcprism auto-discovers MCP configs from major clients, including Gemini CLI,
-OpenCode, Roo Code, and the Cline CLI, so you can scan servers you configured
-without copying them into a separate file.
+mcprism auto-discovers MCP configs from major clients, including Claude, Codex,
+Cursor, VS Code, Windsurf, Cline, Roo Code, Gemini CLI, OpenCode, Kiro, Amazon
+Q, GitHub Copilot CLI, and Zed, so you can scan servers you configured without
+copying them into a separate file.
 
 mcprism checks a server before you connect:
 - reads the launch command and args, flags remote code piped into a shell
@@ -197,7 +198,7 @@ MCP 现在 Claude、Cursor、VS Code 都内置了，但加一个 server 基本�
 
 mcprism 在连接前扫描 server：识别管道执行远程脚本的启动命令、只枚举工具不调用、检查工具描述里的注入指令、按类型和熵识别密钥、检查云元数据等网络目标，给出 0-100 分和 A-F 评级，映射 OWASP MCP。
 
-单个 Go 二进制，无运行时依赖。本地配置和源码扫描离线运行；Registry 命令会查询官方目录的公开元数据，动态探测则需显式开启。支持 YAML 策略和 SARIF/JUnit/CycloneDX，可放进 CI 按评级设门禁。还可保存工具定义指纹，发现工具清单变化，并在 CI 中拦截未经审查的变化。现在支持自动发现 Gemini CLI、OpenCode、Roo Code 项目配置，以及 Cline CLI 的默认和自定义配置路径。
+单个 Go 二进制，无运行时依赖。本地配置和源码扫描离线运行；Registry 命令会查询官方目录的公开元数据，动态探测则需显式开启。支持 YAML 策略和 SARIF/JUnit/CycloneDX，可放进 CI 按评级设门禁。还可保存工具定义指纹，发现工具清单变化，并在 CI 中拦截未经审查的变化。`mcprism scan` 可检查 Claude、Codex、Cursor、VS Code、Windsurf、Cline、Roo Code、Gemini CLI、OpenCode、Kiro、Amazon Q、GitHub Copilot CLI 和 Zed 等客户端的 MCP 配置；`mcprism vet` 可在添加前审查一个包、URL、启动命令或本地源码目录。
 
 攻击面分析（含示例）：https://github.com/HUA503/mcprism/blob/main/docs/MCP-ATTACK-SURFACE.md
 仓库：https://github.com/HUA503/mcprism
@@ -221,10 +222,9 @@ https://github.com/HUA503/mcprism
 4. **Post X with the GIF**, and reply with the thread if you have follow-ups.
 5. **Set the repository social preview.** Upload [`assets/social-preview.jpg`](../assets/social-preview.jpg) under **Settings → General → Social preview**. The card is 1280 × 640 and under 1 MB. Pair shared posts with the release link, then verify the rendered preview.
 6. **Watch the proposal issue** at
-   https://github.com/bh-rat/awesome-mcp-enterprise/issues/154. Once it has the
-   `approved-for-pr` label before opening a PR. The proposal is for the Emerging
-   list under Security and Governance; refresh its release and privacy evidence
-   before resubmitting because the original issue text predates v0.10.2.
+   https://github.com/bh-rat/awesome-mcp-enterprise/issues/154. It is still open
+   and has no approval label. Update its release and project evidence only after
+   the maintainers approve it; do not open a listing PR before then.
 7. **Reply to comments early.** The first hour of discussion decides how far a Show HN or Reddit post travels.
 
 ## Tracking
@@ -235,7 +235,7 @@ https://github.com/HUA503/mcprism
 | Reddit (which sub) |  |  |  |
 | X |  |  |  |
 | V2EX |  |  |  |
-| [awesome-agentic-mcp-security](https://github.com/mcp-security-project/awesome-agentic-mcp-security/pull/44) | PR #44 open | Maintainer confirmed fit; rebased Nov 25; awaiting review | MCP Scanners |
-| [awesome-mcp-security](https://github.com/Puliczek/awesome-mcp-security/pull/405) | PR #405 open | Submitted Oct 26; awaiting review | Tools and code |
-| awesome-mcp-enterprise | issue #154 open, no approval label yet | wait; do not open a PR before approval | Emerging list |
+| [awesome-agentic-mcp-security](https://github.com/mcp-security-project/awesome-agentic-mcp-security/pull/44) | Open (checked Nov 27, 2026) | Maintainer asked for a rebase; latest listing commit still references v0.9.2 | MCP Scanners |
+| [awesome-mcp-security](https://github.com/Puliczek/awesome-mcp-security/pull/405) | Open (checked Nov 27, 2026) | Awaiting maintainer review | Tools and code |
+| [awesome-mcp-enterprise](https://github.com/bh-rat/awesome-mcp-enterprise/issues/154) | Open; no labels (checked Nov 27, 2026) | Wait for `approved-for-pr`; proposal evidence still points to v0.2.0 | Emerging list |
 | mcp.so / Glama |  |  | These catalog servers; list only if a tools section applies |
