@@ -597,7 +597,7 @@ The full list with the OWASP crosswalk is in [docs/RULES.md](docs/RULES.md).
 ## Supported clients & transports
 
 mcprism reads the JSON/JSONC MCP config used by Claude Desktop, Claude Code,
-GitHub Copilot CLI, Junie, Zed, Cursor, VS Code (GitHub Copilot Chat), Windsurf,
+GitHub Copilot CLI, Junie, JetBrains Air, Zed, Cursor, VS Code (GitHub Copilot Chat), Windsurf,
 Cline, Roo Code, Continue and similar tools, Kiro's global `~/.kiro/settings/mcp.json`
 and project `.kiro/settings/mcp.json`, Amazon Q Developer's global
 `~/.aws/amazonq/agents/default.json` and project `.amazonq/default.json`
@@ -654,6 +654,10 @@ Kiro directory.
 Junie CLI and the JetBrains IDE plugin use `~/.junie/mcp/mcp.json` for user
 servers and `.junie/mcp/mcp.json` for project servers. Set `JUNIE_HOME` to
 override the user-level directory.
+
+JetBrains Air in IDEs uses `~/.jetbrains/mcp/mcp.json` for user-level servers.
+Air project workspaces can share servers from `.air/mcp.json`; directory scans
+also identify this file as a JetBrains Air config.
 
 ## CI/CD
 

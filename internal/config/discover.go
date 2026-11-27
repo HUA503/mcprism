@@ -142,6 +142,9 @@ func globalCandidates() []candPath {
 	}
 	add("junie", "global", filepath.Join(junieHome, "mcp", "mcp.json"))
 
+	// JetBrains Air in IDEs keeps shared user MCP servers in this file.
+	add("jetbrains-air", "global", filepath.Join(home, ".jetbrains", "mcp", "mcp.json"))
+
 	// Gemini CLI supports system defaults and system overrides. The documented
 	// environment variables replace the corresponding platform default paths.
 	geminiDefaults := os.Getenv("GEMINI_CLI_SYSTEM_DEFAULTS_PATH")
@@ -228,6 +231,7 @@ func projectCandidates(dir string) []candPath {
 		out = append(out,
 			candPath{filepath.Join(d, ".mcp.json"), "generic", "project"},
 			candPath{filepath.Join(d, ".junie", "mcp", "mcp.json"), "junie", "project"},
+			candPath{filepath.Join(d, ".air", "mcp.json"), "jetbrains-air", "project"},
 			candPath{filepath.Join(d, ".github", "mcp.json"), "github-copilot-cli", "project"},
 			candPath{filepath.Join(d, ".zed", "settings.json"), "zed", "project"},
 			candPath{filepath.Join(d, ".cursor", "mcp.json"), "cursor", "project"},
