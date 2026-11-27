@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.31.0] - 2026-11-27
+
+### Added
+
+- Discover JetBrains Junie MCP configs from the user home and project, including
+  custom user directories set with `JUNIE_HOME`.
+
 ## [0.30.1] - 2026-11-27
 
 ### Fixed
@@ -584,6 +591,7 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
+[0.31.0]: https://github.com/HUA503/mcprism/compare/v0.30.1...v0.31.0
 [0.30.1]: https://github.com/HUA503/mcprism/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/HUA503/mcprism/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/HUA503/mcprism/compare/v0.28.0...v0.29.0
