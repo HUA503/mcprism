@@ -1,8 +1,8 @@
 class Mcprism < Formula
   desc "Security scanner for Model Context Protocol servers"
   homepage "https://github.com/HUA503/mcprism"
-  url "https://github.com/HUA503/mcprism/archive/refs/tags/v0.30.0.tar.gz"
-  sha256 "d8a94824803b8c09a8f260e963e8a4a2b58178812a8f00f2be0bd41cc5b4976f"
+  url "https://github.com/HUA503/mcprism/archive/refs/tags/v0.30.1.tar.gz"
+  sha256 "a586a897c02d889e2cf52dd54145d7126d0fb1248d2f83ddde7b9fc4b20ba3e6"
   license "MIT"
 
   depends_on "go" => :build
