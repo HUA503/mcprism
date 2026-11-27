@@ -486,7 +486,7 @@ Nein. mcprism meldet bekannte, beobachtbare Risiken. Es kann nicht beweisen, das
 - [x] Nix-Paket
 - [x] Rust-SAST für `rmcp`-Tools
 - [ ] Mehr Sprachen für die SAST-Analyse (Java, C#)
-- [ ] Optionale mehrstufige/interprozedurale Taint-Verfolgung
+- [ ] Datenflussanalyse für dynamische Aufrufe, Rückgabewerte und komplexe Objektgraphen erweitern; die vorhandene dateiübergreifende Helper-Verfolgung ist begrenzt und sprachspezifisch. [Details](../SAST.md)
 - [ ] Integrierter Sandbox-Wrapper für Live-Prüfungen
 
 ## Mitwirken

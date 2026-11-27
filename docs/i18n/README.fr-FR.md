@@ -486,7 +486,7 @@ Non. mcprism signale les risques connus et observables. Il ne peut pas prouver q
 - [x] Paquet Nix
 - [x] SAST Rust pour les outils `rmcp`
 - [ ] Étendre les langages SAST (Java, C#)
-- [ ] Suivi du taint multi-sauts et interprocédural, activable en option
+- [ ] Étendre l’analyse des flux de données aux appels dynamiques, aux valeurs de retour et aux graphes d’objets complexes ; le suivi actuel entre fichiers et fonctions auxiliaires reste limité et dépend du langage. [Détails](../SAST.md)
 - [ ] Wrapper de sandbox intégré pour les sondes en direct
 
 ## Contribuer
