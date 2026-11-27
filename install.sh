@@ -26,6 +26,11 @@ sha256_of() {
   fi
 }
 
+invalid_version() {
+  echo "error: invalid MC_PRISM_VERSION '${MC_PRISM_VERSION:-}' (expected latest or a version such as v0.30.0)" >&2
+  exit 1
+}
+
 install_file() {
   src="$1"; dst="$2"
   if command -v install >/dev/null 2>&1; then
@@ -63,9 +68,11 @@ main() {
   if [ "$requested_version" = "latest" ]; then
     base="${GITHUB}/releases/latest/download"
   else
+    case "$requested_version" in
+      *[!0-9A-Za-z.+-]*) invalid_version ;;
+    esac
     if ! printf '%s\n' "$requested_version" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
-      echo "error: invalid MC_PRISM_VERSION '$requested_version' (expected latest or a version such as v0.30.0)" >&2
-      exit 1
+      invalid_version
     fi
     case "$requested_version" in
       v*) release_tag="$requested_version" ;;
