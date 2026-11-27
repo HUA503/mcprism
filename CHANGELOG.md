@@ -640,6 +640,7 @@ secrets on a command line no longer appear in reports.
 [0.34.0]: https://github.com/HUA503/mcprism/compare/v0.33.0...v0.34.0
 [0.35.0]: https://github.com/HUA503/mcprism/compare/v0.34.0...v0.35.0
 [0.36.0]: https://github.com/HUA503/mcprism/compare/v0.35.0...v0.36.0
+[0.37.0]: https://github.com/HUA503/mcprism/compare/v0.36.0...v0.37.0
 [0.30.1]: https://github.com/HUA503/mcprism/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/HUA503/mcprism/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/HUA503/mcprism/compare/v0.28.0...v0.29.0
