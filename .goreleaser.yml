@@ -73,10 +73,27 @@ snapshot:
 changelog:
   sort: asc
   use: github
+  format: "{{.Message}}{{ if .Logins }} ({{ .Logins | englishJoin }}){{ end }}"
+  abbrev: -1
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([^)]*\))?!?:'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?(fix|bug)(\([^)]*\))?!?:'
+      order: 1
+    - title: Improvements
+      regexp: '^.*?(perf|refactor)(\([^)]*\))?!?:'
+      order: 2
+    - title: Other changes
+      order: 999
   filters:
     exclude:
       - "^docs:"
       - "^test:"
+      - "^chore:"
+      - "^Scoop update for mcprism"
+      - "^Homebrew formula update for mcprism"
       - "Merge pull request"
 
 release:
