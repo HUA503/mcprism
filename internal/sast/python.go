@@ -96,7 +96,7 @@ func parsePythonImports(lines []srcLine, topLevelOnly bool) pythonImports {
 					continue
 				}
 				module := fields[0]
-				if len(fields) == 3 && !strings.Contains(module, ".") {
+				if len(fields) == 3 {
 					add(imports.modules, imports.ambiguousModules, fields[2], module)
 				} else if len(fields) == 1 && !strings.Contains(module, ".") {
 					add(imports.modules, imports.ambiguousModules, module, module)
@@ -140,12 +140,9 @@ func pythonCalls(text string, imports pythonImports, targets ...string) []python
 				names[alias] = true
 			}
 		}
-		parts := strings.SplitN(target, ".", 2)
-		if len(parts) == 2 {
-			for alias, module := range imports.modules {
-				if module == parts[0] {
-					names[alias+"."+parts[1]] = true
-				}
+		for alias, module := range imports.modules {
+			if strings.HasPrefix(target, module+".") {
+				names[alias+strings.TrimPrefix(target, module)] = true
 			}
 		}
 		alternatives := make([]string, 0, len(names))
