@@ -63,6 +63,7 @@ func analyzePython(path string) []Issue {
 var pyToolDecRe = regexp.MustCompile(`@[\w\.]+\.(tool|call_tool)\b`)
 var pyDefRe = regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
 var pyCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
+var pyCallableAssignRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*)\s*$`)
 var pyFromImportRe = regexp.MustCompile(`^from\s+(\.*[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*|\.+)\s+import\s+(.+?)\s*$`)
 var pyImportRe = regexp.MustCompile(`^import\s+(.+?)\s*$`)
 var pyFieldAssignRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*|\s*\[\s*['"][A-Za-z_]\w*['"]\s*\]))\s*=\s*(.*)$`)
@@ -133,6 +134,7 @@ type pythonCall struct {
 func pythonCalls(text string, imports pythonImports, targets ...string) []pythonCall {
 	var calls []pythonCall
 	seen := map[string]bool{}
+	callableAliases := pythonCallableAliases(text, imports)
 	for _, target := range targets {
 		names := map[string]bool{target: true}
 		for alias, canonical := range imports.calls {
@@ -143,6 +145,11 @@ func pythonCalls(text string, imports pythonImports, targets ...string) []python
 		for alias, module := range imports.modules {
 			if strings.HasPrefix(target, module+".") {
 				names[alias+strings.TrimPrefix(target, module)] = true
+			}
+		}
+		for alias, canonical := range callableAliases {
+			if canonical == target {
+				names[alias] = true
 			}
 		}
 		alternatives := make([]string, 0, len(names))
@@ -160,6 +167,44 @@ func pythonCalls(text string, imports pythonImports, targets ...string) []python
 	}
 	sort.Slice(calls, func(i, j int) bool { return calls[i].start < calls[j].start })
 	return calls
+}
+
+// pythonCallableAliases follows simple local assignments of imported callables,
+// such as `run = subprocess.run` or `fetch = httpx.get`. This catches common
+// sink indirection without trying to resolve reassignment or dynamic values.
+func pythonCallableAliases(text string, imports pythonImports) map[string]string {
+	aliases := map[string]string{}
+	lines := strings.Split(text, "\n")
+	for changed := true; changed; {
+		changed = false
+		for _, line := range lines {
+			m := pyCallableAssignRe.FindStringSubmatch(line)
+			if m == nil {
+				continue
+			}
+			alias, expr := m[1], strings.ReplaceAll(m[2], " ", "")
+			canonical := aliases[expr]
+			if canonical == "" {
+				canonical = imports.calls[expr]
+			}
+			if canonical == "" {
+				for moduleAlias, module := range imports.modules {
+					if expr == moduleAlias || strings.HasPrefix(expr, moduleAlias+".") {
+						canonical = module + strings.TrimPrefix(expr, moduleAlias)
+						break
+					}
+				}
+			}
+			if canonical == "" && strings.Contains(expr, ".") {
+				canonical = expr
+			}
+			if canonical != "" && aliases[alias] != canonical {
+				aliases[alias] = canonical
+				changed = true
+			}
+		}
+	}
+	return aliases
 }
 
 func mergePythonImports(base, local pythonImports) pythonImports {

@@ -10,6 +10,7 @@ semantic versioning.
 
 - Detect additional Chinese priority-forgery and safety-policy-degradation
   phrases in server-controlled metadata.
+- Follow simple Python callable aliases to recognized dangerous sinks.
 
 ## [0.42.3] - 2026-11-27
 
