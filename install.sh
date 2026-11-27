@@ -59,7 +59,20 @@ main() {
   else
     archive_name="${BINARY}_${os}_${arch}.tar.gz"
   fi
-  base="${GITHUB}/releases/latest/download"
+  requested_version="${MC_PRISM_VERSION:-latest}"
+  if [ "$requested_version" = "latest" ]; then
+    base="${GITHUB}/releases/latest/download"
+  else
+    if ! printf '%s\n' "$requested_version" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+      echo "error: invalid MC_PRISM_VERSION '$requested_version' (expected latest or a version such as v0.29.0)" >&2
+      exit 1
+    fi
+    case "$requested_version" in
+      v*) release_tag="$requested_version" ;;
+      *) release_tag="v${requested_version}" ;;
+    esac
+    base="${GITHUB}/releases/download/${release_tag}"
+  fi
 
   tmpdir=$(mktemp -d)
   trap 'rm -rf "$tmpdir"' EXIT
