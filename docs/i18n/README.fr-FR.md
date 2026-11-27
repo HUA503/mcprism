@@ -250,7 +250,7 @@ Ajoutez la commande à votre profil shell pour l’activer dans les prochaines s
 Scan de deux serveurs locaux en mode statique :
 
 ```text
-◆ mcprism   v0.42.1 · 2026-11-27
+◆ mcprism   v0.42.2 · 2026-11-27
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1

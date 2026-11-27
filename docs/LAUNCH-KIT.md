@@ -5,7 +5,7 @@ The post text is written in first person because these communities expect a
 person, not a press release. Adapt each post to the channel and your own voice;
 don't cross-post identical text everywhere.
 
-**Current release: [v0.42.1](https://github.com/HUA503/mcprism/releases/tag/v0.42.1).**
+**Current release: [v0.42.2](https://github.com/HUA503/mcprism/releases/tag/v0.42.2).**
 The copy below reflects the current product and privacy boundaries.
 
 ## The hook

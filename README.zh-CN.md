@@ -130,7 +130,7 @@ mcprism vet server.py            # 审查单个文件
 - 单个二进制。不用装 Python 或 Node，不需要 LLM API key，也不用注册账号。
 - 默认静态。它读取配置，在有本地代码时审查 JS/TS/Python/Go/Rust 源码；加 `--dynamic` 才会自动协商新旧 MCP 协议并列出 tools/resources/prompts，但不会调用任何工具。
 - 看 schema。对于没有源码的在线 server，如果名为 command、url、path 之类的字符串参数接受任意值，会按命令执行、SSRF、路径风险报出；用 enum、const、pattern 约束过的参数不报。
-- 工具投毒检测。离线、确定性的特征规则会检查工具元数据和 server instructions，覆盖常见英文、简体中文、繁体中文、日文和韩文提示注入语句。它能识别已知模式，但不能理解所有改写，也不能证明元数据安全。
+- 工具投毒检测。离线、确定性的特征规则会检查工具元数据和 server instructions，覆盖常见英文、简体中文、繁体中文、日文和韩文提示注入语句，包括角色扮演式越狱和伪造新指令优先级。它能识别已知模式，但不能理解所有改写，也不能证明元数据安全。
 - 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套配置。
 - 风险接受清单。可以带理由和到期时间抑制发现，也可以用 `--baseline` 接受整份旧报告，只让新问题卡住构建；被抑制项仍显示在报告里，过期后自动重新出现。
 - 工具清单锁。保存工具名称和 SHA-256 指纹；之后若 server 新增、删除或修改工具定义，命令会报出差异并返回失败。锁文件不保存工具描述或 schema。保存和验证时会连接 server 来枚举工具，但不会调用工具。
@@ -164,7 +164,7 @@ mcprism vet server.py            # 审查单个文件
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 
 # 固定安装版本，不使用 latest
-curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.42.1 sh
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.42.2 sh
 ```
 
 ```powershell
@@ -172,7 +172,7 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 
 # 固定安装版本，不使用 latest
-$env:MC_PRISM_VERSION = "v0.42.1"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+$env:MC_PRISM_VERSION = "v0.42.2"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 ```
 
 ```sh
@@ -334,7 +334,7 @@ Registry 批量审计默认只检查一页（最多 100 条）。加上 `--all` 
 以静态模式扫描两个本地 server：
 
 ```text
-◆ mcprism   v0.42.1 · 2026-11-27
+◆ mcprism   v0.42.2 · 2026-11-27
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -512,7 +512,7 @@ Roo Code 配置。全局扩展配置也会从 VS Code 兼容编辑器的存储�
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.42.1
+  rev: v0.42.2
   hooks:
     - id: mcprism
 ```
@@ -545,7 +545,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.42.1
+        uses: HUA503/mcprism@v0.42.2
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
