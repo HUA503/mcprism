@@ -9,8 +9,8 @@ semantic versioning.
 ### Added
 
 - Follow Go tool input through same-package methods when the receiver type is
-  inferable from a same-file declaration, composite literal or current method
-  receiver, including uniquely typed values captured by a handler closure.
+  recoverable from a same-file declaration, constructor signature or current
+  method receiver, including values captured by handler closures.
 
 ## [0.25.0] - 2026-11-27
 
