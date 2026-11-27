@@ -347,7 +347,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 JS/TS, Python, Go, Rust 분석은 단순한 로컬 별칭과 명확한 helper 함수에 전달되는 인수를 추적합니다. Python은 같은 디렉터리의 모듈에서 명시적으로 import한 helper가 그 안의 helper 호출도 추적합니다(최대 8단계, 64개 파일, 총 16 MiB). JS/TS는 같은 디렉터리의 소스 파일에서 명명된 import로 가져온 export helper와 그 안의 후속 helper 호출도 추적합니다(최대 8단계, 64개 파일, 소스 총 16 MiB). Go는 같은 package의 여러 파일에 정의된 고유한 일반 함수와 receiver 유형을 추론할 수 있는 메서드도 추적합니다. JS/TS는 함수 선언과 블록 본문 화살표 함수를, Rust는 여러 단계의 고유한 helper 호출을 인식합니다. Rust는 공식 `rmcp #[tool]` 메서드를 인식하지만 매크로 확장이나 trait 디스패치는 해석하지 않습니다. 엔진은 서드파티 파서 없이 패턴 기반 휴리스틱 분석을 수행해 바이너리가 작고 자기완결적입니다. 완전한 데이터 흐름 분석기를 대체하지 않으며 특이한 코드에서는 누락이나 오탐이 발생할 수 있습니다. 규칙 세부 사항과 더 많은 예시는 [docs/SAST.md](../SAST.md)에 있습니다.
 
-전체 프로그램 데이터 흐름 분석기는 아닙니다. Go의 동일 package 일반 함수와 receiver 유형을 추론할 수 있는 메서드, Python/JS/TS의 명시적으로 import한 helper를 제외하면 파일 사이의 값 흐름은 추적하지 않습니다. Go는 유형을 추론할 수 없는 receiver나 캡처된 receiver를 통한 메서드 호출은 추적하지 않습니다. Python/JS/TS 모듈 추적은 깊이·파일 수·소스 크기에 제한이 있으며 재수출은 추적하지 않습니다. 객체 속성·반환값·동적 디스패치·그 밖의 import 형태도 일반적으로 추적하지 않습니다. Rust 매크로 확장 및 trait 디스패치는 지원하지 않습니다.
+전체 프로그램 데이터 흐름 분석기는 아닙니다. Go의 동일 package 일반 함수와 receiver 유형을 추론할 수 있는 메서드, Python/JS/TS의 명시적으로 import한 helper를 제외하면 파일 사이의 값 흐름은 추적하지 않습니다. Go는 유형이 불명확하거나 동일 파일에서 유형을 유일하게 추론할 수 없는 receiver 메서드 호출은 추적하지 않습니다. Python/JS/TS 모듈 추적은 깊이·파일 수·소스 크기에 제한이 있으며 재수출은 추적하지 않습니다. 객체 속성·반환값·동적 디스패치·그 밖의 import 형태도 일반적으로 추적하지 않습니다. Rust 매크로 확장 및 trait 디스패치는 지원하지 않습니다.
 
 <p align="center">
   <img src="../../assets/sast.png" alt="mcprism source-code review findings" width="94%">

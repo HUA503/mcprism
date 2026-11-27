@@ -21,6 +21,7 @@ func analyzeGoWithFunctions(path string, functions map[string]handlerBlock) []Is
 	if src == "" {
 		return nil
 	}
+	fileReceiverTypes := goFileReceiverTypes(src)
 	// Keep same-file helpers and resolve methods when the selector's receiver
 	// type can be identified without guessing from a short method name.
 	allFunctions := make(map[string]handlerBlock, len(functions))
@@ -30,12 +31,14 @@ func analyzeGoWithFunctions(path string, functions map[string]handlerBlock) []Is
 	for name, helper := range extractGoFunctions(src) {
 		if _, exists := allFunctions[name]; !exists {
 			helper.path = path
+			helper.receiverTypes = fileReceiverTypes
 			allFunctions[name] = helper
 		}
 	}
 	var out []Issue
 	for _, b := range extractGoHandlers(maskGoComments(src)) {
 		b.path = path
+		b.receiverTypes = fileReceiverTypes
 		out = append(out, scanReachableGo(path, b, allFunctions)...)
 	}
 	for _, l := range maskedGoLines(lines) {
@@ -97,12 +100,14 @@ func extractGoPackageFunctions(path string) (string, map[string]handlerBlock) {
 		if file == nil || file.Name == nil || file.Name.Name != pkgName {
 			continue
 		}
+		fileReceiverTypes := goReceiverTypesFromAST(file)
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
 				continue
 			}
 			block := goFunctionBlock(string(src), fset, fn, filePath)
+			block.receiverTypes = fileReceiverTypes
 			if fn.Recv == nil {
 				name := fn.Name.Name
 				counts[name]++
@@ -195,6 +200,7 @@ func extractGoFunctions(src string) map[string]handlerBlock {
 			continue
 		}
 		block := goFunctionBlock(src, fset, fn, "")
+		block.receiverTypes = goReceiverTypesFromAST(file)
 		if fn.Recv != nil {
 			key := goMethodKey(block.receiverType, fn.Name.Name)
 			if key != "" && !ambiguousMethods[key] {
@@ -274,9 +280,6 @@ func goMethodKey(receiverType, name string) string {
 }
 
 func goLocalReceiverTypes(lines []srcLine) map[string]string {
-	types := map[string]string{}
-	ambiguous := map[string]bool{}
-	typeAlias := [][2]string{}
 	body := joinLines(lines)
 	body = strings.TrimSpace(body)
 	if open := strings.IndexByte(body, '{'); open >= 0 && strings.TrimSpace(body[:open]) == "" {
@@ -290,8 +293,25 @@ func goLocalReceiverTypes(lines []srcLine) map[string]string {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, "", wrapped, 0)
 	if err != nil {
-		return types
+		return map[string]string{}
 	}
+	return goReceiverTypesFromAST(file)
+}
+
+func goFileReceiverTypes(src string) map[string]string {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "", src, parser.AllErrors)
+	if err != nil {
+		return map[string]string{}
+	}
+	return goReceiverTypesFromAST(file)
+}
+
+func goReceiverTypesFromAST(file *ast.File) map[string]string {
+	types := map[string]string{}
+	ambiguous := map[string]bool{}
+	declarations := map[string]int{}
+	typeAlias := [][2]string{}
 	setType := func(name, typ string) {
 		if name == "" || name == "_" || typ == "" || ambiguous[name] {
 			return
@@ -308,10 +328,11 @@ func goLocalReceiverTypes(lines []srcLine) map[string]string {
 		case *ast.ValueSpec:
 			typ := goTypeName(n.Type)
 			for _, name := range n.Names {
+				declarations[name.Name]++
 				setType(name.Name, typ)
 			}
 			for i, value := range n.Values {
-				if i < len(n.Names) {
+				if i < len(n.Names) && n.Type == nil {
 					setType(n.Names[i].Name, goExprType(value, types))
 				}
 			}
@@ -320,6 +341,9 @@ func goLocalReceiverTypes(lines []srcLine) map[string]string {
 				id, ok := lhs.(*ast.Ident)
 				if !ok || i >= len(n.Rhs) {
 					continue
+				}
+				if n.Tok == token.DEFINE {
+					declarations[id.Name]++
 				}
 				if rhs, ok := n.Rhs[i].(*ast.Ident); ok {
 					typeAlias = append(typeAlias, [2]string{id.Name, rhs.Name})
@@ -337,6 +361,12 @@ func goLocalReceiverTypes(lines []srcLine) map[string]string {
 				setType(alias[0], typ)
 				changed = true
 			}
+		}
+	}
+	for name, count := range declarations {
+		if count > 1 {
+			delete(types, name)
+			ambiguous[name] = true
 		}
 	}
 	return types
@@ -437,7 +467,13 @@ func scanReachableGo(path string, entry handlerBlock, functions map[string]handl
 
 		text := maskGoComments(joinLines(block.lines))
 		ctrl := goTaintedNames(block.lines, params)
-		receiverTypes := goLocalReceiverTypes(block.lines)
+		receiverTypes := make(map[string]string, len(block.receiverTypes))
+		for name, typ := range block.receiverTypes {
+			receiverTypes[name] = typ
+		}
+		for name, typ := range goLocalReceiverTypes(block.lines) {
+			receiverTypes[name] = typ
+		}
 		if block.receiverName != "" && block.receiverType != "" {
 			receiverTypes[block.receiverName] = block.receiverType
 		}
