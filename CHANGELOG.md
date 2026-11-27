@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-11-27
+
 ### Improved
 
 - Scan server-provided instructions for prompt-injection patterns during the
@@ -672,6 +674,7 @@ secrets on a command line no longer appear in reports.
 [0.37.0]: https://github.com/HUA503/mcprism/compare/v0.36.0...v0.37.0
 [0.38.0]: https://github.com/HUA503/mcprism/compare/v0.37.0...v0.38.0
 [0.39.0]: https://github.com/HUA503/mcprism/compare/v0.38.0...v0.39.0
+[0.41.0]: https://github.com/HUA503/mcprism/compare/v0.40.0...v0.41.0
 [0.40.0]: https://github.com/HUA503/mcprism/compare/v0.39.0...v0.40.0
 [0.30.1]: https://github.com/HUA503/mcprism/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/HUA503/mcprism/compare/v0.29.0...v0.30.0
