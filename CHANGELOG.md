@@ -11,6 +11,7 @@ semantic versioning.
 - Detect additional Chinese priority-forgery and safety-policy-degradation
   phrases in server-controlled metadata.
 - Follow simple Python callable aliases to recognized dangerous sinks.
+- Follow simple Go process-execution function aliases to command sinks.
 
 ## [0.42.3] - 2026-11-27
 

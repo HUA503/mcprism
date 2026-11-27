@@ -43,7 +43,9 @@ the command, SSRF, path and secret rules (MCP801/802/803/806) are.
 
 Go sink matching follows explicit package aliases for `os/exec`, `net/http`,
 `os`, `io/ioutil`, `path/filepath` and `strings`. Dot imports and aliases
-created through local variables are not resolved.
+created through local variables are not resolved, except simple local function
+values for process execution such as `run := exec.Command` and chains of those
+assignments.
 
 When scanning a source tree with `go.mod`, Go analysis also follows calls to
 exported free functions in explicitly imported packages that are present in
