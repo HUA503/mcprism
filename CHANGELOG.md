@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.42.2] - 2026-11-27
+
 ### Improved
 
 - Expand Chinese prompt-injection signatures for role-play jailbreaks and
@@ -698,6 +700,7 @@ secrets on a command line no longer appear in reports.
 [0.38.0]: https://github.com/HUA503/mcprism/compare/v0.37.0...v0.38.0
 [0.39.0]: https://github.com/HUA503/mcprism/compare/v0.38.0...v0.39.0
 [0.41.0]: https://github.com/HUA503/mcprism/compare/v0.40.0...v0.41.0
+[0.42.2]: https://github.com/HUA503/mcprism/compare/v0.42.1...v0.42.2
 [0.42.1]: https://github.com/HUA503/mcprism/compare/v0.42.0...v0.42.1
 [0.42.0]: https://github.com/HUA503/mcprism/compare/v0.41.0...v0.42.0
 [0.40.0]: https://github.com/HUA503/mcprism/compare/v0.39.0...v0.40.0
