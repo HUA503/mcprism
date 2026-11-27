@@ -54,6 +54,8 @@ var pyDefRe = regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
 var pyCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
 var pyFromImportRe = regexp.MustCompile(`^from\s+(\.{0,1}[A-Za-z_]\w*)\s+import\s+(.+?)\s*$`)
 var pyImportRe = regexp.MustCompile(`^import\s+(.+?)\s*$`)
+var pyFieldAssignRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*|\s*\[\s*['"][A-Za-z_]\w*['"]\s*\]))\s*=\s*(.*)$`)
+var pyFieldBaseRe = regexp.MustCompile(`^([A-Za-z_]\w*)\s*(?:\.|\[)`)
 
 func buildPythonFunctionScope(path string, lines []srcLine, depth int, scopes *pythonFunctionScopes) map[string]handlerBlock {
 	key := filepath.Clean(path)
@@ -429,11 +431,25 @@ func pyTaintedNames(lines []srcLine, seeds []string, fileStaticMaps map[string]b
 		for name := range fileStaticMaps {
 			staticMaps[name] = true
 		}
+		// A map literal stops being a static allow-list after a tainted field
+		// assignment. Keep subsequent lookups in the taint flow.
+		for name := range set {
+			if m := pyFieldBaseRe.FindStringSubmatch(name); m != nil {
+				delete(staticMaps, m[1])
+			}
+		}
 		params := make([]string, 0, len(set))
 		for name := range set {
 			params = append(params, name)
 		}
 		for _, line := range maskedPythonLines(lines) {
+			if field := pyFieldAssignRe.FindStringSubmatch(line.text); field != nil {
+				target := normalizeTaintTarget(field[1])
+				if !set[target] && pyControllable(field[2], params) {
+					set[target] = true
+					changed = true
+				}
+			}
 			m := assign.FindStringSubmatch(line.text)
 			if m == nil || strings.HasPrefix(strings.TrimSpace(m[2]), "=") || set[m[1]] ||
 				pyStaticMapLookup(m[2], staticMaps) || !pyControllable(m[2], params) {
@@ -642,8 +658,9 @@ func scanPythonBlock(path string, b handlerBlock) []Issue {
 }
 
 func pyControllable(expr string, params []string) bool {
+	expr = normalizeTaintTarget(expr)
 	for _, p := range params {
-		if p != "" && containsWord(expr, p) {
+		if p != "" && containsWord(expr, normalizeTaintTarget(p)) {
 			return true
 		}
 	}

@@ -514,14 +514,16 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   within bounded depth, file count and source size.
   Python follows explicitly imported helpers and their helper chains across
   same-directory modules, within bounded depth, file count and source size.
+  JS/TS, Python and Go also track taint through simple statically named fields;
+  Python and Go support literal dictionary/map keys.
   Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods
   and through unique same-file helpers.
   Be aware of the known limits; a clean report is not proof of safety:
 - Cross-file taint tracking is limited to Go same-package free functions and
   methods with an inferable receiver type, plus explicitly imported Python/JS/TS
   helpers. Go leaves calls on opaque or ambiguous receivers unresolved. Python
-  and JS/TS module traversal is bounded. The engine does not track re-exports,
-  object properties, returned values, dynamic dispatch, JS/TS ES default or
+  and JS/TS module traversal is bounded. The engine does not model arbitrary
+  object graphs, returned values, dynamic dispatch, JS/TS ES default or
   namespace imports, computed module-object calls, or package imports. Sink
   matching is pattern-based, so unusual formatting and generated code can still
   be missed or misclassified.
