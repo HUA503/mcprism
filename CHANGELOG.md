@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.42.4] - 2026-11-27
+
 ### Improved
 
 - Detect additional Chinese priority-forgery and safety-policy-degradation
@@ -714,6 +716,7 @@ secrets on a command line no longer appear in reports.
 [0.38.0]: https://github.com/HUA503/mcprism/compare/v0.37.0...v0.38.0
 [0.39.0]: https://github.com/HUA503/mcprism/compare/v0.38.0...v0.39.0
 [0.41.0]: https://github.com/HUA503/mcprism/compare/v0.40.0...v0.41.0
+[0.42.4]: https://github.com/HUA503/mcprism/compare/v0.42.3...v0.42.4
 [0.42.3]: https://github.com/HUA503/mcprism/compare/v0.42.2...v0.42.3
 [0.42.2]: https://github.com/HUA503/mcprism/compare/v0.42.1...v0.42.2
 [0.42.1]: https://github.com/HUA503/mcprism/compare/v0.42.0...v0.42.1
