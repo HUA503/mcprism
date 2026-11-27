@@ -1117,16 +1117,17 @@ func isJSIdent(s string) bool {
 // ---------- shared block/lexer helpers ----------
 
 type handlerBlock struct {
-	name          string
-	params        []string
-	lines         []srcLine
-	path          string
-	receiverName  string
-	receiverType  string
-	receiverTypes map[string]string
-	goImports     map[string][]string
-	goImportDepth int
-	goSourceBytes int64
+	name            string
+	params          []string
+	lines           []srcLine
+	path            string
+	receiverName    string
+	receiverType    string
+	receiverTypes   map[string]string
+	goImports       map[string][]string
+	goImportDepth   int
+	goSourceBytes   int64
+	rustModuleDepth int
 }
 
 // matchClose returns the index of the closing character for the opener at

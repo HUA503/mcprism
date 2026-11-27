@@ -66,6 +66,13 @@ are also recognized for the supported request libraries.
 
 Rust process and file sinks follow direct and grouped aliases of
 `std::process::Command` and `std::fs::File` in explicit `use` declarations.
+During Cargo directory scans, Rust also follows explicit `use crate::...`,
+`use self::...` and `use super::...` imports to uniquely named free functions
+in the same package. This traversal is limited to eight import hops, 64 source
+files and 16 MiB per tool entry. It excludes `tests`, `examples`, `benches` and
+`src/bin` from the shared helper index. Grouped imports, re-exports, external
+crates, direct qualified calls such as `helpers::run_command(...)`, and
+ambiguous helper names are not resolved.
 
 ## How taint is tracked
 
@@ -92,9 +99,9 @@ CommonJS module object when they reference exported helpers from same-directory
 modules. It continues through helper calls in those modules. Python and JS/TS cross-module traversal
 is bounded by eight imports deep, 64 source files and 16 MiB of source per
 analyzed entry file. Rust recognizes the official `rmcp` `#[tool]` macro and
-follows local aliases through unique same-file helper functions, including
-multi-step calls. Rust does not
-expand macros or resolve trait-based dispatch.
+follows local aliases through same-file helpers and explicitly imported,
+uniquely named free functions in the scanned Cargo package, within the bounds
+above. Rust does not expand macros or resolve trait-based dispatch.
 Sink recognition remains pattern-based. Common safe patterns are recognized
 where implemented.
 
@@ -105,8 +112,9 @@ container mutation, and values returned from a function are not modeled.
 
 This is not a full-program data-flow analyzer. Cross-file tracking is limited to
 bounded Go same-package free-function calls, methods with an inferable receiver
-type, and exported free functions in local module packages, plus explicitly
-imported Python and JS/TS helpers. Go leaves imported methods and calls on
+type, and exported free functions in local module packages; explicitly
+imported Python and JS/TS helpers; and explicitly imported Rust helpers from
+the same Cargo package. Go leaves imported methods and calls on
 opaque or ambiguous receivers unresolved. Captured receivers are followed when
 their type has a unique same-file declaration or constructor.
 Python supports
@@ -641,7 +649,11 @@ Do not construct a module name or path from tool input.
 ## Limits
 
 - JavaScript/TypeScript and Rust taint follows simple aliases and arguments
-  passed to unambiguous same-file helpers. JS/TS also follows named ES imports
+  passed to unambiguous same-file helpers. Rust also follows direct `crate`,
+  `self` and `super` imports of uniquely named functions during Cargo directory
+  scans, within eight import hops, 64 files and 16 MiB per entry; it excludes
+  `tests`, `examples`, `benches` and `src/bin` from the shared helper index.
+  JS/TS also follows named ES imports
   and static CommonJS `require()` imports or direct named calls through a
   module object for exported helpers and their local helper chains across
   same-directory modules, with bounded depth, file count and total source size.
@@ -654,8 +666,8 @@ Do not construct a module name or path from tool input.
   entry. It does not resolve imported methods or packages outside the scanned
   tree. JS/TS helper tracking
   currently recognizes function declarations and block-bodied arrow functions;
-  Rust helper resolution uses unique names and does not model trait dispatch or
-  macro expansion. Other values passed through files, object properties,
+  Rust does not resolve grouped imports, re-exports, direct qualified calls,
+  trait dispatch or macro expansion. Other values passed through files, object properties,
   return values, dynamic dispatch, re-exports, computed module-object calls and
   unsupported import forms may be missed.
 - Sink detection is pattern-based, not a full AST/data-flow analysis. Unusual
