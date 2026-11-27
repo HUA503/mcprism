@@ -64,7 +64,7 @@ main() {
     base="${GITHUB}/releases/latest/download"
   else
     if ! printf '%s\n' "$requested_version" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
-      echo "error: invalid MC_PRISM_VERSION '$requested_version' (expected latest or a version such as v0.29.0)" >&2
+      echo "error: invalid MC_PRISM_VERSION '$requested_version' (expected latest or a version such as v0.30.0)" >&2
       exit 1
     fi
     case "$requested_version" in
