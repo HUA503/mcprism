@@ -513,7 +513,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   exported helpers and their helper chains across same-directory modules,
   within bounded depth, file count and source size.
   Python follows explicitly imported helpers and their helper chains across
-  same-directory modules, within bounded depth, file count and source size.
+  same-directory modules and relative imports within marked parent packages,
+  within bounded depth, file count and source size.
   JS/TS, Python and Go also track taint through simple statically named fields;
   Python and Go support literal dictionary/map keys.
   Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods

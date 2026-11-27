@@ -64,7 +64,10 @@ Method calls are followed when the receiver type can be identified from a
 same-file declaration or composite literal, a unique same-package constructor
 return type, or the current method receiver. Python follows explicitly imported
 functions and helpers called through explicit module aliases across
-same-directory modules.
+same-directory modules, including parent-package modules reached through
+explicit relative imports. Parent traversal requires an `__init__.py` marker
+at each package level, so a crafted import cannot expand a single-file scan
+into unrelated parent directories.
 JS/TS follows named ES imports, destructured CommonJS `require()` imports, and
 direct named calls through a statically required CommonJS module object when
 they reference exported helpers from same-directory modules. It continues
@@ -88,7 +91,8 @@ receiver type, plus explicitly imported Python and JS/TS helpers. Go leaves
 method calls on opaque or ambiguous receivers unresolved. Captured receivers
 are followed when their type has a unique same-file declaration or constructor.
 Python supports
-named imports and direct module imports with an alias; JS/TS follows named ES
+named imports and direct module imports with an alias, including multi-level
+relative imports inside marked packages; JS/TS follows named ES
 imports and CommonJS `require()` imports plus local helper calls in imported
 modules within the limits above. ES namespace imports, computed module-object
 properties, re-exports, package resolution and other import forms are not
@@ -201,7 +205,9 @@ def run(command: str):
 ```
 
 This is limited to an unambiguous local module file and the same traversal
-budgets. Package imports and dynamic module names are not resolved.
+budgets. Multi-level relative imports are resolved only while each parent
+package has an `__init__.py` marker. Absolute dotted package imports and dynamic
+module names are not resolved.
 
 Vulnerable (Python):
 
@@ -235,7 +241,8 @@ def run_with_shell(command: str):
 
 The finding points to the sink in `local_helpers.py`. The same analysis follows
 further unambiguous local helper calls and named imports within its resource
-limits.
+limits. In a package, `from ..shell import run` is also followed when each
+parent package level has an `__init__.py` file.
 
 Vulnerable (Go), a tool argument handed to a shell:
 
@@ -570,8 +577,9 @@ Do not construct a module name or path from tool input.
   and static CommonJS `require()` imports or direct named calls through a
   module object for exported helpers and their local helper chains across
   same-directory modules, with bounded depth, file count and total source size.
-  Python follows explicit
-  imports and helper chains across same-directory modules within the same limits.
+  Python follows explicit imports and helper chains across same-directory
+  modules and marked parent packages within the same limits. Absolute dotted
+  package imports and re-exports are not resolved.
   Go follows unique same-package free functions and receiver-type-matched
   methods across files. JS/TS helper tracking
   currently recognizes function declarations and block-bodied arrow functions;

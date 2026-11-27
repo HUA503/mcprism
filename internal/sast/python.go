@@ -63,7 +63,7 @@ func analyzePython(path string) []Issue {
 var pyToolDecRe = regexp.MustCompile(`@[\w\.]+\.(tool|call_tool)\b`)
 var pyDefRe = regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
 var pyCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
-var pyFromImportRe = regexp.MustCompile(`^from\s+(\.{0,1}[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+import\s+(.+?)\s*$`)
+var pyFromImportRe = regexp.MustCompile(`^from\s+(\.*[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*|\.+)\s+import\s+(.+?)\s*$`)
 var pyImportRe = regexp.MustCompile(`^import\s+(.+?)\s*$`)
 var pyFieldAssignRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*|\s*\[\s*['"][A-Za-z_]\w*['"]\s*\]))\s*=\s*(.*)$`)
 var pyFieldBaseRe = regexp.MustCompile(`^([A-Za-z_]\w*)\s*(?:\.|\[)`)
@@ -223,9 +223,8 @@ func buildPythonFunctionScope(path string, lines []srcLine, depth int, scopes *p
 	return functions
 }
 
-// mergePythonImportedFunctions resolves explicit imports from bounded,
-// same-directory Python modules. Ambiguous aliases and star imports stay
-// unresolved.
+// mergePythonImportedFunctions resolves explicit imports from bounded local
+// Python modules. Ambiguous aliases and star imports stay unresolved.
 func mergePythonImportedFunctions(path string, lines []srcLine, functions map[string]handlerBlock, localNames map[string]bool, depth int, scopes *pythonFunctionScopes) {
 	type importedHelper struct {
 		block handlerBlock
@@ -335,11 +334,40 @@ func pythonImportedScope(modulePath string, depth int, scopes *pythonFunctionSco
 }
 
 func pythonLocalModulePath(path, module string) string {
-	name := strings.TrimPrefix(module, ".")
-	if name == "" || strings.Contains(name, ".") || strings.ContainsAny(name, `/\\`) {
+	dotCount := len(module) - len(strings.TrimLeft(module, "."))
+	name := module[dotCount:]
+	baseDir := filepath.Dir(path)
+	if dotCount > 0 {
+		// A single leading dot is relative to this package directory; each
+		// additional dot moves up one package level. Require an explicit
+		// package marker before each ascent so a hostile import cannot make a
+		// single-file scan read arbitrary parent directories.
+		for i := 1; i < dotCount; i++ {
+			marker, err := os.Lstat(filepath.Join(baseDir, "__init__.py"))
+			if err != nil || !marker.Mode().IsRegular() {
+				return ""
+			}
+			baseDir = filepath.Dir(baseDir)
+		}
+		if dotCount > 1 {
+			marker, err := os.Lstat(filepath.Join(baseDir, "__init__.py"))
+			if err != nil || !marker.Mode().IsRegular() {
+				return ""
+			}
+		}
+		if name == "" {
+			name = "__init__"
+		}
+	} else if name == "" || strings.Contains(name, ".") {
 		return ""
 	}
-	candidate := filepath.Join(filepath.Dir(path), name+".py")
+	parts := strings.Split(name, ".")
+	for _, part := range parts {
+		if !isIdent(part) {
+			return ""
+		}
+	}
+	candidate := filepath.Join(baseDir, filepath.Join(parts...)+".py")
 	info, err := os.Lstat(candidate)
 	if err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize {
 		return ""
