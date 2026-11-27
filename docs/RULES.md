@@ -26,7 +26,7 @@ disabled, reweighted or suppressed through policy; see POLICIES.md.
 
 | Rule | OWASP | Default | What it detects |
 |---|---|---|---|
-| MCP201 | MCP03 | High–Critical | Common English, Simplified/Traditional Chinese, Japanese and Korean prompt-injection directives in tool name/description/schema, including policy overrides, refusal bypasses, claims of elevated authority and requests to reveal hidden reasoning |
+| MCP201 | MCP03 | High–Critical | Common English, Simplified/Traditional Chinese, Japanese and Korean prompt-injection directives in server instructions and tool, resource or prompt metadata, including policy overrides, refusal bypasses, claims of elevated authority and requests to reveal hidden reasoning |
 | MCP202 | MCP03 | High (Critical for bidi) | Zero-width / bidirectional Unicode |
 | MCP203 | MCP03 | Medium–High | Hidden HTML comments/script tags, embedded images/links |
 | MCP204 | MCP03 | Medium | Large base64/hex blobs that may conceal payloads |

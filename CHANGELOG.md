@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [Unreleased]
+
+### Improved
+
+- Scan server-provided instructions for prompt-injection patterns during the
+  existing dynamic handshake, using the same offline multilingual rules as
+  tool, resource and prompt metadata.
+
 ## [0.40.0] - 2026-11-27
 
 ### Improved
