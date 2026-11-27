@@ -74,11 +74,14 @@ var (
 	imperative = regexp.MustCompile(`(?i)\b(you (must|will|need to)|always |never |before (calling|using|invoking)|make sure to|do not (use|call|invoke))`)
 )
 
-// metadataPoisoningRules checks every piece of metadata the server loads into
-// the agent's context: tools, resources and prompt templates. All three can
-// carry injected instructions, hidden Unicode or encoded payloads.
+// metadataPoisoningRules checks server-provided text loaded into the agent's
+// context: instructions, tools, resources and prompt templates. Any of these
+// can carry injected instructions, hidden Unicode or encoded payloads.
 func metadataPoisoningRules(in Input) []Finding {
 	var f []Finding
+	if in.Init != nil && strings.TrimSpace(in.Init.Instructions) != "" {
+		f = append(f, scanMetadata(in.Server.Name, "server instructions", "server:instructions", in.Init.Instructions)...)
+	}
 
 	for _, t := range in.Tools {
 		scan := strings.Join([]string{t.Name, t.Title, t.Description, string(t.Annotations), string(t.InputSchema)}, "\n")
@@ -152,11 +155,15 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 		}
 	}
 	if len(hits) > 0 {
+		title := "Prompt injection in " + noun + " metadata"
+		if kind == "server instructions" {
+			title = "Prompt injection in server instructions"
+		}
 		f = append(f, Finding{
-			RuleID: "MCP201", Title: "Prompt injection in " + noun + " metadata",
+			RuleID: "MCP201", Title: title,
 			Severity: worst, OWASP: "MCP03", Server: server, Location: loc,
 			Evidence:    clipEvidence(strings.Join(hits, " | "), 200),
-			Description: "This metadata is server-controlled and is loaded into the agent's context. The model may follow these instructions over the system prompt, leading to data exfiltration or unauthorized actions (metadata poisoning).",
+			Description: "This server-controlled text is loaded into the agent's context. The model may follow these instructions over the system prompt, leading to data exfiltration or unauthorized actions (metadata poisoning).",
 			Advice:      "Treat server metadata as untrusted data; remove the server or sanitize it; add guardrails that block injected directives.",
 			References:  []string{"https://genai.owasp.org/resource/mcp-tool-poisoning/"},
 		})

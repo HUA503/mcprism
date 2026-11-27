@@ -155,10 +155,11 @@ below, with no network needed.
   named like command, url or path that accepts any value is flagged as command,
   SSRF or path risk. Parameters constrained with enum, const or pattern are
   left alone.
-- Tool-poisoning checks. Deterministic offline signatures cover common prompt
-  injection directives in English, Simplified and Traditional Chinese, Japanese
-  and Korean. They flag known patterns; they do not understand every paraphrase
-  or prove that tool metadata is safe.
+- Tool-poisoning checks. Deterministic offline signatures inspect tool and
+  server instructions for common prompt-injection directives in English,
+  Simplified and Traditional Chinese, Japanese and Korean. They flag known
+  patterns; they do not understand every paraphrase or prove that metadata is
+  safe.
 - Policy as code. Turn rules on/off, change severity, allow or deny packages,
   commands and domains, and require network isolation. Built-in profiles give
   you `default`, `strict` and `ci` baselines.
