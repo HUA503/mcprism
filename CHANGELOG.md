@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-27
+
 ### Added
 
 - Follow Python tool input into helpers called through explicit same-directory
