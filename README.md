@@ -498,7 +498,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   follows unique free functions and methods with inferable receiver types
   across files in the same package. JS/TS
   recognizes function declarations and block-bodied arrow helpers. JS/TS also
-  follows named ES imports and destructured CommonJS `require()` imports of
+  follows named ES imports and static CommonJS `require()` calls, including
+  destructured bindings and direct named calls through a module object, of
   exported helpers and their helper chains across same-directory modules,
   within bounded depth, file count and source size.
   Python follows explicitly imported helpers and their helper chains across
@@ -510,8 +511,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   methods with an inferable receiver type, plus explicitly imported Python/JS/TS
   helpers. Go leaves calls on opaque or ambiguous receivers unresolved. Python
   and JS/TS module traversal is bounded. The engine does not track re-exports,
-  object properties, returned values, dynamic dispatch, JS/TS default or
-  namespace imports, module-object `require()` calls, or package imports. Sink
+  object properties, returned values, dynamic dispatch, JS/TS ES default or
+  namespace imports, computed module-object calls, or package imports. Sink
   matching is pattern-based, so unusual formatting and generated code can still
   be missed or misclassified.
 - Go uses the standard-library `go/parser` to locate helper function boundaries;
