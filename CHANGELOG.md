@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.32.0] - 2026-11-27
+
+### Added
+
+- Discover JetBrains Air MCP servers from the user config at
+  `~/.jetbrains/mcp/mcp.json` and shareable project config at `.air/mcp.json`.
+
 ## [0.31.0] - 2026-11-27
 
 ### Added
@@ -592,6 +599,7 @@ secrets on a command line no longer appear in reports.
 - Interactive terminal UI and a bundled demo server.
 
 [0.31.0]: https://github.com/HUA503/mcprism/compare/v0.30.1...v0.31.0
+[0.32.0]: https://github.com/HUA503/mcprism/compare/v0.31.0...v0.32.0
 [0.30.1]: https://github.com/HUA503/mcprism/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/HUA503/mcprism/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/HUA503/mcprism/compare/v0.28.0...v0.29.0
