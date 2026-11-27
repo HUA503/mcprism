@@ -422,7 +422,7 @@ JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`ht
 
 - 跨文件追踪覆盖 Go 同 package 普通函数，以及能从同文件声明、字面量或唯一构造函数返回类型推断 receiver 类型的方法；Python/JS/TS 跟踪显式导入的 helper，其中 Python/JS/TS 有深度、文件数和源码体积上限，且不追踪重新导出。Python 支持 `__init__.py` 标记包中的显式多层相对导入；不解析绝对 dotted package 导入。JS/TS 支持同目录模块的具名和命名空间 ES 导入、解构式 CommonJS `require()` 导入，以及通过模块对象进行的静态具名调用；不支持默认 ES 导入、动态计算的属性名或 npm 等包导入。命名空间导入仅追踪直接调用的已导出函数。Go 无法识别或无法唯一确定 receiver 类型的 method 调用仍不会追踪。JS/TS、Python 和 Go 还会追踪由受控输入赋值的简单静态字段；Python 和 Go 支持字面量字典/map 键。引擎不建模任意对象图、函数返回值或动态分派。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
 - Go 使用标准库 `go/parser` 定位 helper 函数边界，但尚未构建全程序数据流图；JS/Python 没有使用 tree-sitter。
-- Rust 识别 `rmcp` 的 `#[tool]` 宏，以及常见进程、`reqwest`、文件系统和密钥模式。
+- Rust 识别 `rmcp` 的 `#[tool]` 宏，以及常见进程、`reqwest`、文件系统和密钥模式；进程与文件规则支持 `std::process::Command`、`std::fs::File` 的直接及分组 `use` 别名。
 - 只分析 JavaScript/TypeScript、Python、Go、Rust；其他语言写的 server 只做配置和元数据层面的检查。
 
 对高风险 server，请配合完整数据流分析工具和人工复核一起使用。规则细节和更多示例见 [docs/SAST.md](docs/SAST.md)。

@@ -51,6 +51,9 @@ destructured CommonJS imports from `child_process`, `axios`, `http`, `https`,
 `got`, `request`, `node-fetch` and `undici`. Statically imported module objects
 are also recognized for the supported request libraries.
 
+Rust process and file sinks follow direct and grouped aliases of
+`std::process::Command` and `std::fs::File` in explicit `use` declarations.
+
 ## How taint is tracked
 
 For every registered tool, the handler parameters are marked as controlled by
@@ -290,8 +293,10 @@ same source file remain unresolved.
 Vulnerable (Rust, official `rmcp` SDK):
 
 ```rust
+use std::process::Command as Process;
+
 fn run_with_shell(command: String) {
-    Command::new("sh").arg("-c").arg(command).output().unwrap();
+    Process::new("sh").arg("-c").arg(command).output().unwrap();
 }
 
 #[tool]

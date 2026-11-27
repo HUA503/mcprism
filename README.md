@@ -532,8 +532,10 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   it does not build a full-program data-flow graph. JS/Python do not use
   tree-sitter.
 - Rust analysis recognizes the official `rmcp` `#[tool]` macro and common
-  process, `reqwest`, filesystem and secret patterns. It follows uniquely named
-  same-file helpers but does not expand macros or resolve trait dispatch.
+  process, `reqwest`, filesystem and secret patterns, including direct and
+  grouped `use` aliases for `std::process::Command` and `std::fs::File`. It
+  follows uniquely named same-file helpers but does not expand macros or resolve
+  trait dispatch.
 - Only JavaScript/TypeScript, Python, Go and Rust are analyzed; servers in other
   languages get config- and metadata-level checks only.
 
