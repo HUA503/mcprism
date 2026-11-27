@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.36.0] - 2026-11-27
+
+### Improved
+
+- Recognize JavaScript/TypeScript command and request sinks imported under
+  explicit ES module, CommonJS destructuring, and supported module aliases.
+
 ## [0.35.0] - 2026-11-27
 
 ### Improved
@@ -625,6 +632,7 @@ secrets on a command line no longer appear in reports.
 [0.33.0]: https://github.com/HUA503/mcprism/compare/v0.32.0...v0.33.0
 [0.34.0]: https://github.com/HUA503/mcprism/compare/v0.33.0...v0.34.0
 [0.35.0]: https://github.com/HUA503/mcprism/compare/v0.34.0...v0.35.0
+[0.36.0]: https://github.com/HUA503/mcprism/compare/v0.35.0...v0.36.0
 [0.30.1]: https://github.com/HUA503/mcprism/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/HUA503/mcprism/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/HUA503/mcprism/compare/v0.28.0...v0.29.0
