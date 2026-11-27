@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.37.0] - 2026-11-27
+
+### Improved
+
+- Follow Python helper imports through multi-level relative imports inside
+  packages with `__init__.py` markers, within the existing SAST resource limits.
+
 ## [0.36.0] - 2026-11-27
 
 ### Improved
