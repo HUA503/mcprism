@@ -27,7 +27,7 @@ sha256_of() {
 }
 
 invalid_version() {
-  echo "error: invalid MC_PRISM_VERSION '${MC_PRISM_VERSION:-}' (expected latest or a version such as v0.30.1)" >&2
+  echo "error: invalid MC_PRISM_VERSION '${MC_PRISM_VERSION:-}' (expected latest or a version such as v0.31.0)" >&2
   exit 1
 }
 
