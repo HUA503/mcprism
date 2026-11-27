@@ -250,7 +250,7 @@ mcprism profiles             # 組み込みプロファイルを一覧
 静的モードで 2 つのローカルサーバーをスキャン：
 
 ```text
-◆ mcprism   v0.42.0 · 2026-11-27
+◆ mcprism   v0.42.1 · 2026-11-27
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
