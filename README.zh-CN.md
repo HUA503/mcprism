@@ -10,13 +10,13 @@
 
 MCP server 把 AI 助手连接到 GitHub、文件、数据库等外部工具和数据。它可能运行命令或读取文件，因此 mcprism 会检查它的配置和本地源码，并报告潜在风险。
 
-运行 `mcprism scan` 检查 AI 客户端里已配置的 server；如果没有发现配置，用 `mcprism doctor` 查看发现结果；用 `mcprism vet ...` 单独审查准备接入的 server。动态探测需要主动开启，只会列出工具，不会调用工具。如果你暂时不用 MCP，可能还不需要 mcprism。
+运行 `mcprism scan` 检查 AI 客户端里已配置的 server；如果没有发现配置，用 `mcprism doctor` 查看发现结果；用 `mcprism vet ...` 单独审查准备接入的 server。动态探测需要主动开启，默认只枚举能力、不调用工具；加 `--read-content` 后还会读取有限的 prompt/resource 正文进行扫描。如果你暂时不用 MCP，可能还不需要 mcprism。
 
 mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server 的安全扫描器。它从三个角度审查一个 server：
 
 1. **配置**：客户端如何启动或连接它——版本是否固定、是否明文传输、配置里有没有凭据、是否指向云元数据或内网。
 2. **源码**：当实现代码就在本地时，读取 JS/TS/Python/Go/Rust 的工具 handler，追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及 eval、不安全反序列化和硬编码密钥。
-3. **运行时**：自动协商新版无状态 MCP 协议或旧版握手，列出 tools、resources、prompts，并检查工具元数据是否被投毒。它不会调用任何工具。
+3. **运行时**：自动协商新版无状态 MCP 协议或旧版握手，列出 tools、resources、prompts，并检查元数据是否被投毒；显式开启 `--read-content` 时还会读取有限的正文。它不会调用任何工具。
 
 每个 server 都会得到一份发现清单、一个 0–100 的分数和一个 A–F 的评级。整个工具是一个 Go 二进制，没有运行时依赖。本地配置和源码扫描完全离线；`registry` 命令会主动连接官方 Registry 获取公开元数据，但不会启动或连接条目中的 server。动态探测必须显式开启（`--dynamic` / `--probe`）。
 
@@ -70,6 +70,17 @@ mcprism demo --format html --output mcprism-demo.html
 
 在 Windows PowerShell 中用 `Invoke-Item .\mcprism-demo.html` 打开报告。
 要扫描你实际配置的 MCP 客户端，运行 `mcprism scan`。
+
+想体验真实协议下的 prompt/resource 正文扫描，可以在源码仓库里构建并运行
+内置的安全示例 server。它只返回固定示例文本，不会执行恶意描述里的动作：
+
+```sh
+mkdir -p bin && go build -o bin/testserver ./examples/testserver
+mcprism scan examples/dynamic.mcp.json --dynamic --read-content
+```
+
+Windows PowerShell 请先运行 `New-Item -ItemType Directory -Force bin`，再运行
+`go build -o bin/testserver.exe ./examples/testserver`，然后执行扫描命令。
 
 要从当前目录向上查找项目级配置并跳过个人配置，运行 `mcprism scan --project-only`。
 
@@ -602,14 +613,14 @@ flowchart TD
 
 ## 常见问题
 
-**mcprism 会调用我的工具吗？**
-不会。它只做 MCP 的 initialize 和列出请求，不会调用工具、不会通过 server 打开文件、也不会发送提示词。
+**mcprism 会调用我的工具或读取我的数据吗？**
+它不会调用 `tools/call`。默认动态探测只初始化 server 并枚举能力。显式加上 `--read-content` 后，还会发送 `resources/read` 和 `prompts/get` 请求；server 可能返回文件或其他资源数据以及渲染后的提示词正文。只对可信目标开启。读取内容只在本地扫描，不会保存到报告；规则命中时报告可能包含匹配证据片段。
 
 **`inventory save` 和 `inventory verify` 会启动 server 吗？**
 会连接远程 server 或启动 stdio 进程来枚举工具，但不会调用工具。检查不可信目标时请使用沙箱或不含密钥的专用 runner；锁文件只保存工具名和哈希。
 
 **它会把数据发到别处吗？**
-没有遥测，也不会上传本地配置或报告。`registry search` 和 `registry audit` 会把搜索词发送给官方 MCP Registry，`registry scan` 会发送指定名称以获取公开元数据；其他静态扫描不会联网。动态扫描（`scan --dynamic` / `vet --probe`）会启动或连接你指定的 server，该进程可能执行代码或联网，请在沙箱里运行。探测会拒绝跨 host 重定向、拒绝连接云元数据/link-local 地址，默认也不会把你的 shell 环境传给被拉起的 server。
+没有遥测，也不会上传本地配置或报告。`registry search` 和 `registry audit` 会把搜索词发送给官方 MCP Registry，`registry scan` 会发送指定名称以获取公开元数据；其他静态扫描不会联网。动态扫描（`scan --dynamic` / `vet --probe`）会启动或连接你指定的 server，该进程可能执行代码或联网，请在沙箱里运行。探测会拒绝跨 host 重定向、拒绝连接云元数据/link-local 地址，默认也不会把你的 shell 环境传给被拉起的 server。`--read-content` 还会请求 server 读取资源和渲染 prompt，只应在确认这些操作适用时开启。
 
 **我的 token 会出现在报告里吗？**
 不会。URL 里的账号密码、`--api-key`/`--token` 一类参数、`key=value`、`Bearer` 头，以及已知 token 前缀（AWS、GitHub、Slack、GitLab、OpenAI、JWT）都会在目标字符串和证据里被掩码成 `***`，所有输出格式一致。检测仍基于原始值进行，因此脱敏不会造成漏报。

@@ -6,6 +6,12 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Improved
+
+- Extend the bundled live-probe fixture with safe, fixed prompt and resource
+  bodies so users can try `--read-content` end to end.
+- Clarify when live probing requests resource data or rendered prompt text.
+
 ## [0.42.0] - 2026-11-27
 
 ### Added

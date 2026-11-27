@@ -13,9 +13,9 @@ and databases. Because it may run commands or read files, mcprism reviews its
 configuration and local source code and reports potential risks. Run
 `mcprism scan` to check servers already configured in your AI client, or
 `mcprism doctor` if discovery finds no servers. Use `mcprism vet ...` to review
-one before adding it. Optional live inspection
-lists a server's tools without calling them. If you do not use MCP servers, you
-probably do not need mcprism yet.
+one before adding it. Optional live inspection lists tools without calling
+them; add `--read-content` to scan bounded prompt/resource text too. If you do
+not use MCP servers, you probably do not need mcprism yet.
 
 mcprism is a security scanner for [Model Context Protocol](https://modelcontextprotocol.io/)
 servers. It looks at a server from three angles:
@@ -28,8 +28,9 @@ servers. It looks at a server from three angles:
    dangerous sinks: process execution, outbound requests (SSRF) and filesystem
    paths, along with eval, unsafe deserialization and hardcoded secrets.
 3. **Runtime** — it negotiates the current stateless MCP protocol or the legacy
-   handshake, then lists tools, resources and prompts and checks tool metadata
-   for poisoning. It never calls a tool.
+   handshake, then lists tools, resources and prompts and checks their
+   metadata for poisoning. `--read-content` also requests bounded resource and
+   prompt text. Neither mode calls tools.
 
 Every server gets a list of findings, a 0–100 score and an A–F grade. mcprism
 ships as one Go binary with no runtime dependencies. Local config and source
@@ -96,6 +97,18 @@ mcprism demo --format html --output mcprism-demo.html
 
 On Windows PowerShell, open the report with `Invoke-Item .\mcprism-demo.html`.
 To scan your configured MCP clients, run `mcprism scan`.
+
+To try live inspection of prompt/resource bodies, build and scan the bundled
+fixture from a source checkout. It returns fixed sample content and never
+performs the actions described in its deliberately hostile text:
+
+```sh
+mkdir -p bin && go build -o bin/testserver ./examples/testserver
+mcprism scan examples/dynamic.mcp.json --dynamic --read-content
+```
+
+On Windows PowerShell, use `New-Item -ItemType Directory -Force bin` and
+`go build -o bin/testserver.exe ./examples/testserver` before running the scan.
 
 To auto-discover only project configs from your current directory and its
 parents, run `mcprism scan --project-only`.
@@ -806,9 +819,13 @@ Based on public project descriptions (features may change):
 
 ## FAQ
 
-**Does mcprism call my tools?**
-No. It performs the MCP initialization and listing calls only. Tools are not
-invoked, files are not opened through a server, and prompts are not sent.
+**Does mcprism call my tools or read my data?**
+It never invokes `tools/call`. By default, a live probe only initializes the
+server and lists capabilities. With the explicit `--read-content` option, it
+also sends `resources/read` and `prompts/get`; a server may return file or other
+resource data and rendered prompt text. Use that option only with a trusted
+target. Retrieved text stays local and is not saved in reports, although a
+matched evidence snippet can be included when a rule fires.
 
 **Do inventory save and verify start the target?**
 Yes. They connect to remote servers or start stdio processes to enumerate tool metadata. They never call the tools. Use a sandbox or a dedicated runner without secrets for untrusted targets; the lock contains tool names and hashes only.
@@ -821,7 +838,9 @@ scans do not connect anywhere. A live scan (`--dynamic` for scan, `--probe` for
 vet) connects to the server you point it at and may start its process; treat it
 as untrusted and use a sandbox. Probing refuses cross-host redirects and
 connections to cloud-metadata/link-local addresses, and by default does not
-pass your shell environment to the spawned server.
+pass your shell environment to the spawned server. `--read-content` also asks
+the target to read resources and render prompts, so only enable it when that
+extra server-side work is appropriate.
 
 **Will my tokens end up in the report?**
 No. Credentials in URL userinfo, `--api-key`/`--token` style arguments,
