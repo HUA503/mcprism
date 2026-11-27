@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-27
+
 ### Added
 
 - Follow Go tool input through same-package methods when the receiver type is
