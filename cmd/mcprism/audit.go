@@ -21,16 +21,17 @@ import (
 
 // auditOpts 是 scan 与 vet 共用的审查参数。
 type auditOpts struct {
-	format     string
-	output     string
-	failOn     string
-	policyFile string
-	profile    string
-	suppFile   string
-	baseline   string
-	timeout    time.Duration
-	interact   bool
-	inheritEnv bool
+	format      string
+	output      string
+	failOn      string
+	policyFile  string
+	profile     string
+	suppFile    string
+	baseline    string
+	timeout     time.Duration
+	interact    bool
+	inheritEnv  bool
+	readContent bool
 }
 
 // probeConcurrency bounds how many servers are probed at once so a config with
@@ -51,6 +52,7 @@ func addAuditFlags(cmd *cobra.Command, o *auditOpts) {
 	cmd.Flags().StringVar(&o.suppFile, "suppressions", "", "path to a suppressions YAML file")
 	cmd.Flags().StringVar(&o.baseline, "baseline", "", "path to a previous -f json report; matching findings are shown as suppressed")
 	cmd.Flags().BoolVar(&o.inheritEnv, "inherit-env", false, "give dynamically launched servers the full parent environment (default: a minimal allowlist so host credentials are not leaked)")
+	cmd.Flags().BoolVar(&o.readContent, "read-content", false, "with --dynamic/--probe, read bounded text from listed resources and prompts for injection checks")
 }
 
 // audit 对一组已解析的 server 执行策略加载、可选动态探测、规则分析、
@@ -69,6 +71,9 @@ func audit(servers []*config.Server, files []string, dynamic bool, o auditOpts) 
 	}
 	if o.timeout <= 0 {
 		return fmt.Errorf("--timeout must be positive")
+	}
+	if o.readContent && !dynamic {
+		return fmt.Errorf("--read-content requires --dynamic (or --probe with vet); it sends resources/read and prompts/get requests")
 	}
 	pol, err := policy.Builtin(o.profile)
 	if err != nil {
@@ -121,7 +126,7 @@ func audit(servers []*config.Server, files []string, dynamic bool, o auditOpts) 
 				defer wg.Done()
 				sem <- struct{}{}
 				defer func() { <-sem }()
-				inputs[i] = probeServer(context.Background(), srv, o.timeout)
+				inputs[i] = probeServer(context.Background(), srv, o.timeout, o.readContent)
 			}(i, srv)
 		}
 		wg.Wait()

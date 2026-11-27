@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/HUA503/mcprism/internal/config"
 	"github.com/HUA503/mcprism/internal/policy"
@@ -98,7 +99,8 @@ a config, use 'vet'.
 By default scan is static: it reviews configuration without spawning a
 server process or connecting to a server. Use 'vet' for source files. Pass
 --dynamic to probe live servers; probing starts the server process, so run it
-in a sandbox and treat it as executing untrusted code.`,
+in a sandbox and treat it as executing untrusted code. Add --read-content to
+also request listed resource and prompt text for injection checks.`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(_ *cobra.Command, args []string) error {
 			if projectOnly && len(args) > 0 {
@@ -145,8 +147,9 @@ in a sandbox and treat it as executing untrusted code.`,
 
 func inspectCmd() *cobra.Command {
 	var (
-		format  string
-		timeout time.Duration
+		format      string
+		timeout     time.Duration
+		readContent bool
 	)
 	cmd := &cobra.Command{
 		Use:   "inspect [target]",
@@ -166,25 +169,43 @@ func inspectCmd() *cobra.Command {
 			if len(servers) != 1 {
 				return fmt.Errorf("inspect requires exactly one MCP server (found %d); use 'scan' for multiple servers", len(servers))
 			}
-			in := probeServer(context.Background(), servers[0], timeout)
+			in := probeServer(context.Background(), servers[0], timeout, readContent)
 			if in.ConnectErr != nil {
 				return in.ConnectErr
 			}
+			var findings []rules.Finding
+			if readContent {
+				for _, finding := range rules.Analyze(in).Findings {
+					if finding.RuleID == "MCP502" || strings.Contains(finding.Location, "-content:") {
+						findings = append(findings, finding)
+					}
+				}
+			}
 			if format == "json" {
-				b, _ := json.MarshalIndent(in, "", "  ")
+				output := struct {
+					rules.Input
+					Findings              []rules.Finding `json:"findings,omitempty"`
+					ContentReviewComplete *bool           `json:"contentReviewComplete,omitempty"`
+				}{Input: in, Findings: findings}
+				if readContent {
+					complete := len(in.EnumErr) == 0
+					output.ContentReviewComplete = &complete
+				}
+				b, _ := json.MarshalIndent(output, "", "  ")
 				fmt.Println(string(b))
 				return nil
 			}
-			printInspection(in)
+			printInspection(in, findings)
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&format, "format", "f", "table", "output format: table|json")
 	cmd.Flags().DurationVar(&timeout, "timeout", 10*time.Second, "connection timeout")
+	cmd.Flags().BoolVar(&readContent, "read-content", false, "read bounded text from listed resources and prompts for injection checks")
 	return cmd
 }
 
-func printInspection(in rules.Input) {
+func printInspection(in rules.Input, findings []rules.Finding) {
 	srv := in.Server
 	info := ""
 	if in.Init != nil {
@@ -192,6 +213,9 @@ func printInspection(in rules.Input) {
 			in.Init.ServerInfo.Name, in.Init.ServerInfo.Version, in.Init.ProtocolVersion)
 	}
 	fmt.Printf("● %s  %s\n\n", srv.Name, info)
+	if in.ContentScanned {
+		fmt.Printf("text content inspected: %d block(s)\n\n", in.ContentTextCount)
+	}
 
 	fmt.Printf("tools (%d):\n", len(in.Tools))
 	for _, t := range in.Tools {
@@ -208,6 +232,18 @@ func printInspection(in rules.Input) {
 	fmt.Printf("\nprompts (%d):\n", len(in.Prompts))
 	for _, p := range in.Prompts {
 		fmt.Printf("  - %s  %s\n", p.Name, dim(p.Description))
+	}
+	if in.ContentScanned {
+		fmt.Printf("\ncontent review findings (%d):\n", len(findings))
+		if len(findings) == 0 {
+			fmt.Println("  no matches from the enabled offline rules")
+		}
+		for _, finding := range findings {
+			fmt.Printf("  - %s %s: %s\n", finding.RuleID, finding.Severity, finding.Title)
+			if finding.Evidence != "" {
+				fmt.Printf("    %s\n", finding.Evidence)
+			}
+		}
 	}
 }
 
@@ -337,7 +373,7 @@ func discoverAll(projectDir string, includeGlobal bool) ([]*config.Server, []str
 	return servers, files, nil
 }
 
-func probeServer(parent context.Context, srv *config.Server, timeout time.Duration) rules.Input {
+func probeServer(parent context.Context, srv *config.Server, timeout time.Duration, readContent bool) rules.Input {
 	in := rules.Input{Server: srv}
 	cctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
@@ -370,7 +406,123 @@ func probeServer(parent context.Context, srv *config.Server, timeout time.Durati
 	} else {
 		in.Prompts = prompts
 	}
+	if readContent {
+		readServerContent(cctx, cli, &in)
+	}
 	return in
+}
+
+const (
+	maxContentItemsPerKind = 10
+	maxContentTextBytes    = 1 << 20
+)
+
+func readServerContent(ctx context.Context, cli *protocol.Client, in *rules.Input) {
+	in.ContentScanned = true
+	remaining := maxContentTextBytes
+
+	resources := in.Resources
+	if len(resources) > maxContentItemsPerKind {
+		in.EnumErr = append(in.EnumErr, fmt.Sprintf("resources/read: limited to %d of %d listed resources", maxContentItemsPerKind, len(resources)))
+		resources = resources[:maxContentItemsPerKind]
+	}
+	for _, resource := range resources {
+		contents, err := cli.ReadResource(ctx, resource.URI)
+		if err != nil {
+			in.EnumErr = append(in.EnumErr, fmt.Sprintf("resources/read %s: %v", resource.URI, err))
+			if ctx.Err() != nil {
+				in.EnumErr = append(in.EnumErr, "content inspection stopped: "+ctx.Err().Error())
+				return
+			}
+			continue
+		}
+		for i, content := range contents {
+			if content.Text == "" {
+				continue
+			}
+			name := content.URI
+			if name == "" {
+				name = resource.URI
+			}
+			if i > 0 {
+				name += fmt.Sprintf("#%d", i+1)
+			}
+			if !appendContentText(in, "resource", name, content.Text, &remaining) {
+				in.EnumErr = append(in.EnumErr, fmt.Sprintf("content inspection stopped at the %d-byte text limit; remaining prompts/resources were not read", maxContentTextBytes))
+				return
+			}
+		}
+	}
+
+	prompts := in.Prompts
+	if len(prompts) > maxContentItemsPerKind {
+		in.EnumErr = append(in.EnumErr, fmt.Sprintf("prompts/get: limited to %d of %d listed prompts", maxContentItemsPerKind, len(prompts)))
+		prompts = prompts[:maxContentItemsPerKind]
+	}
+	for _, prompt := range prompts {
+		requiresArgs := false
+		for _, arg := range prompt.Arguments {
+			if arg.Required {
+				requiresArgs = true
+				break
+			}
+		}
+		if requiresArgs {
+			in.EnumErr = append(in.EnumErr, fmt.Sprintf("prompts/get %s: skipped because required arguments cannot be supplied safely", prompt.Name))
+			continue
+		}
+		result, err := cli.GetPrompt(ctx, prompt.Name, nil)
+		if err != nil {
+			in.EnumErr = append(in.EnumErr, fmt.Sprintf("prompts/get %s: %v", prompt.Name, err))
+			if ctx.Err() != nil {
+				in.EnumErr = append(in.EnumErr, "content inspection stopped: "+ctx.Err().Error())
+				return
+			}
+			continue
+		}
+		for i, message := range result.Messages {
+			name := prompt.Name
+			if len(result.Messages) > 1 {
+				name += fmt.Sprintf("#message-%d", i+1)
+			}
+			switch message.Content.Type {
+			case "text":
+				if !appendContentText(in, "prompt", name, message.Content.Text, &remaining) {
+					in.EnumErr = append(in.EnumErr, fmt.Sprintf("content inspection stopped at the %d-byte text limit; remaining prompts/resources were not read", maxContentTextBytes))
+					return
+				}
+			case "resource":
+				if message.Content.Resource != nil && message.Content.Resource.Text != "" {
+					if !appendContentText(in, "prompt", name, message.Content.Resource.Text, &remaining) {
+						in.EnumErr = append(in.EnumErr, fmt.Sprintf("content inspection stopped at the %d-byte text limit; remaining prompts/resources were not read", maxContentTextBytes))
+						return
+					}
+				}
+			}
+		}
+	}
+}
+
+func appendContentText(in *rules.Input, kind, name, text string, remaining *int) bool {
+	if text == "" {
+		return true
+	}
+	if len(text) <= *remaining {
+		in.ContentText = append(in.ContentText, rules.ContentText{Kind: kind, Name: name, Text: text})
+		in.ContentTextCount++
+		*remaining -= len(text)
+		return true
+	}
+	end := *remaining
+	for end > 0 && end < len(text) && !utf8.RuneStart(text[end]) {
+		end--
+	}
+	if end > 0 {
+		in.ContentText = append(in.ContentText, rules.ContentText{Kind: kind, Name: name, Text: text[:end]})
+		in.ContentTextCount++
+		*remaining -= end
+	}
+	return false
 }
 
 // ---------- rendering / exit ----------

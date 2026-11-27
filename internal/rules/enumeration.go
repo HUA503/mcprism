@@ -2,8 +2,8 @@ package rules
 
 import "strings"
 
-// enumerationRules 在连接成功但枚举 tools/resources/prompts 时发生错误时
-// 上报。空列表不等于安全：如果枚举没有完成，不能把"没有危险工具"当作结论。
+// enumerationRules reports incomplete capability listings or requested
+// prompt/resource content inspection. Empty results do not prove safety.
 func enumerationRules(in Input) []Finding {
 	if len(in.EnumErr) == 0 {
 		return nil
@@ -17,13 +17,13 @@ func enumerationRules(in Input) []Finding {
 	}
 	return []Finding{{
 		RuleID:      "MCP502",
-		Title:       "Capability enumeration failed or incomplete",
+		Title:       "Capability or content review incomplete",
 		Severity:    SeverityMedium,
 		OWASP:       "MCP07",
 		Server:      in.Server.Name,
 		Location:    "dynamic enumeration",
 		Evidence:    clipEvidence(b.String(), 160),
-		Description: "The server did not let mcprism finish listing tools, resources or prompts (error, or pagination that failed). A partial or empty list must not be read as \"no dangerous tools\": a tool hidden on a later page was not reviewed.",
-		Advice:      "Retry the scan. If the same list method keeps failing, treat the server as incompletely reviewed and do not rely on a clean result.",
+		Description: "The server did not let mcprism finish listing capabilities or complete explicitly requested prompt/resource content inspection. Partial results do not prove that unreviewed tools or content are safe.",
+		Advice:      "Retry the scan. Supply required prompt arguments only through a reviewed, purpose-built workflow; do not rely on a clean result when capability or content review is incomplete.",
 	}}
 }

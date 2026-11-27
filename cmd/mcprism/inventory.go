@@ -134,7 +134,7 @@ func enumerateForInventory(target, transport string, timeout time.Duration) (*co
 		return nil, nil, fmt.Errorf("inventory requires exactly one MCP server (found %d)", len(servers))
 	}
 	server := servers[0]
-	in := probeServer(context.Background(), server, timeout)
+	in := probeServer(context.Background(), server, timeout, false)
 	if in.ConnectErr != nil {
 		return nil, nil, in.ConnectErr
 	}

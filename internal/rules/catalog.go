@@ -53,7 +53,7 @@ var ruleCatalog = []CatalogEntry{
 	{"MCP807", "Dynamic module require with tool input", "MCP05", "medium", "source"},
 
 	{"MCP501", "MCP handshake failure", "MCP07", "medium", "connection"},
-	{"MCP502", "Capability enumeration failed or incomplete", "MCP07", "medium", "connection"},
+	{"MCP502", "Capability or content review incomplete", "MCP07", "medium", "connection"},
 	{"MCP601", "Cross-server tool name collision", "MCP03", "medium", "cross-server"},
 
 	{"MCP700", "Blocked by policy", "MCP07", "high", "policy"},
