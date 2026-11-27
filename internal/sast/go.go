@@ -93,10 +93,69 @@ func goImportAliasesFromAST(file *ast.File) map[string][]string {
 }
 
 func goImportNamePattern(imports map[string][]string, importPath, fallback string) string {
+	names := goImportNames(imports, importPath, fallback)
+	ordered := make([]string, 0, len(names))
+	for _, name := range names {
+		ordered = append(ordered, regexp.QuoteMeta(name))
+	}
+	return `(?:` + strings.Join(ordered, `|`) + `)`
+}
+
+func goImportNames(imports map[string][]string, importPath, fallback string) []string {
 	names := map[string]bool{fallback: true}
 	for _, name := range imports[importPath] {
 		if isGoIdent(name) {
 			names[name] = true
+		}
+	}
+	ordered := make([]string, 0, len(names))
+	for name := range names {
+		ordered = append(ordered, name)
+	}
+	sort.Strings(ordered)
+	return ordered
+}
+
+var goCallableAssignRe = regexp.MustCompile(`^\s*(?:var\s+)?([A-Za-z_]\w*)\s*(?::=|=)\s*([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*$`)
+
+// goCallableAliases follows simple local function-value assignments for known
+// sinks, for example `run := exec.Command` and `runAgain := run`.
+func goCallableAliases(lines []srcLine, targets []string) map[string]string {
+	aliases := map[string]string{}
+	known := map[string]bool{}
+	for _, target := range targets {
+		known[target] = true
+	}
+	for changed := true; changed; {
+		changed = false
+		for _, line := range maskedGoLines(lines) {
+			m := goCallableAssignRe.FindStringSubmatch(line.text)
+			if m == nil {
+				continue
+			}
+			alias, expr := m[1], m[2]
+			canonical := expr
+			if prior, ok := aliases[expr]; ok {
+				canonical = prior
+			}
+			if !known[canonical] || aliases[alias] == canonical {
+				continue
+			}
+			aliases[alias] = canonical
+			changed = true
+		}
+	}
+	return aliases
+}
+
+func goCallableNames(targets []string, aliases map[string]string) string {
+	names := map[string]bool{}
+	for _, target := range targets {
+		names[target] = true
+	}
+	for alias, target := range aliases {
+		if target != "" {
+			names[alias] = true
 		}
 	}
 	ordered := make([]string, 0, len(names))
@@ -860,10 +919,18 @@ func scanGoBlockWithTaint(path string, b handlerBlock, seeds []string) []Issue {
 	ctrl := goTaintedNames(b.lines, seeds)
 
 	// 1. process execution (MCP801)
-	execPkg := goImportNamePattern(b.goImports, "os/exec", "exec")
-	osPkg := goImportNamePattern(b.goImports, "os", "os")
-	syscallPkg := goImportNamePattern(b.goImports, "syscall", "syscall")
-	cmdRe := regexp.MustCompile(`\b(?:` + execPkg + `\.Command(?:Context)?|` + osPkg + `\.StartProcess|` + syscallPkg + `\.Exec)\s*\(`)
+	var cmdTargets []string
+	for _, pkg := range goImportNames(b.goImports, "os/exec", "exec") {
+		cmdTargets = append(cmdTargets, pkg+".Command", pkg+".CommandContext")
+	}
+	for _, pkg := range goImportNames(b.goImports, "os", "os") {
+		cmdTargets = append(cmdTargets, pkg+".StartProcess")
+	}
+	for _, pkg := range goImportNames(b.goImports, "syscall", "syscall") {
+		cmdTargets = append(cmdTargets, pkg+".Exec")
+	}
+	cmdNames := goCallableNames(cmdTargets, goCallableAliases(b.lines, cmdTargets))
+	cmdRe := regexp.MustCompile(`\b` + cmdNames + `\s*\(`)
 	for _, m := range cmdRe.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
