@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.30.0] - 2026-11-27
+
+### Added
+
+- Pin an installer release with `MC_PRISM_VERSION` on Linux, macOS, and
+  Windows; verify the checksum for the selected release before installing.
+
 ## [0.29.0] - 2026-11-27
 
 ### Added
@@ -570,6 +577,7 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
+[0.30.0]: https://github.com/HUA503/mcprism/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/HUA503/mcprism/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/HUA503/mcprism/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/HUA503/mcprism/compare/v0.26.0...v0.27.0
