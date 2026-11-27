@@ -591,7 +591,7 @@ func jsTaintedNames(lines []srcLine, seeds []string, staticMaps map[string]strin
 		}
 	}
 	assign := regexp.MustCompile(`\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^=;\n][^;\n]*)|\b([A-Za-z_$][\w$]*)\s*=\s*([^=;\n][^;\n]*)`)
-	fieldAssign := regexp.MustCompile(`^\s*([A-Za-z_$][\w$]*\s*\.\s*[A-Za-z_$][\w$]*)\s*=\s*(?!=)(.*)$`)
+	fieldAssign := regexp.MustCompile(`^\s*([A-Za-z_$][\w$]*\s*\.\s*[A-Za-z_$][\w$]*)\s*=\s*([^=].*)$`)
 	for changed := true; changed; {
 		changed = false
 		for _, line := range lines {

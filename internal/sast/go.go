@@ -739,7 +739,7 @@ func goControllableVars(ls []srcLine) map[string]bool {
 // and parameters explicitly passed into same-file helper functions.
 func goTaintedNames(ls []srcLine, seeds []string) map[string]bool {
 	set := goControllableVars(ls)
-	fieldAssign := regexp.MustCompile(`^\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*|\s*\[\s*["'][A-Za-z_]\w*["']\s*\]))\s*(?::=|=)\s*(?!=)(.*)$`)
+	fieldAssign := regexp.MustCompile(`^\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*|\s*\[\s*["'][A-Za-z_]\w*["']\s*]))\s*(?::=|=)\s*([^=].*)$`)
 	for _, name := range seeds {
 		if isGoIdent(name) {
 			set[name] = true
