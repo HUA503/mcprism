@@ -373,7 +373,7 @@ mcprism vet ./mcp-server/src/tool.ts
 - Go：mcp-go 的 `server.AddTool` / `mcp.AddTool` 回调。
 - Rust：官方 `rmcp` SDK 的 `#[tool]` 方法。
 
-对每个工具，它把 handler 参数当作攻击者可控的数据。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 还能跨同一 package 的多个源码文件追踪唯一的普通函数，以及 receiver 类型可识别的方法，Rust 支持多层同文件 helper 调用。发现会标明文件和行号、展示代码、给出修复方式：
+对每个工具，它把 handler 参数当作攻击者可控的数据。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 还能跨同一 package 的多个源码文件追踪唯一的普通函数，以及 receiver 类型可识别的方法，并识别标准库危险 sink 的显式导入别名；Rust 支持多层同文件 helper 调用。发现会标明文件和行号、展示代码、给出修复方式：
 
 | 规则 | sink | 默认级别 |
 |---|---|---|

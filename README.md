@@ -457,8 +457,9 @@ It recognizes the common SDKs and frameworks:
 For each tool it treats handler arguments as attacker-controlled data. JS/TS,
 Python, Go and Rust analysis follows simple local aliases and arguments passed
 to unambiguous helpers in the same file. Rust recognizes unique helper function
-names, including multi-step call chains. Findings name the file and line, show
-the code, and say how to fix it:
+names, including multi-step call chains. Go sink checks also recognize explicit
+aliases for standard-library process, HTTP and filesystem packages. Findings
+name the file and line, show the code, and say how to fix it:
 
 | Rule | Sink | Default |
 |---|---|---|
