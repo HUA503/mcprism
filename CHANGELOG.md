@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.40.0] - 2026-11-27
+
+### Improved
+
+- Recognize Go process, HTTP and filesystem sinks imported under explicit
+  standard-library package aliases, including aliased path guards.
+
 ## [0.39.0] - 2026-11-27
 
 ### Improved
@@ -657,6 +664,7 @@ secrets on a command line no longer appear in reports.
 [0.37.0]: https://github.com/HUA503/mcprism/compare/v0.36.0...v0.37.0
 [0.38.0]: https://github.com/HUA503/mcprism/compare/v0.37.0...v0.38.0
 [0.39.0]: https://github.com/HUA503/mcprism/compare/v0.38.0...v0.39.0
+[0.40.0]: https://github.com/HUA503/mcprism/compare/v0.39.0...v0.40.0
 [0.30.1]: https://github.com/HUA503/mcprism/compare/v0.30.0...v0.30.1
 [0.30.0]: https://github.com/HUA503/mcprism/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/HUA503/mcprism/compare/v0.28.0...v0.29.0

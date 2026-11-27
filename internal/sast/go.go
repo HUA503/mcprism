@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -59,6 +61,49 @@ func goPackageName(path string) (string, bool) {
 		return "", false
 	}
 	return file.Name.Name, true
+}
+
+func goImportAliasesFromSource(src string) map[string][]string {
+	fset := token.NewFileSet()
+	file, _ := parser.ParseFile(fset, "", src, parser.AllErrors)
+	return goImportAliasesFromAST(file)
+}
+
+func goImportAliasesFromAST(file *ast.File) map[string][]string {
+	aliases := map[string][]string{}
+	if file == nil {
+		return aliases
+	}
+	for _, spec := range file.Imports {
+		importPath, err := strconv.Unquote(spec.Path.Value)
+		if err != nil || importPath == "" {
+			continue
+		}
+		name := filepath.Base(importPath)
+		if spec.Name != nil {
+			name = spec.Name.Name
+		}
+		if !isGoIdent(name) || name == "_" || name == "." {
+			continue
+		}
+		aliases[importPath] = append(aliases[importPath], name)
+	}
+	return aliases
+}
+
+func goImportNamePattern(imports map[string][]string, importPath, fallback string) string {
+	names := map[string]bool{fallback: true}
+	for _, name := range imports[importPath] {
+		if isGoIdent(name) {
+			names[name] = true
+		}
+	}
+	ordered := make([]string, 0, len(names))
+	for name := range names {
+		ordered = append(ordered, regexp.QuoteMeta(name))
+	}
+	sort.Strings(ordered)
+	return `(?:` + strings.Join(ordered, `|`) + `)`
 }
 
 func goPackageReturnTypes(path, pkgName string) map[string]string {
@@ -180,13 +225,14 @@ func extractGoPackageFunctions(path string) (string, map[string]handlerBlock) {
 		if file == nil || file.Name == nil || file.Name.Name != pkgName {
 			continue
 		}
+		imports := goImportAliasesFromAST(file)
 		fileReceiverTypes := goReceiverTypesFromAST(file, packageReturnTypes)
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
 				continue
 			}
-			block := goFunctionBlock(string(src), fset, fn, filePath)
+			block := goFunctionBlock(string(src), fset, fn, filePath, imports)
 			block.receiverTypes = fileReceiverTypes
 			if fn.Recv == nil {
 				name := fn.Name.Name
@@ -229,6 +275,7 @@ var goCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
 // and returns each tool's callback body.
 func extractGoHandlers(src string) []handlerBlock {
 	var out []handlerBlock
+	imports := goImportAliasesFromSource(src)
 	for _, m := range goAddToolRe.FindAllStringIndex(src, -1) {
 		openParen := m[1] - 1
 		closeParen := matchClose(src, openParen, '(', ')')
@@ -259,7 +306,7 @@ func extractGoHandlers(src string) []handlerBlock {
 		if name == "" {
 			name = "tool"
 		}
-		out = append(out, handlerBlock{name: name, lines: linesRange(src, bo, bc)})
+		out = append(out, handlerBlock{name: name, lines: linesRange(src, bo, bc), goImports: imports})
 	}
 	return out
 }
@@ -274,12 +321,13 @@ func extractGoFunctions(src string) map[string]handlerBlock {
 	if file == nil {
 		return functions
 	}
+	imports := goImportAliasesFromAST(file)
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok || fn.Body == nil {
 			continue
 		}
-		block := goFunctionBlock(src, fset, fn, "")
+		block := goFunctionBlock(src, fset, fn, "", imports)
 		block.receiverTypes = goReceiverTypesFromAST(file, goFunctionReturnTypes(file))
 		if fn.Recv != nil {
 			key := goMethodKey(block.receiverType, fn.Name.Name)
@@ -311,7 +359,7 @@ func extractGoFunctions(src string) map[string]handlerBlock {
 	return functions
 }
 
-func goFunctionBlock(src string, fset *token.FileSet, fn *ast.FuncDecl, path string) handlerBlock {
+func goFunctionBlock(src string, fset *token.FileSet, fn *ast.FuncDecl, path string, imports map[string][]string) handlerBlock {
 	var params []string
 	if fn.Type.Params != nil {
 		for _, field := range fn.Type.Params.List {
@@ -327,6 +375,7 @@ func goFunctionBlock(src string, fset *token.FileSet, fn *ast.FuncDecl, path str
 	block := handlerBlock{
 		name: fn.Name.Name, params: params,
 		lines: linesRange(src, fset.Position(fn.Body.Lbrace).Offset, fset.Position(fn.Body.Rbrace).Offset+1), path: path,
+		goImports: imports,
 	}
 	if fn.Recv != nil && len(fn.Recv.List) > 0 {
 		field := fn.Recv.List[0]
@@ -622,7 +671,10 @@ func scanGoBlockWithTaint(path string, b handlerBlock, seeds []string) []Issue {
 	ctrl := goTaintedNames(b.lines, seeds)
 
 	// 1. process execution (MCP801)
-	cmdRe := regexp.MustCompile(`\b(exec\.Command(?:Context)?|os\.StartProcess|syscall\.Exec)\s*\(`)
+	execPkg := goImportNamePattern(b.goImports, "os/exec", "exec")
+	osPkg := goImportNamePattern(b.goImports, "os", "os")
+	syscallPkg := goImportNamePattern(b.goImports, "syscall", "syscall")
+	cmdRe := regexp.MustCompile(`\b(?:` + execPkg + `\.Command(?:Context)?|` + osPkg + `\.StartProcess|` + syscallPkg + `\.Exec)\s*\(`)
 	for _, m := range cmdRe.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
@@ -647,7 +699,8 @@ func scanGoBlockWithTaint(path string, b handlerBlock, seeds []string) []Issue {
 	}
 
 	// 2. outbound network (MCP802 / SSRF)
-	simpleURL := regexp.MustCompile(`\bhttp\.(Get|Post|Head|PostForm)\s*\(`)
+	httpPkg := goImportNamePattern(b.goImports, "net/http", "http")
+	simpleURL := regexp.MustCompile(`\b` + httpPkg + `\.(Get|Post|Head|PostForm)\s*\(`)
 	for _, m := range simpleURL.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
@@ -662,7 +715,7 @@ func scanGoBlockWithTaint(path string, b handlerBlock, seeds []string) []Issue {
 				"Do not let agent input choose the host. Pin a constant base URL or allow-list hosts, and block metadata and private ranges."))
 		}
 	}
-	newReq := regexp.MustCompile(`\bhttp\.NewRequest(?:WithContext)?\s*\(`)
+	newReq := regexp.MustCompile(`\b` + httpPkg + `\.NewRequest(?:WithContext)?\s*\(`)
 	for _, m := range newReq.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
@@ -685,8 +738,11 @@ func scanGoBlockWithTaint(path string, b handlerBlock, seeds []string) []Issue {
 	// is guarded by HasPrefix. A bare filepath.Clean is not a boundary check: it
 	// normalizes the path but does not stop ../ traversal, so it must not silence
 	// the finding. The guard is bound to the sink argument, not to the handler.
-	guarded := goGuardedVars(maskedGoLines(b.lines))
-	fileRe := regexp.MustCompile(`\b(?:os|ioutil)\.(Open|OpenFile|ReadFile|Create|WriteFile)\s*\(`)
+	guarded := goGuardedVars(maskedGoLines(b.lines), b.goImports)
+	filePkg := `(?:` + goImportNamePattern(b.goImports, "os", "os") + `|` + goImportNamePattern(b.goImports, "io/ioutil", "ioutil") + `)`
+	fileRe := regexp.MustCompile(`\b` + filePkg + `\.(Open|OpenFile|ReadFile|Create|WriteFile)\s*\(`)
+	filepathPkg := goImportNamePattern(b.goImports, "path/filepath", "filepath")
+	filepathJoinRe := regexp.MustCompile(`\b` + filepathPkg + `\.Join\s*\(`)
 	for _, m := range fileRe.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
 		close := matchClose(text, open, '(', ')')
@@ -696,7 +752,7 @@ func scanGoBlockWithTaint(path string, b handlerBlock, seeds []string) []Issue {
 		first, _ := splitTopComma(text[open+1 : close])
 		line := off2line(open)
 		code := lineText(b, line)
-		pathJoined := strings.Contains(first, "filepath.Join(")
+		pathJoined := filepathJoinRe.MatchString(first)
 		switch {
 		case isGoPathConfined(first, guarded):
 			continue
@@ -818,18 +874,18 @@ func isGoIdent(s string) bool {
 
 // goGuardedVars collects the variables that are tested with strings.HasPrefix
 // anywhere in the handler. Only those exact variables are treated as confined.
-func goGuardedVars(ls []srcLine) map[string]bool {
+func goGuardedVars(ls []srcLine, imports map[string][]string) map[string]bool {
 	set := map[string]bool{}
+	stringsPkg := goImportNamePattern(imports, "strings", "strings")
+	prefixRe := regexp.MustCompile(`\b` + stringsPkg + `\.HasPrefix\s*\(`)
 	for _, l := range ls {
 		t := l.text
-		i := strings.Index(t, "HasPrefix(")
-		if i < 0 {
-			continue
-		}
-		arg, _ := splitTopComma(t[i+len("HasPrefix("):])
-		arg = strings.TrimSpace(arg)
-		if isGoIdent(arg) {
-			set[arg] = true
+		for _, match := range prefixRe.FindAllStringIndex(t, -1) {
+			arg, _ := splitTopComma(t[match[1]:])
+			arg = strings.TrimSpace(arg)
+			if isGoIdent(arg) {
+				set[arg] = true
+			}
 		}
 	}
 	return set

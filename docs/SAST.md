@@ -41,6 +41,10 @@ For Go, tool arguments are read through `req.RequireString`, `req.GetString` or
 deserialization that runs code, so MCP804 and MCP805 are not emitted for Go;
 the command, SSRF, path and secret rules (MCP801/802/803/806) are.
 
+Go sink matching follows explicit package aliases for `os/exec`, `net/http`,
+`os`, `io/ioutil`, `path/filepath` and `strings`. Dot imports and aliases
+created through local variables are not resolved.
+
 Python sink checks follow explicit import aliases for `os`, `subprocess`,
 `requests`, `httpx`, `urllib`, `pathlib`, `pickle`, `marshal` and `yaml`,
 including both `import module as alias` and `from module import function as
@@ -261,11 +265,13 @@ parent package level has an `__init__.py` file.
 Vulnerable (Go), a tool argument handed to a shell:
 
 ```go
+import process "os/exec"
+
 s.AddTool(mcp.NewTool("run_command",
 	mcp.String("command", mcp.Required())),
 	func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		command := req.RequireString("command")
-		c := exec.Command("sh", "-c", command)
+		c := process.Command("sh", "-c", command)
 		out, _ := c.Output()
 		return mcp.NewToolResultText(string(out)), nil
 	})
