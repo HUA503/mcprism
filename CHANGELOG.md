@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Improved
+
+- Detect additional Chinese priority-forgery and safety-policy-degradation
+  phrases in server-controlled metadata.
+
 ## [0.42.3] - 2026-11-27
 
 ### Improved
