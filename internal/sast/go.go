@@ -739,6 +739,7 @@ func goControllableVars(ls []srcLine) map[string]bool {
 // and parameters explicitly passed into same-file helper functions.
 func goTaintedNames(ls []srcLine, seeds []string) map[string]bool {
 	set := goControllableVars(ls)
+	fieldAssign := regexp.MustCompile(`^\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*|\s*\[\s*["'][A-Za-z_]\w*["']\s*]))\s*(?::=|=)\s*([^=].*)$`)
 	for _, name := range seeds {
 		if isGoIdent(name) {
 			set[name] = true
@@ -764,6 +765,13 @@ func goTaintedNames(ls []srcLine, seeds []string) map[string]bool {
 				set[first] = true
 				changed = true
 			}
+			if m := fieldAssign.FindStringSubmatch(t); m != nil {
+				target := normalizeTaintTarget(m[1])
+				if !set[target] && goExprControllable(m[2], set) {
+					set[target] = true
+					changed = true
+				}
+			}
 		}
 	}
 	return set
@@ -774,8 +782,9 @@ func goExprControllable(expr string, ctrl map[string]bool) bool {
 		strings.Contains(expr, "Arguments[") || strings.Contains(expr, "GetArguments(") {
 		return true
 	}
+	expr = normalizeTaintTarget(expr)
 	for v := range ctrl {
-		if containsWord(expr, v) {
+		if containsWord(expr, normalizeTaintTarget(v)) {
 			return true
 		}
 	}

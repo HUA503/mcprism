@@ -279,6 +279,13 @@ func containsWord(text, word string) bool {
 	}
 }
 
+// normalizeTaintTarget canonicalizes whitespace and quote style in a narrow
+// static field/map-key expression so writes and reads can match exactly.
+func normalizeTaintTarget(expr string) string {
+	expr = strings.Join(strings.Fields(expr), "")
+	return strings.ReplaceAll(expr, "'", `"`)
+}
+
 func isIdentByte(b byte) bool {
 	return b == '_' || (b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '$'
 }

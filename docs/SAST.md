@@ -67,6 +67,11 @@ expand macros or resolve trait-based dispatch.
 Sink recognition remains pattern-based. Common safe patterns are recognized
 where implemented.
 
+JavaScript/TypeScript, Python and Go preserve taint through simple statically
+named fields assigned from controlled input. Python also follows literal
+dictionary keys, and Go follows literal string map keys. Dynamic keys, nested
+container mutation, and values returned from a function are not modeled.
+
 This is not a full-program data-flow analyzer. Cross-file tracking is limited to
 bounded Go same-package free-function calls and methods with an inferable
 receiver type, plus explicitly imported Python and JS/TS helpers. Go leaves
@@ -77,9 +82,10 @@ named imports and direct module imports with an alias; JS/TS follows named ES
 imports and CommonJS `require()` imports plus local helper calls in imported
 modules within the limits above. ES namespace imports, computed module-object
 properties, re-exports, package resolution and other import forms are not
-resolved. The analyzers do not track object properties, returned values or
-dynamic dispatch. The bounded analysis keeps the scanner dependency-free and
-predictable.
+resolved. The analyzers do not model arbitrary object graphs, returned values
+or dynamic dispatch. Field tracking is limited to direct, statically named
+assignments and reads. The bounded analysis keeps the scanner dependency-free
+and predictable.
 
 ---
 
