@@ -61,10 +61,89 @@ func goPackageName(path string) (string, bool) {
 	return file.Name.Name, true
 }
 
-// extractGoPackageFunctions indexes same-package free functions and methods
-// from sibling files. Methods are keyed by receiver type and name so a call
-// only resolves when its selector receiver has a known local type. Size and
-// file-count caps keep package discovery bounded for hostile source trees.
+func goPackageReturnTypes(path, pkgName string) map[string]string {
+	returns := map[string]string{}
+	counts := map[string]int{}
+	dirEntries, err := os.ReadDir(filepath.Dir(path))
+	if err != nil || len(dirEntries) > 256 {
+		return goFunctionReturnTypesFromPath(path)
+	}
+	var total int64
+	for _, entry := range dirEntries {
+		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".go") {
+			continue
+		}
+		filePath := filepath.Join(filepath.Dir(path), entry.Name())
+		info, err := entry.Info()
+		if err != nil || info.Size() > maxSourceFileSize {
+			continue
+		}
+		total += info.Size()
+		if total > 16<<20 {
+			break
+		}
+		src, err := os.ReadFile(filePath)
+		if err != nil {
+			continue
+		}
+		fset := token.NewFileSet()
+		file, _ := parser.ParseFile(fset, filePath, src, parser.AllErrors)
+		if file == nil || file.Name == nil || file.Name.Name != pkgName {
+			continue
+		}
+		for key, typ := range goFunctionReturnTypes(file) {
+			counts[key]++
+			if counts[key] > 1 {
+				delete(returns, key)
+				continue
+			}
+			returns[key] = typ
+		}
+	}
+	return returns
+}
+
+func goFunctionReturnTypesFromPath(path string) map[string]string {
+	_, src := readLines(path)
+	fset := token.NewFileSet()
+	file, _ := parser.ParseFile(fset, path, src, parser.AllErrors)
+	return goFunctionReturnTypes(file)
+}
+
+func goFunctionReturnTypes(file *ast.File) map[string]string {
+	returns := map[string]string{}
+	if file == nil {
+		return returns
+	}
+	counts := map[string]int{}
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Recv != nil {
+			continue
+		}
+		typ := ""
+		if fn.Type.Results != nil && len(fn.Type.Results.List) > 0 {
+			typ = goTypeName(fn.Type.Results.List[0].Type)
+		}
+		key := goConstructorTypeKey(fn.Name.Name)
+		counts[key]++
+		if counts[key] > 1 {
+			delete(returns, key)
+			continue
+		}
+		returns[key] = typ
+	}
+	return returns
+}
+
+func goConstructorTypeKey(name string) string {
+	return "\x00constructor:" + name
+}
+
+// extractGoPackageFunctions indexes same-package free functions, constructor
+// return types and methods from sibling files. Methods are keyed by receiver
+// type and name so a call only resolves when its selector receiver has a known
+// local type. Size and file-count caps keep discovery bounded for hostile trees.
 func extractGoPackageFunctions(path string) (string, map[string]handlerBlock) {
 	functions := map[string]handlerBlock{}
 	counts := map[string]int{}
@@ -77,6 +156,7 @@ func extractGoPackageFunctions(path string) (string, map[string]handlerBlock) {
 	if err != nil || len(dirEntries) > 256 {
 		return pkgName, extractGoFunctionsFromPath(path)
 	}
+	packageReturnTypes := goPackageReturnTypes(path, pkgName)
 	var total int64
 	for _, entry := range dirEntries {
 		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".go") {
@@ -100,7 +180,7 @@ func extractGoPackageFunctions(path string) (string, map[string]handlerBlock) {
 		if file == nil || file.Name == nil || file.Name.Name != pkgName {
 			continue
 		}
-		fileReceiverTypes := goReceiverTypesFromAST(file)
+		fileReceiverTypes := goReceiverTypesFromAST(file, packageReturnTypes)
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
@@ -200,7 +280,7 @@ func extractGoFunctions(src string) map[string]handlerBlock {
 			continue
 		}
 		block := goFunctionBlock(src, fset, fn, "")
-		block.receiverTypes = goReceiverTypesFromAST(file)
+		block.receiverTypes = goReceiverTypesFromAST(file, goFunctionReturnTypes(file))
 		if fn.Recv != nil {
 			key := goMethodKey(block.receiverType, fn.Name.Name)
 			if key != "" && !ambiguousMethods[key] {
@@ -279,7 +359,7 @@ func goMethodKey(receiverType, name string) string {
 	return "@" + receiverType + "." + name
 }
 
-func goLocalReceiverTypes(lines []srcLine) map[string]string {
+func goLocalReceiverTypes(lines []srcLine, knownTypes map[string]string) map[string]string {
 	body := joinLines(lines)
 	body = strings.TrimSpace(body)
 	if open := strings.IndexByte(body, '{'); open >= 0 && strings.TrimSpace(body[:open]) == "" {
@@ -295,7 +375,7 @@ func goLocalReceiverTypes(lines []srcLine) map[string]string {
 	if err != nil {
 		return map[string]string{}
 	}
-	return goReceiverTypesFromAST(file)
+	return goReceiverTypesFromAST(file, knownTypes)
 }
 
 func goFileReceiverTypes(src string) map[string]string {
@@ -304,11 +384,14 @@ func goFileReceiverTypes(src string) map[string]string {
 	if err != nil {
 		return map[string]string{}
 	}
-	return goReceiverTypesFromAST(file)
+	return goReceiverTypesFromAST(file, goFunctionReturnTypes(file))
 }
 
-func goReceiverTypesFromAST(file *ast.File) map[string]string {
-	types := map[string]string{}
+func goReceiverTypesFromAST(file *ast.File, knownTypes map[string]string) map[string]string {
+	types := make(map[string]string, len(knownTypes))
+	for name, typ := range knownTypes {
+		types[name] = typ
+	}
 	ambiguous := map[string]bool{}
 	declarations := map[string]int{}
 	typeAlias := [][2]string{}
@@ -383,6 +466,9 @@ func goExprType(expr ast.Expr, known map[string]string) string {
 	case *ast.CallExpr:
 		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == "new" && len(e.Args) == 1 {
 			return goTypeName(e.Args[0])
+		}
+		if id, ok := e.Fun.(*ast.Ident); ok {
+			return known[goConstructorTypeKey(id.Name)]
 		}
 	case *ast.Ident:
 		return known[e.Name]
@@ -467,13 +553,7 @@ func scanReachableGo(path string, entry handlerBlock, functions map[string]handl
 
 		text := maskGoComments(joinLines(block.lines))
 		ctrl := goTaintedNames(block.lines, params)
-		receiverTypes := make(map[string]string, len(block.receiverTypes))
-		for name, typ := range block.receiverTypes {
-			receiverTypes[name] = typ
-		}
-		for name, typ := range goLocalReceiverTypes(block.lines) {
-			receiverTypes[name] = typ
-		}
+		receiverTypes := goLocalReceiverTypes(block.lines, block.receiverTypes)
 		if block.receiverName != "" && block.receiverType != "" {
 			receiverTypes[block.receiverName] = block.receiverType
 		}

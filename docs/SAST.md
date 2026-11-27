@@ -51,8 +51,8 @@ and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
 library parser to identify function boundaries and follows unique free-function
 helpers plus receiver-type-matched methods across files in the same package.
 Method calls are followed when the receiver type can be identified from a
-same-file declaration or composite literal, or from the current method
-receiver. Python follows explicitly imported functions and helpers called
+same-file declaration or composite literal, a unique same-package constructor
+return type, or the current method receiver. Python follows explicitly imported functions and helpers called
 through explicit module aliases across same-directory modules.
 JS/TS follows named imports of exported helpers from same-directory modules and
 continues through helper calls in those modules. Python and JS/TS cross-module
@@ -68,7 +68,8 @@ This is not a full-program data-flow analyzer. Cross-file tracking is limited to
 bounded Go same-package free-function calls and methods with an inferable
 receiver type, plus explicitly imported Python and JS/TS helpers. Go leaves
 method calls on opaque or ambiguous receivers unresolved. Captured receivers
-are followed when their type has a unique same-file declaration. Python supports
+are followed when their type has a unique same-file declaration or constructor.
+Python supports
 named imports and direct module imports with an alias; JS/TS follows named
 imports and local helper calls in imported modules within the limits above. The
 analyzers do not track object properties, returned values, dynamic dispatch,
@@ -189,14 +190,14 @@ s.AddTool(mcp.NewTool("run_command",
 	})
 ```
 
-Go also follows a same-package method when the receiver type is visible in the
-handler's source file. For example, if `commandRunner.go` defines
-`func (r *CommandRunner) run(command string)`, the analyzer can use the outer
-`runner` declaration captured by this handler to follow the call into that
-method:
+Go also follows same-package methods when it can infer the receiver type. In
+this example, `commandRunner.go` defines `NewCommandRunner() *CommandRunner` and
+`func (r *CommandRunner) run(command string)`. The analyzer uses the constructor
+signature to identify the captured receiver and follows the handler call into
+that method:
 
 ```go
-runner := &CommandRunner{}
+runner := NewCommandRunner()
 s.AddTool(mcp.NewTool("run_command", mcp.String("command", mcp.Required())),
 	func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		command := req.RequireString("command")
