@@ -150,11 +150,17 @@ mcprism vet server.py            # 审查单个文件
 ```sh
 # 一键安装脚本（Linux / macOS）
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
+
+# 固定安装版本，不使用 latest
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.29.0 sh
 ```
 
 ```powershell
 # Windows PowerShell
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+
+# 固定安装版本，不使用 latest
+$env:MC_PRISM_VERSION = "v0.29.0"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 ```
 
 ```sh
@@ -171,6 +177,10 @@ brew install HUA503/mcprism/mcprism
 
 PowerShell 安装脚本会校验发布包的 SHA-256，并将用户级安装目录加入 PATH。
 Windows 用户也可以通过 [Scoop](https://scoop.sh) 安装：
+
+两个安装脚本都支持通过 `MC_PRISM_VERSION` 固定安装某个版本（可带或不带
+开头的 `v`）；不设置该变量或将其设为 `latest` 时会安装最新版本。安装前
+都会验证对应版本发布包的 SHA-256。
 
 在 Linux 和 macOS 上，如果 `/usr/local/bin` 不可写，安装脚本会改装到
 `~/.local/bin`。如果提示该目录不在 PATH 中，请将它加入 PATH，或直接运行

@@ -207,11 +207,17 @@ Batch review across many servers (static mode):
 ```sh
 # One-line installer (Linux / macOS)
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
+
+# Pin a release instead of installing the latest one
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.29.0 sh
 ```
 
 ```powershell
 # Windows PowerShell
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+
+# Pin a release instead of installing the latest one
+$env:MC_PRISM_VERSION = "v0.29.0"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 ```
 
 ```sh
@@ -232,6 +238,10 @@ per-user install directory to PATH. You can also download a binary from the
 [releases](https://github.com/HUA503/mcprism/releases) page
 (Linux/macOS/Windows, amd64 and arm64, plus Linux ARMv7), or install it with
 [Scoop](https://scoop.sh):
+
+Both installer scripts accept `MC_PRISM_VERSION` to install a specific release
+(with or without the leading `v`); leave it unset or set it to `latest` to use
+the latest release. The selected release's checksum is verified before install.
 
 On Linux and macOS, the installer uses `~/.local/bin` when `/usr/local/bin` is
 not writable. If it reports that the directory is not on PATH, add that

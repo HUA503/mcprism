@@ -7,7 +7,18 @@ if ($PSVersionTable.PSEdition -eq "Desktop") {
 }
 
 $repository = "HUA503/mcprism"
-$releaseBase = "https://github.com/$repository/releases/latest/download"
+$requestedVersion = $env:MC_PRISM_VERSION
+if ([string]::IsNullOrWhiteSpace($requestedVersion) -or $requestedVersion -eq "latest") {
+    $releaseBase = "https://github.com/$repository/releases/latest/download"
+} else {
+    if ($requestedVersion -cnotmatch '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$') {
+        throw "Invalid MC_PRISM_VERSION '$requestedVersion'. Expected 'latest' or a version such as 'v0.29.0'."
+    }
+    if (-not $requestedVersion.StartsWith("v", [System.StringComparison]::Ordinal)) {
+        $requestedVersion = "v$requestedVersion"
+    }
+    $releaseBase = "https://github.com/$repository/releases/download/$requestedVersion"
+}
 $architecture = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
 if ($architecture -eq "X86" -and [Environment]::Is64BitOperatingSystem) {
     $architecture = "X64"
