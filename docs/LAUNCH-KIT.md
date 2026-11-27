@@ -5,7 +5,7 @@ The post text is written in first person because these communities expect a
 person, not a press release. Adapt each post to the channel and your own voice;
 don't cross-post identical text everywhere.
 
-**Current release: [v0.41.0](https://github.com/HUA503/mcprism/releases/tag/v0.41.0).**
+**Current release: [v0.42.0](https://github.com/HUA503/mcprism/releases/tag/v0.42.0).**
 The copy below reflects the current product and privacy boundaries.
 
 ## The hook
@@ -22,9 +22,11 @@ runs on your machine with your credentials, and the client does not audit it.
 mcprism is one Go binary with no runtime dependencies. Local config and source
 scans run offline; Registry commands fetch public metadata from the official MCP
 Registry; live probing is opt-in. When probing, it lists tools without invoking
-them. It brings policy and CI checks to MCP server review, and automatically
-discovers configs from Claude, Codex, Cursor, VS Code, Windsurf, Cline, Roo Code,
-Gemini CLI, OpenCode, Kiro, Amazon Q, GitHub Copilot CLI, and Zed.
+them; optional `--read-content` checks bounded prompt/resource text without
+calling tools. It brings policy and CI checks to MCP server review, and
+automatically discovers configs from Claude, Codex, Cursor, VS Code, Windsurf,
+Cline, Roo Code, Gemini CLI, OpenCode, Kiro, Amazon Q, GitHub Copilot CLI, and
+Zed.
 For ongoing review, `inventory save` and `inventory verify` detect changes to
 tool definitions; the lock stores tool names and fingerprints, not the
 definitions themselves. The GitHub Action can enforce that check in CI.
