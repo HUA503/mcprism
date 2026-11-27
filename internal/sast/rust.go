@@ -2,6 +2,7 @@ package sast
 
 import (
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -381,7 +382,10 @@ func scanRustBlock(path, src string, b handlerBlock) []Issue {
 	tainted := rustTaintedNames(b.lines, b.params)
 	var out []Issue
 
-	commandRe := regexp.MustCompile(`\bCommand::new\s*\(`)
+	commandNames := rustStdImportNames(src, "process::Command", "Command")
+	commandType := rustNameAlternation(commandNames)
+	commandHeadRe := regexp.MustCompile(`\b` + commandType + `\s*::\s*new`)
+	commandRe := regexp.MustCompile(commandHeadRe.String() + `\s*\(`)
 	for _, m := range commandRe.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
 		close := rustMatchClose(text, open, '(', ')')
@@ -401,9 +405,9 @@ func scanRustBlock(path, src string, b handlerBlock) []Issue {
 		}
 	}
 
-	if strings.Contains(text, "Command::new") {
+	if commandHeadRe.MatchString(text) {
 		argRe := regexp.MustCompile(`\.args?\s*\(`)
-		shellModeRe := regexp.MustCompile(`(?s)Command::new\s*\(\s*["'](?:sh|bash|cmd|powershell)["']\s*\).*?\.arg\s*\(\s*["'](?:-c|/c)["']`)
+		shellModeRe := regexp.MustCompile(`(?s)` + commandHeadRe.String() + `\s*\(\s*["'](?:sh|bash|cmd|powershell)["']\s*\).*?\.arg\s*\(\s*["'](?:-c|/c)["']`)
 		shellSource := maskRustComments(raw)
 		for _, m := range argRe.FindAllStringIndex(text, -1) {
 			open := m[1] - 1
@@ -418,7 +422,10 @@ func scanRustBlock(path, src string, b handlerBlock) []Issue {
 			line := off2line(open)
 			severity, title := SeverityMedium, "Tool input passed to process arguments"
 			advice := "Validate process arguments against an allow-list and avoid shell interpreters."
-			chainStart := strings.LastIndex(raw[:m[0]], "Command::new")
+			chainStart := -1
+			for _, head := range commandHeadRe.FindAllStringIndex(raw[:m[0]], -1) {
+				chainStart = head[0]
+			}
 			if chainStart >= 0 && shellModeRe.MatchString(shellSource[chainStart:m[0]]) {
 				severity, title = SeverityCritical, "Tool input passed to an OS shell"
 				advice = "Do not pass tool input to sh -c or another shell. Use a fixed executable and validated argument array."
@@ -444,7 +451,9 @@ func scanRustBlock(path, src string, b handlerBlock) []Issue {
 		}
 	}
 
-	fileRe := regexp.MustCompile(`\b(?:(?:std::|tokio::)?fs::(?:read|read_to_string|read_link|write|remove_file|remove_dir|metadata|canonicalize|create_dir_all|read_dir)|(?:std::)?fs::File::(?:open|create)|File::(?:open|create))\s*\(`)
+	fileNames := rustStdImportNames(src, "fs::File", "File")
+	fileTypes := rustNameAlternation(fileNames)
+	fileRe := regexp.MustCompile(`\b(?:(?:std::|tokio::)?fs::(?:read|read_to_string|read_link|write|remove_file|remove_dir|metadata|canonicalize|create_dir_all|read_dir)|(?:std::)?fs::File::|` + fileTypes + `::)(?:open|create)\s*\(`)
 	for _, m := range fileRe.FindAllStringIndex(text, -1) {
 		open := m[1] - 1
 		close := rustMatchClose(text, open, '(', ')')
@@ -460,6 +469,47 @@ func scanRustBlock(path, src string, b handlerBlock) []Issue {
 			"Canonicalize the path, confirm it remains under an approved base directory, and reject traversal and symlink escapes."))
 	}
 	return out
+}
+
+// rustStdImportNames returns the canonical type and aliases from explicit
+// standard-library imports, including direct and grouped `use` forms.
+func rustStdImportNames(src, path, canonical string) []string {
+	names := map[string]bool{canonical: true}
+	importRe := regexp.MustCompile(`(?m)^\s*use\s+std::` + regexp.QuoteMeta(path) + `(?:\s+as\s+([A-Za-z_]\w*))?\s*;`)
+	for _, m := range importRe.FindAllStringSubmatch(src, -1) {
+		if m[1] != "" {
+			names[m[1]] = true
+		}
+	}
+	if separator := strings.LastIndex(path, "::"); separator >= 0 {
+		parent, itemName := path[:separator], path[separator+2:]
+		groupedImportRe := regexp.MustCompile(`(?m)^\s*use\s+std::` + regexp.QuoteMeta(parent) + `::\{([^}]*)\}\s*;`)
+		for _, m := range groupedImportRe.FindAllStringSubmatch(src, -1) {
+			for _, item := range strings.Split(m[1], ",") {
+				fields := strings.Fields(strings.TrimSpace(item))
+				if len(fields) == 1 && fields[0] == itemName {
+					continue
+				}
+				if len(fields) == 3 && fields[0] == itemName && fields[1] == "as" && isIdent(fields[2]) {
+					names[fields[2]] = true
+				}
+			}
+		}
+	}
+	result := make([]string, 0, len(names))
+	for name := range names {
+		result = append(result, name)
+	}
+	sort.Strings(result)
+	return result
+}
+
+func rustNameAlternation(names []string) string {
+	quoted := make([]string, 0, len(names))
+	for _, name := range names {
+		quoted = append(quoted, regexp.QuoteMeta(name))
+	}
+	return `(?:` + strings.Join(quoted, `|`) + `)`
 }
 
 func rustTaintedNames(lines []srcLine, seeds []string) map[string]bool {
