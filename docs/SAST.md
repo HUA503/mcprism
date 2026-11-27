@@ -45,6 +45,15 @@ Go sink matching follows explicit package aliases for `os/exec`, `net/http`,
 `os`, `io/ioutil`, `path/filepath` and `strings`. Dot imports and aliases
 created through local variables are not resolved.
 
+When scanning a source tree with `go.mod`, Go analysis also follows calls to
+exported free functions in explicitly imported packages that are present in
+that tree. It uses the module path to map imports to local directories, follows
+the argument through further helpers in that package, and reports the sink at
+its source file and line. It does not download dependencies. This traversal is
+limited to eight imported-package hops, 64 source files and 16 MiB per tool
+entry. Imported methods, external modules, workspaces without a matching local
+module, and packages outside the scanned tree are not resolved.
+
 Python sink checks follow explicit import aliases for `os`, `subprocess`,
 `requests`, `httpx`, `urllib`, `pathlib`, `pickle`, `marshal` and `yaml`,
 including both `import module as alias` and `from module import function as
@@ -67,6 +76,8 @@ functions. JavaScript/TypeScript helper tracking covers function declarations
 and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
 library parser to identify function boundaries and follows unique free-function
 helpers plus receiver-type-matched methods across files in the same package.
+It also follows exported functions imported from local packages in the same Go
+module and the helper chains they call, within the traversal limits above.
 Method calls are followed when the receiver type can be identified from a
 same-file declaration or composite literal, a unique same-package constructor
 return type, or the current method receiver. Python follows explicitly imported
@@ -93,10 +104,11 @@ dictionary keys, and Go follows literal string map keys. Dynamic keys, nested
 container mutation, and values returned from a function are not modeled.
 
 This is not a full-program data-flow analyzer. Cross-file tracking is limited to
-bounded Go same-package free-function calls and methods with an inferable
-receiver type, plus explicitly imported Python and JS/TS helpers. Go leaves
-method calls on opaque or ambiguous receivers unresolved. Captured receivers
-are followed when their type has a unique same-file declaration or constructor.
+bounded Go same-package free-function calls, methods with an inferable receiver
+type, and exported free functions in local module packages, plus explicitly
+imported Python and JS/TS helpers. Go leaves imported methods and calls on
+opaque or ambiguous receivers unresolved. Captured receivers are followed when
+their type has a unique same-file declaration or constructor.
 Python supports
 named imports and direct module imports with an alias, including multi-level
 relative imports inside marked packages; JS/TS follows named and namespace ES
@@ -295,6 +307,40 @@ s.AddTool(mcp.NewTool("run_command", mcp.String("command", mcp.Required())),
 
 Calls through a receiver whose type is ambiguous or cannot be inferred from the
 same source file remain unresolved.
+
+For directory scans, a same-module import of an exported helper is followed as
+well. The module path from `go.mod` maps the import to source already in the
+scanned tree; the scanner does not fetch packages:
+
+```go
+// server.go, module example.com/server
+import "example.com/server/internal/runner"
+
+func register(s *server) {
+	s.AddTool("run", func(command string) {
+		runner.Execute(command)
+	})
+}
+```
+
+```go
+// internal/runner/runner.go
+package runner
+
+import "os/exec"
+
+func Execute(command string) error {
+	return execute(command)
+}
+
+func execute(command string) error {
+	return exec.Command("sh", "-c", command).Run()
+}
+```
+
+The finding points to `internal/runner/runner.go`. Only exported package
+functions are imported directly; methods on imported types and code outside
+the scanned tree are not followed.
 
 Vulnerable (Rust, official `rmcp` SDK):
 
@@ -603,7 +649,10 @@ Do not construct a module name or path from tool input.
   modules and marked parent packages within the same limits. Absolute dotted
   package imports and re-exports are not resolved.
   Go follows unique same-package free functions and receiver-type-matched
-  methods across files. JS/TS helper tracking
+  methods across files, plus exported functions imported from local packages
+  in the same module within eight package hops, 64 helper files and 16 MiB per
+  entry. It does not resolve imported methods or packages outside the scanned
+  tree. JS/TS helper tracking
   currently recognizes function declarations and block-bodied arrow functions;
   Rust helper resolution uses unique names and does not model trait dispatch or
   macro expansion. Other values passed through files, object properties,

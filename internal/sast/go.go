@@ -11,14 +11,15 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 func analyzeGo(path string) []Issue {
 	_, functions := extractGoPackageFunctions(path)
-	return analyzeGoWithFunctions(path, functions)
+	return analyzeGoWithFunctions(path, functions, nil)
 }
 
-func analyzeGoWithFunctions(path string, functions map[string]handlerBlock) []Issue {
+func analyzeGoWithFunctions(path string, functions map[string]handlerBlock, index *goHelperIndex) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
 		return nil
@@ -41,7 +42,7 @@ func analyzeGoWithFunctions(path string, functions map[string]handlerBlock) []Is
 	for _, b := range extractGoHandlers(maskGoComments(src)) {
 		b.path = path
 		b.receiverTypes = fileReceiverTypes
-		out = append(out, scanReachableGo(path, b, allFunctions)...)
+		out = append(out, scanReachableGo(path, b, allFunctions, index)...)
 	}
 	for _, l := range maskedGoLines(lines) {
 		out = append(out, goLineSecretIssues(path, l)...)
@@ -104,6 +105,154 @@ func goImportNamePattern(imports map[string][]string, importPath, fallback strin
 	}
 	sort.Strings(ordered)
 	return `(?:` + strings.Join(ordered, `|`) + `)`
+}
+
+const (
+	maxGoImportDepth = 8
+	maxGoImportFiles = 64
+	maxGoImportBytes = 16 << 20
+)
+
+type goHelperIndex struct {
+	packages          map[string]map[string]handlerBlock
+	packageByFile     map[string]string
+	importedFunctions map[string]map[string]handlerBlock
+}
+
+func goPackageKey(dir, pkg string) string { return filepath.Clean(dir) + "|" + pkg }
+
+// buildGoHelperIndex resolves only package imports that map to source files
+// already inside the scanned tree. go.mod files provide import-path mapping;
+// no module downloads or build commands are run.
+func buildGoHelperIndex(sourcePaths []string) *goHelperIndex {
+	idx := &goHelperIndex{
+		packages:          map[string]map[string]handlerBlock{},
+		packageByFile:     map[string]string{},
+		importedFunctions: map[string]map[string]handlerBlock{},
+	}
+	type packageInfo struct {
+		dir, name, importPath string
+		functions             map[string]handlerBlock
+	}
+	packages := map[string]packageInfo{}
+	for _, filePath := range sourcePaths {
+		if !strings.EqualFold(filepath.Ext(filePath), ".go") || strings.HasSuffix(filepath.Base(filePath), "_test.go") {
+			continue
+		}
+		pkg, ok := goPackageName(filePath)
+		if !ok {
+			continue
+		}
+		dir := filepath.Dir(filePath)
+		key := goPackageKey(dir, pkg)
+		if _, ok := packages[key]; !ok {
+			_, functions := extractGoPackageFunctions(filePath)
+			modulePath, moduleRoot, hasModule := goNearestModule(dir)
+			importPath := ""
+			if hasModule {
+				rel, err := filepath.Rel(moduleRoot, dir)
+				if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					if rel == "." {
+						importPath = modulePath
+					} else {
+						importPath = strings.TrimSuffix(modulePath, "/") + "/" + filepath.ToSlash(rel)
+					}
+				}
+			}
+			packages[key] = packageInfo{dir: dir, name: pkg, importPath: importPath, functions: functions}
+		}
+		idx.packageByFile[filepath.Clean(filePath)] = key
+	}
+	idx.packages = make(map[string]map[string]handlerBlock, len(packages))
+	for key, info := range packages {
+		idx.packages[key] = info.functions
+	}
+	type importPackage struct {
+		functions map[string]handlerBlock
+		ambiguous bool
+	}
+	byImport := map[string]importPackage{}
+	for _, info := range packages {
+		if info.importPath == "" {
+			continue
+		}
+		current, exists := byImport[info.importPath]
+		if exists {
+			current.ambiguous = true
+			current.functions = nil
+			byImport[info.importPath] = current
+			continue
+		}
+		current.functions = map[string]handlerBlock{}
+		for name, helper := range info.functions {
+			if strings.HasPrefix(name, "@") || name == "" {
+				continue
+			}
+			first, _ := utf8.DecodeRuneInString(name)
+			if !unicode.IsUpper(first) {
+				continue
+			}
+			current.functions[name] = helper
+		}
+		byImport[info.importPath] = current
+	}
+	for importPath, pkg := range byImport {
+		if !pkg.ambiguous && len(pkg.functions) > 0 {
+			idx.importedFunctions[importPath] = pkg.functions
+		}
+	}
+	return idx
+}
+
+var goModuleDirective = regexp.MustCompile(`(?m)^\s*module\s+([^\s]+)`)
+
+func goNearestModule(dir string) (modulePath, moduleRoot string, ok bool) {
+	current := filepath.Clean(dir)
+	for depth := 0; depth < maxWalkDepth+4; depth++ {
+		modFile := filepath.Join(current, "go.mod")
+		info, err := os.Stat(modFile)
+		if err == nil && info.Mode().IsRegular() && info.Size() <= 1<<20 {
+			data, err := os.ReadFile(modFile)
+			if err == nil {
+				if match := goModuleDirective.FindSubmatch(data); len(match) == 2 {
+					modulePath = strings.TrimSpace(string(match[1]))
+					if strings.HasPrefix(modulePath, `"`) {
+						if unquoted, err := strconv.Unquote(modulePath); err == nil {
+							modulePath = unquoted
+						}
+					}
+					if modulePath != "" {
+						return modulePath, current, true
+					}
+				}
+			}
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+		current = parent
+	}
+	return "", "", false
+}
+
+func goImportedPathForAlias(imports map[string][]string, alias string) string {
+	if alias == "" {
+		return ""
+	}
+	found := ""
+	for importPath, aliases := range imports {
+		for _, name := range aliases {
+			if name != alias {
+				continue
+			}
+			if found != "" && found != importPath {
+				return ""
+			}
+			found = importPath
+		}
+	}
+	return found
 }
 
 func goPackageReturnTypes(path, pkgName string) map[string]string {
@@ -375,7 +524,7 @@ func goFunctionBlock(src string, fset *token.FileSet, fn *ast.FuncDecl, path str
 	block := handlerBlock{
 		name: fn.Name.Name, params: params,
 		lines: linesRange(src, fset.Position(fn.Body.Lbrace).Offset, fset.Position(fn.Body.Rbrace).Offset+1), path: path,
-		goImports: imports,
+		goImports: imports, goSourceBytes: int64(len(src)),
 	}
 	if fn.Recv != nil && len(fn.Recv.List) > 0 {
 		field := fn.Recv.List[0]
@@ -557,26 +706,41 @@ func isIdent(s string) bool {
 	return true
 }
 
-func scanReachableGo(path string, entry handlerBlock, functions map[string]handlerBlock) []Issue {
+func scanReachableGo(path string, entry handlerBlock, functions map[string]handlerBlock, index *goHelperIndex) []Issue {
 	taintedByName := map[string]map[string]bool{}
 	processedByName := map[string]map[string]bool{}
 	queue := []handlerBlock{entry}
+	importedFiles := map[string]bool{}
+	entryFile := filepath.Clean(entry.path)
+	var importedBytes int64
 	var out []Issue
 	for head := 0; head < len(queue); head++ {
 		block := queue[head]
+		blockFunctions := functions
+		if index != nil && block.path != "" {
+			if packageKey := index.packageByFile[filepath.Clean(block.path)]; packageKey != "" {
+				if packageFunctions, ok := index.packages[packageKey]; ok {
+					blockFunctions = packageFunctions
+				}
+			}
+		}
 		seed := goTaintedNames(block.lines, block.params)
-		known := taintedByName[block.name]
+		blockKey := block.name
+		if block.path != "" {
+			blockKey = filepath.Clean(block.path) + "::" + block.name
+		}
+		known := taintedByName[blockKey]
 		if known == nil {
 			known = map[string]bool{}
-			taintedByName[block.name] = known
+			taintedByName[blockKey] = known
 		}
 		for name := range seed {
 			known[name] = true
 		}
-		processed := processedByName[block.name]
+		processed := processedByName[blockKey]
 		if processed == nil {
 			processed = map[string]bool{}
-			processedByName[block.name] = processed
+			processedByName[blockKey] = processed
 		}
 		pending := false
 		for name := range known {
@@ -608,12 +772,20 @@ func scanReachableGo(path string, entry handlerBlock, functions map[string]handl
 		}
 		for _, call := range goCallRe.FindAllStringSubmatchIndex(text, -1) {
 			name := text[call[2]:call[3]]
-			helper, ok := functions[name]
+			helper, ok := blockFunctions[name]
+			importedCall := false
 			if call[0] > 0 && text[call[0]-1] == '.' {
 				receiver := goSelectorReceiver(text, call[0])
 				if typ := receiverTypes[receiver]; typ != "" {
-					if method, found := functions[goMethodKey(typ, name)]; found {
+					if method, found := blockFunctions[goMethodKey(typ, name)]; found {
 						helper, ok = method, true
+					} else {
+						ok = false
+					}
+				} else if importPath := goImportedPathForAlias(block.goImports, receiver); importPath != "" && index != nil {
+					if packageFunctions, found := index.importedFunctions[importPath]; found {
+						helper, ok = packageFunctions[name]
+						importedCall = ok
 					} else {
 						ok = false
 					}
@@ -636,17 +808,34 @@ func scanReachableGo(path string, entry handlerBlock, functions map[string]handl
 				if i >= len(helper.params) || helper.params[i] == "" || !goExprControllable(arg, ctrl) {
 					continue
 				}
-				helperKey := helper.name
-				if helperKey == "" {
-					helperKey = name
+				child := helper
+				if importedCall {
+					if block.goImportDepth >= maxGoImportDepth {
+						continue
+					}
+					child.goImportDepth = block.goImportDepth + 1
+				} else {
+					child.goImportDepth = block.goImportDepth
 				}
+				fileKey := filepath.Clean(child.path)
+				if fileKey != entryFile && !importedFiles[fileKey] {
+					if len(importedFiles) >= maxGoImportFiles || importedBytes+child.goSourceBytes > maxGoImportBytes {
+						continue
+					}
+					importedFiles[fileKey] = true
+					importedBytes += child.goSourceBytes
+				}
+				helperName := helper.name
+				if helperName == "" {
+					helperName = name
+				}
+				helperKey := filepath.Clean(helper.path) + "::" + helperName
 				if taintedByName[helperKey] == nil {
 					taintedByName[helperKey] = map[string]bool{}
 				}
 				param := helper.params[i]
 				if !taintedByName[helperKey][param] {
 					taintedByName[helperKey][param] = true
-					child := helper
 					child.params = []string{param}
 					queue = append(queue, child)
 				}

@@ -1125,6 +1125,8 @@ type handlerBlock struct {
 	receiverType  string
 	receiverTypes map[string]string
 	goImports     map[string][]string
+	goImportDepth int
+	goSourceBytes int64
 }
 
 // matchClose returns the index of the closing character for the opener at

@@ -22,9 +22,8 @@ const (
 // Dependency and build directories are skipped, and oversized files / trees
 // are bounded to avoid denial-of-service via disk or memory.
 func Analyze(root string) ([]Issue, error) {
-	var issues []Issue
+	var sourcePaths []string
 	var totalBytes int64
-	goFunctionsByPackage := map[string]map[string]handlerBlock{}
 	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -47,28 +46,31 @@ func Analyze(root string) ([]Issue, error) {
 			if info.Size() > maxSourceFileSize {
 				return nil
 			}
-			totalBytes += info.Size()
-			if totalBytes > maxTotalSourceBytes {
+			if totalBytes+info.Size() > maxTotalSourceBytes {
 				return filepath.SkipAll
 			}
+			totalBytes += info.Size()
 		}
+		sourcePaths = append(sourcePaths, p)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	goIndex := buildGoHelperIndex(sourcePaths)
+	var issues []Issue
+	for _, p := range sourcePaths {
 		if strings.EqualFold(filepath.Ext(p), ".go") {
 			pkg, ok := goPackageName(p)
 			if ok {
-				key := filepath.Dir(p) + "|" + pkg
-				functions, exists := goFunctionsByPackage[key]
-				if !exists {
-					_, functions = extractGoPackageFunctions(p)
-					goFunctionsByPackage[key] = functions
-				}
-				issues = append(issues, analyzeGoWithFunctions(p, functions)...)
-				return nil
+				functions := goIndex.packages[goPackageKey(filepath.Dir(p), pkg)]
+				issues = append(issues, analyzeGoWithFunctions(p, functions, goIndex)...)
+				continue
 			}
 		}
 		issues = append(issues, AnalyzeFile(p)...)
-		return nil
-	})
-	return issues, err
+	}
+	return issues, nil
 }
 
 func depthOf(rel string) int {
