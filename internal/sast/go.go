@@ -21,8 +21,8 @@ func analyzeGoWithFunctions(path string, functions map[string]handlerBlock) []Is
 	if src == "" {
 		return nil
 	}
-	// Keep same-file method helpers available while package-level discovery is
-	// limited to free functions whose receiver does not need resolving.
+	// Keep same-file helpers and resolve methods when the selector's receiver
+	// type can be identified without guessing from a short method name.
 	allFunctions := make(map[string]handlerBlock, len(functions))
 	for name, helper := range functions {
 		allFunctions[name] = helper
@@ -58,13 +58,14 @@ func goPackageName(path string) (string, bool) {
 	return file.Name.Name, true
 }
 
-// extractGoPackageFunctions includes same-package free functions from sibling
-// files. Methods from sibling files are excluded because short-name matching
-// cannot resolve their receiver type. Size and file-count caps keep package
-// discovery bounded for hostile source trees.
+// extractGoPackageFunctions indexes same-package free functions and methods
+// from sibling files. Methods are keyed by receiver type and name so a call
+// only resolves when its selector receiver has a known local type. Size and
+// file-count caps keep package discovery bounded for hostile source trees.
 func extractGoPackageFunctions(path string) (string, map[string]handlerBlock) {
 	functions := map[string]handlerBlock{}
 	counts := map[string]int{}
+	methodCounts := map[string]int{}
 	pkgName, ok := goPackageName(path)
 	if !ok {
 		return "", functions
@@ -98,32 +99,32 @@ func extractGoPackageFunctions(path string) (string, map[string]handlerBlock) {
 		}
 		for _, decl := range file.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Body == nil || fn.Recv != nil {
+			if !ok || fn.Body == nil {
 				continue
 			}
-			name := fn.Name.Name
-			counts[name]++
-			if counts[name] > 1 {
-				delete(functions, name)
-				continue
-			}
-			var params []string
-			if fn.Type.Params != nil {
-				for _, field := range fn.Type.Params.List {
-					if len(field.Names) == 0 {
-						params = append(params, "")
-						continue
-					}
-					for _, param := range field.Names {
-						params = append(params, param.Name)
-					}
+			block := goFunctionBlock(string(src), fset, fn, filePath)
+			if fn.Recv == nil {
+				name := fn.Name.Name
+				counts[name]++
+				if counts[name] > 1 {
+					delete(functions, name)
+					continue
 				}
+				block.name = name
+				functions[name] = block
+				continue
 			}
-			bodyOpen := fset.Position(fn.Body.Lbrace).Offset
-			bodyClose := fset.Position(fn.Body.Rbrace).Offset
-			functions[name] = handlerBlock{
-				name: name, params: params, lines: linesRange(string(src), bodyOpen, bodyClose+1), path: filePath,
+			key := goMethodKey(block.receiverType, fn.Name.Name)
+			if key == "" {
+				continue
 			}
+			methodCounts[key]++
+			if methodCounts[key] > 1 {
+				delete(functions, key)
+				continue
+			}
+			block.name = key
+			functions[key] = block
 		}
 	}
 	return pkgName, functions
@@ -181,6 +182,8 @@ func extractGoHandlers(src string) []handlerBlock {
 func extractGoFunctions(src string) map[string]handlerBlock {
 	functions := map[string]handlerBlock{}
 	ambiguous := map[string]bool{}
+	methods := map[string]handlerBlock{}
+	ambiguousMethods := map[string]bool{}
 	fset := token.NewFileSet()
 	file, _ := parser.ParseFile(fset, "", src, parser.ParseComments|parser.AllErrors)
 	if file == nil {
@@ -191,6 +194,19 @@ func extractGoFunctions(src string) map[string]handlerBlock {
 		if !ok || fn.Body == nil {
 			continue
 		}
+		block := goFunctionBlock(src, fset, fn, "")
+		if fn.Recv != nil {
+			key := goMethodKey(block.receiverType, fn.Name.Name)
+			if key != "" && !ambiguousMethods[key] {
+				if _, exists := methods[key]; exists {
+					delete(methods, key)
+					ambiguousMethods[key] = true
+				} else {
+					block.name = key
+					methods[key] = block
+				}
+			}
+		}
 		name := fn.Name.Name
 		if ambiguous[name] {
 			continue
@@ -200,26 +216,180 @@ func extractGoFunctions(src string) map[string]handlerBlock {
 			ambiguous[name] = true
 			continue
 		}
-		var params []string
-		if fn.Type.Params != nil {
-			for _, field := range fn.Type.Params.List {
-				if len(field.Names) == 0 {
-					params = append(params, "")
-					continue
-				}
-				for _, param := range field.Names {
-					params = append(params, param.Name)
-				}
-			}
-		}
-		bodyOpen := fset.Position(fn.Body.Lbrace).Offset
-		bodyClose := fset.Position(fn.Body.Rbrace).Offset
-		functions[name] = handlerBlock{
-			name: name, params: params,
-			lines: linesRange(src, bodyOpen, bodyClose+1),
-		}
+		block.name = name
+		functions[name] = block
+	}
+	for key, block := range methods {
+		functions[key] = block
 	}
 	return functions
+}
+
+func goFunctionBlock(src string, fset *token.FileSet, fn *ast.FuncDecl, path string) handlerBlock {
+	var params []string
+	if fn.Type.Params != nil {
+		for _, field := range fn.Type.Params.List {
+			if len(field.Names) == 0 {
+				params = append(params, "")
+				continue
+			}
+			for _, param := range field.Names {
+				params = append(params, param.Name)
+			}
+		}
+	}
+	block := handlerBlock{
+		name: fn.Name.Name, params: params,
+		lines: linesRange(src, fset.Position(fn.Body.Lbrace).Offset, fset.Position(fn.Body.Rbrace).Offset+1), path: path,
+	}
+	if fn.Recv != nil && len(fn.Recv.List) > 0 {
+		field := fn.Recv.List[0]
+		block.receiverType = goTypeName(field.Type)
+		if len(field.Names) > 0 {
+			block.receiverName = field.Names[0].Name
+		}
+	}
+	return block
+}
+
+func goTypeName(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.Ident:
+		return t.Name
+	case *ast.StarExpr:
+		return goTypeName(t.X)
+	case *ast.IndexExpr:
+		return goTypeName(t.X)
+	case *ast.IndexListExpr:
+		return goTypeName(t.X)
+	}
+	return ""
+}
+
+func goMethodKey(receiverType, name string) string {
+	if receiverType == "" || name == "" {
+		return ""
+	}
+	return "@" + receiverType + "." + name
+}
+
+func goLocalReceiverTypes(lines []srcLine) map[string]string {
+	types := map[string]string{}
+	ambiguous := map[string]bool{}
+	typeAlias := [][2]string{}
+	body := joinLines(lines)
+	body = strings.TrimSpace(body)
+	if open := strings.IndexByte(body, '{'); open >= 0 && strings.TrimSpace(body[:open]) == "" {
+		if close := matchClose(body, open, '{', '}'); close >= 0 {
+			body = body[open+1 : close]
+		} else {
+			body = body[open+1:]
+		}
+	}
+	wrapped := "package mcprismscan\nfunc _() {\n" + body + "\n}"
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "", wrapped, 0)
+	if err != nil {
+		return types
+	}
+	setType := func(name, typ string) {
+		if name == "" || name == "_" || typ == "" || ambiguous[name] {
+			return
+		}
+		if current := types[name]; current != "" && current != typ {
+			delete(types, name)
+			ambiguous[name] = true
+			return
+		}
+		types[name] = typ
+	}
+	ast.Inspect(file, func(node ast.Node) bool {
+		switch n := node.(type) {
+		case *ast.ValueSpec:
+			typ := goTypeName(n.Type)
+			for _, name := range n.Names {
+				setType(name.Name, typ)
+			}
+			for i, value := range n.Values {
+				if i < len(n.Names) {
+					setType(n.Names[i].Name, goExprType(value, types))
+				}
+			}
+		case *ast.AssignStmt:
+			for i, lhs := range n.Lhs {
+				id, ok := lhs.(*ast.Ident)
+				if !ok || i >= len(n.Rhs) {
+					continue
+				}
+				if rhs, ok := n.Rhs[i].(*ast.Ident); ok {
+					typeAlias = append(typeAlias, [2]string{id.Name, rhs.Name})
+					continue
+				}
+				setType(id.Name, goExprType(n.Rhs[i], types))
+			}
+		}
+		return true
+	})
+	for changed := true; changed; {
+		changed = false
+		for _, alias := range typeAlias {
+			if typ := types[alias[1]]; typ != "" && types[alias[0]] == "" && !ambiguous[alias[0]] {
+				setType(alias[0], typ)
+				changed = true
+			}
+		}
+	}
+	return types
+}
+
+func goExprType(expr ast.Expr, known map[string]string) string {
+	switch e := expr.(type) {
+	case *ast.CompositeLit:
+		return goTypeName(e.Type)
+	case *ast.UnaryExpr:
+		if e.Op == token.AND {
+			return goExprType(e.X, known)
+		}
+	case *ast.CallExpr:
+		if id, ok := e.Fun.(*ast.Ident); ok && id.Name == "new" && len(e.Args) == 1 {
+			return goTypeName(e.Args[0])
+		}
+	case *ast.Ident:
+		return known[e.Name]
+	}
+	return ""
+}
+
+func goSelectorReceiver(text string, callStart int) string {
+	if callStart < 2 || text[callStart-1] != '.' {
+		return ""
+	}
+	end := callStart - 1
+	start := end - 1
+	for start >= 0 && isIdentByte(text[start]) {
+		start--
+	}
+	name := text[start+1 : end]
+	if !isIdent(name) {
+		return ""
+	}
+	return name
+}
+
+func isIdent(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if i == 0 {
+			if r != '_' && (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') {
+				return false
+			}
+		} else if r != '_' && (r < 'A' || r > 'Z') && (r < 'a' || r > 'z') && (r < '0' || r > '9') {
+			return false
+		}
+	}
+	return true
 }
 
 func scanReachableGo(path string, entry handlerBlock, functions map[string]handlerBlock) []Issue {
@@ -262,20 +432,33 @@ func scanReachableGo(path string, entry handlerBlock, functions map[string]handl
 		if issuePath == "" {
 			issuePath = path
 		}
+		blockPath := issuePath
 		out = append(out, scanGoBlockWithTaint(issuePath, block, params)...)
 
 		text := maskGoComments(joinLines(block.lines))
 		ctrl := goTaintedNames(block.lines, params)
+		receiverTypes := goLocalReceiverTypes(block.lines)
+		if block.receiverName != "" && block.receiverType != "" {
+			receiverTypes[block.receiverName] = block.receiverType
+		}
 		for _, call := range goCallRe.FindAllStringSubmatchIndex(text, -1) {
 			name := text[call[2]:call[3]]
 			helper, ok := functions[name]
-			if !ok {
-				continue
+			if call[0] > 0 && text[call[0]-1] == '.' {
+				receiver := goSelectorReceiver(text, call[0])
+				if typ := receiverTypes[receiver]; typ != "" {
+					if method, found := functions[goMethodKey(typ, name)]; found {
+						helper, ok = method, true
+					} else {
+						ok = false
+					}
+				} else if !ok || helper.path == "" || filepath.Clean(helper.path) != filepath.Clean(blockPath) {
+					// The selector's receiver type is unknown. Do not map it to a
+					// same-named helper from another file by method name alone.
+					ok = false
+				}
 			}
-			if call[0] > 0 && text[call[0]-1] == '.' &&
-				helper.path != "" && filepath.Clean(helper.path) != filepath.Clean(path) {
-				// A selector call may be a method on an unrelated receiver. Do not
-				// resolve it to a same-named free helper from another file.
+			if !ok {
 				continue
 			}
 			open := call[1] - 1
@@ -288,12 +471,16 @@ func scanReachableGo(path string, entry handlerBlock, functions map[string]handl
 				if i >= len(helper.params) || helper.params[i] == "" || !goExprControllable(arg, ctrl) {
 					continue
 				}
-				if taintedByName[name] == nil {
-					taintedByName[name] = map[string]bool{}
+				helperKey := helper.name
+				if helperKey == "" {
+					helperKey = name
+				}
+				if taintedByName[helperKey] == nil {
+					taintedByName[helperKey] = map[string]bool{}
 				}
 				param := helper.params[i]
-				if !taintedByName[name][param] {
-					taintedByName[name][param] = true
+				if !taintedByName[helperKey][param] {
+					taintedByName[helperKey][param] = true
 					child := helper
 					child.params = []string{param}
 					queue = append(queue, child)

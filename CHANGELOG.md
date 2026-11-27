@@ -6,6 +6,12 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Follow Go tool input through same-package methods when the receiver type is
+  inferable from a local declaration, composite literal or current method
+  receiver.
+
 ## [0.25.0] - 2026-11-27
 
 ### Added

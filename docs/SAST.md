@@ -49,9 +49,11 @@ assignments and propagates taint through arguments passed to unambiguous helper
 functions. JavaScript/TypeScript helper tracking covers function declarations
 and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
 library parser to identify function boundaries and follows unique free-function
-helpers across files in the same package; selector calls into another file are
-left unresolved. Python follows explicitly imported functions and helpers
-called through explicit module aliases across same-directory modules.
+helpers plus receiver-type-matched methods across files in the same package.
+Method calls are followed when the receiver type can be identified from a local
+declaration, composite literal or the current method receiver. Python follows
+explicitly imported functions and helpers called through explicit module aliases
+across same-directory modules.
 JS/TS follows named imports of exported helpers from same-directory modules and
 continues through helper calls in those modules. Python and JS/TS cross-module
 traversal is bounded by eight imports deep, 64 source files and 16 MiB of source
@@ -63,12 +65,14 @@ Sink recognition remains pattern-based. Common safe patterns are recognized
 where implemented.
 
 This is not a full-program data-flow analyzer. Cross-file tracking is limited to
-bounded Go same-package free-function calls and explicitly imported Python and
-JS/TS helpers. Python supports named imports and direct module imports with an
-alias; JS/TS follows named imports and local helper calls in imported modules
-within the limits above. It does not track object properties, returned values,
-dynamic dispatch, re-exports, package resolution or arbitrary import forms. The
-bounded analysis keeps the scanner dependency-free and predictable.
+bounded Go same-package free-function calls and methods with an inferable
+receiver type, plus explicitly imported Python and JS/TS helpers. Go leaves
+method calls on opaque or captured receivers unresolved. Python supports named
+imports and direct module imports with an alias; JS/TS follows named imports and
+local helper calls in imported modules within the limits above. The analyzers do
+not track object properties, returned values, dynamic dispatch, re-exports,
+package resolution or arbitrary import forms. The bounded analysis keeps the
+scanner dependency-free and predictable.
 
 ---
 
@@ -183,6 +187,25 @@ s.AddTool(mcp.NewTool("run_command",
 		return mcp.NewToolResultText(string(out)), nil
 	})
 ```
+
+Go also follows a same-package method when the receiver type is visible in the
+handler. For example, if `commandRunner.go` defines
+`func (r *CommandRunner) run(command string)`, this handler's local composite
+literal identifies the receiver type and the analyzer follows the call into
+that method:
+
+```go
+runner := &CommandRunner{}
+s.AddTool(mcp.NewTool("run_command", mcp.String("command", mcp.Required())),
+	func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		command := req.RequireString("command")
+		runner.run(command)
+		return mcp.NewToolResultText("done"), nil
+	})
+```
+
+Calls through a receiver whose type cannot be inferred from the handler or
+current method body remain unresolved.
 
 Vulnerable (Rust, official `rmcp` SDK):
 
@@ -485,8 +508,8 @@ Do not construct a module name or path from tool input.
   exported helpers and their local helper chains across same-directory modules,
   with bounded depth, file count and total source size. Python follows explicit
   imports and helper chains across same-directory modules within the same limits.
-  Go follows unique
-  same-package free functions across files. JS/TS helper tracking
+  Go follows unique same-package free functions and receiver-type-matched
+  methods across files. JS/TS helper tracking
   currently recognizes function declarations and block-bodied arrow functions;
   Rust helper resolution uses unique names and does not model trait dispatch or
   macro expansion. Other values passed through files, object properties,
