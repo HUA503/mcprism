@@ -323,6 +323,14 @@ type Resource struct {
 	MIMEType    string `json:"mimeType,omitempty"`
 }
 
+// ResourceContent contains one text or binary resource payload.
+type ResourceContent struct {
+	URI      string `json:"uri"`
+	MIMEType string `json:"mimeType,omitempty"`
+	Text     string `json:"text,omitempty"`
+	Blob     string `json:"blob,omitempty"`
+}
+
 // ListResources 返回 server 暴露的全部资源（跨分页）。
 func (c *Client) ListResources(ctx context.Context) ([]Resource, error) {
 	var out []Resource
@@ -335,6 +343,28 @@ func (c *Client) ListResources(ctx context.Context) ([]Resource, error) {
 		return nil
 	})
 	return out, err
+}
+
+// ReadResource fetches one listed resource. Binary blobs are returned by the
+// protocol layer but callers can choose not to inspect or persist them.
+func (c *Client) ReadResource(ctx context.Context, uri string) ([]ResourceContent, error) {
+	raw, err := c.call(ctx, "resources/read", map[string]any{"uri": uri})
+	if err != nil {
+		return nil, err
+	}
+	var body map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return nil, fmt.Errorf("decode resources/read: %w", err)
+	}
+	items, ok := body["contents"]
+	if !ok || bytes.Equal(bytes.TrimSpace(items), []byte("null")) {
+		return nil, fmt.Errorf("decode resources/read: missing contents array")
+	}
+	var contents []ResourceContent
+	if err := json.Unmarshal(items, &contents); err != nil {
+		return nil, fmt.Errorf("decode resources/read.contents: %w", err)
+	}
+	return contents, nil
 }
 
 // PromptArgument 是 prompt 的参数声明。
@@ -351,6 +381,26 @@ type Prompt struct {
 	Arguments   []PromptArgument `json:"arguments,omitempty"`
 }
 
+// PromptMessage is one rendered message from prompts/get.
+type PromptMessage struct {
+	Role    string               `json:"role"`
+	Content PromptMessageContent `json:"content"`
+}
+
+// PromptMessageContent retains text and embedded resource text. Other content
+// types are represented by their type tag and are intentionally not decoded.
+type PromptMessageContent struct {
+	Type     string           `json:"type"`
+	Text     string           `json:"text,omitempty"`
+	Resource *ResourceContent `json:"resource,omitempty"`
+}
+
+// PromptResult is a rendered prompt instance.
+type PromptResult struct {
+	Description string          `json:"description,omitempty"`
+	Messages    []PromptMessage `json:"messages"`
+}
+
 // ListPrompts 返回 server 暴露的全部提示模板（跨分页）。
 func (c *Client) ListPrompts(ctx context.Context) ([]Prompt, error) {
 	var out []Prompt
@@ -363,6 +413,31 @@ func (c *Client) ListPrompts(ctx context.Context) ([]Prompt, error) {
 		return nil
 	})
 	return out, err
+}
+
+// GetPrompt renders one prompt with the supplied string arguments.
+func (c *Client) GetPrompt(ctx context.Context, name string, args map[string]string) (*PromptResult, error) {
+	params := map[string]any{"name": name}
+	if len(args) > 0 {
+		params["arguments"] = args
+	}
+	raw, err := c.call(ctx, "prompts/get", params)
+	if err != nil {
+		return nil, err
+	}
+	var body map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return nil, fmt.Errorf("decode prompts/get: %w", err)
+	}
+	messages, ok := body["messages"]
+	if !ok || bytes.Equal(bytes.TrimSpace(messages), []byte("null")) {
+		return nil, fmt.Errorf("decode prompts/get: missing messages array")
+	}
+	var result PromptResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return nil, fmt.Errorf("decode prompts/get.messages: %w", err)
+	}
+	return &result, nil
 }
 
 // Ping 发送 ping 心跳。

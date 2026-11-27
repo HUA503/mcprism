@@ -67,6 +67,9 @@ func RenderMarkdown(r *Report) string {
 			b.WriteString(fmt.Sprintf("- **Source:** `%s` (%s)\n", srv.Source, srv.Client))
 		}
 		b.WriteString(fmt.Sprintf("- **Connected:** %v\n", res.Connected))
+		if res.ContentScanned {
+			b.WriteString(fmt.Sprintf("- **Prompt/resource text inspected:** %d block(s)\n", res.ContentTextCount))
+		}
 		b.WriteString(fmt.Sprintf("- **Capabilities:** %s\n\n", capList(res.Capabilities)))
 
 		if len(res.Findings) == 0 {

@@ -42,6 +42,9 @@ func RenderTable(r *Report) string {
 			b.WriteString("  " + lipgloss.NewStyle().Foreground(ui.Subtle).Render(s.Client+" "+ui.Sym("middot")+" "+s.Source) + "\n")
 		}
 		b.WriteString("  " + lipgloss.NewStyle().Foreground(ui.Subtle).Render("capabilities: ") + ui.CapChips(res.Capabilities) + "\n")
+		if res.ContentScanned {
+			b.WriteString(fmt.Sprintf("  prompt/resource text inspected: %d block(s)\n", res.ContentTextCount))
+		}
 
 		if len(res.Findings) == 0 {
 			b.WriteString("  " + lipgloss.NewStyle().Foreground(ui.Green).Render(ui.Sym("check")+" No issues detected") + "\n\n")

@@ -34,7 +34,9 @@ Targets:
 
 By default vet is static: it does not run the target and has no side effects.
 --probe actually launches the process or connects to the URL to enumerate
-tools, resources and prompts; run it against untrusted code in a sandbox.`,
+tools, resources and prompts; run it against untrusted code in a sandbox.
+Add --read-content to also request bounded text from listed resources and
+prompts. Required prompt arguments are skipped rather than guessed.`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(_ *cobra.Command, args []string) error {
 			servers, err := resolveVetTargets(args)

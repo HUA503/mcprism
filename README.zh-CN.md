@@ -231,6 +231,9 @@ mcprism scan mcp.json
 # 动态探测在线 server（会启动进程；请在沙箱里运行）
 mcprism scan mcp.json --dynamic
 
+# 同时读取有限数量的 prompt/resource 正文并检查提示注入
+mcprism scan mcp.json --dynamic --read-content
+
 # 套用配置或自定义策略
 mcprism scan --profile strict
 mcprism scan --policy policy.yml --suppressions suppressions.yml
@@ -248,6 +251,7 @@ mcprism vet "uvx some-mcp-server"
 mcprism vet https://mcp.example.com
 mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # 真正运行并列出 tools
+mcprism vet --probe --read-content -- npx -y some-mcp-server
 
 # 搜索并静态扫描官方 MCP Registry 中的单个 server
 mcprism registry search filesystem
@@ -258,6 +262,7 @@ mcprism registry audit filesystem --all --limit 100 --require-complete --format 
 
 # 参考信息
 mcprism inspect mcp.json     # 列出 server 的 tools/resources/prompts
+mcprism inspect mcp.json --read-content  # 同时检查有限数量的正文
 mcprism rules                # 列出内置规则
 mcprism profiles             # 列出内置基线
 
@@ -296,9 +301,14 @@ Registry 批量审计默认只检查一页（最多 100 条）。加上 `--all` 
 | `--transport` | 对 URL 强制使用 `http`（Streamable HTTP）或 `sse`（旧版） |
 | `--dynamic`（`scan`） | 动态探测在线 server：启动/连接并列出 tools/resources/prompts。会启动目标进程，可能执行代码或联网，请在沙箱里运行 |
 | `--probe`（`vet`） | 真正启动/连接并枚举工具；会运行目标，建议在沙箱内进行 |
+| `--read-content` | 与 `scan --dynamic`、`vet --probe` 或 `inspect` 一起使用：最多请求 10 个 resource 和 10 个 prompt，正文总量上限 1 MiB，并扫描提示注入。需要必填参数的 prompt 会跳过。不会调用工具，报告不保存正文原文。 |
 | `--inherit-env` | 动态探测拉起 server 时透传当前完整环境变量。默认只给一小份安全白名单，避免把 shell 里的凭据交给不可信 server |
 | `--no-color` | 关闭终端报告里的 ANSI 颜色 |
 | `--ascii` | 终端只用 ASCII 字符（旧版 Windows 控制台和 `TERM=dumb` 会自动启用，同时尊重 `NO_COLOR`） |
+
+`--read-content` 默认关闭。开启后会调用 server 的 `resources/read` 和
+`prompts/get` handler，可能读取该 server 返回的数据；只对可信目标使用，最好在
+沙箱中探测。报告不会保存读取到的正文，但规则命中时可能包含匹配证据片段。
 
 在 CI 或脚本中运行 `scan` 和 `vet` 时，可以通过退出码区分审查结果与执行错误。
 

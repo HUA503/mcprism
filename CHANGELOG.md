@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Add opt-in `--read-content` probing for bounded prompt and resource text, with
+  multilingual injection checks and explicit incomplete-review findings.
+
 ## [0.41.0] - 2026-11-27
 
 ### Improved

@@ -57,15 +57,26 @@ func reportTarget(s *config.Server) string {
 
 // Input 是单个 server 的审查输入。动态字段可能为零值（离线 / 连接失败）。
 type Input struct {
-	Server     *config.Server             `json:"server"`
-	Init       *protocol.InitializeResult `json:"init,omitempty"`
-	Tools      []protocol.Tool            `json:"tools"`
-	Resources  []protocol.Resource        `json:"resources"`
-	Prompts    []protocol.Prompt          `json:"prompts"`
-	ConnectErr error                      `json:"-"`
-	// EnumErr 记录枚举 tools/resources/prompts 时发生的错误。空列表不等于安全：
-	// 如果枚举没有成功完成，不能把"没有危险工具"当作结论。
+	Server           *config.Server             `json:"server"`
+	Init             *protocol.InitializeResult `json:"init,omitempty"`
+	Tools            []protocol.Tool            `json:"tools"`
+	Resources        []protocol.Resource        `json:"resources"`
+	Prompts          []protocol.Prompt          `json:"prompts"`
+	ContentScanned   bool                       `json:"contentScanned,omitempty"`
+	ContentTextCount int                        `json:"contentTextCount"`
+	ContentText      []ContentText              `json:"-"`
+	ConnectErr       error                      `json:"-"`
+	// EnumErr records incomplete capability listing or requested content reads.
+	// Empty results do not prove safety when enumeration did not finish.
 	EnumErr []string `json:"-"`
+}
+
+// ContentText is text retrieved from a prompt or resource. Raw content is kept
+// out of serialized scan inputs and reports; only matched evidence is surfaced.
+type ContentText struct {
+	Kind string
+	Name string
+	Text string
 }
 
 // Result 是单个 server 的审查结果。
@@ -73,23 +84,25 @@ type Result struct {
 	Server *config.Server `json:"-"`
 	// 可序列化的目标标识，供 JSON/SARIF/CSV 等机器输出归档与复现。
 	// Env 和 Headers 可能含凭据，有意不放进报告；URL 里的 userinfo 会脱敏。
-	ServerName    string              `json:"server"`
-	Transport     string              `json:"transport,omitempty"`
-	Target        string              `json:"target,omitempty"`
-	Source        string              `json:"source,omitempty"`
-	Client        string              `json:"client,omitempty"`
-	ProjectDir    string              `json:"projectDir,omitempty"`
-	Capabilities  Capabilities        `json:"capabilities"`
-	Findings      []Finding           `json:"findings"`
-	Connected     bool                `json:"connected"`
-	Probed        bool                `json:"probed"`
-	ConnectError  string              `json:"connectError,omitempty"`
-	ToolCount     int                 `json:"toolCount"`
-	ResourceCount int                 `json:"resourceCount"`
-	PromptCount   int                 `json:"promptCount"`
-	Score         int                 `json:"score"`
-	Grade         string              `json:"grade"`
-	Suppressed    []SuppressedFinding `json:"suppressed,omitempty"`
+	ServerName       string              `json:"server"`
+	Transport        string              `json:"transport,omitempty"`
+	Target           string              `json:"target,omitempty"`
+	Source           string              `json:"source,omitempty"`
+	Client           string              `json:"client,omitempty"`
+	ProjectDir       string              `json:"projectDir,omitempty"`
+	Capabilities     Capabilities        `json:"capabilities"`
+	Findings         []Finding           `json:"findings"`
+	Connected        bool                `json:"connected"`
+	Probed           bool                `json:"probed"`
+	ConnectError     string              `json:"connectError,omitempty"`
+	ToolCount        int                 `json:"toolCount"`
+	ResourceCount    int                 `json:"resourceCount"`
+	PromptCount      int                 `json:"promptCount"`
+	ContentScanned   bool                `json:"contentScanned,omitempty"`
+	ContentTextCount int                 `json:"contentTextCount"`
+	Score            int                 `json:"score"`
+	Grade            string              `json:"grade"`
+	Suppressed       []SuppressedFinding `json:"suppressed,omitempty"`
 }
 
 // Rescore 在策略调整 findings 后重新计算分数与等级。
@@ -100,18 +113,20 @@ func Rescore(r *Result) {
 // Analyze 对单个 server 执行完整分析。
 func Analyze(in Input) *Result {
 	r := &Result{
-		Server:        in.Server,
-		ServerName:    in.Server.Name,
-		Transport:     string(in.Server.Transport),
-		Target:        reportTarget(in.Server),
-		Source:        in.Server.Source,
-		Client:        in.Server.Client,
-		ProjectDir:    in.Server.ProjectDir,
-		ToolCount:     len(in.Tools),
-		ResourceCount: len(in.Resources),
-		PromptCount:   len(in.Prompts),
-		Connected:     in.Init != nil,
-		Probed:        in.Init != nil || in.ConnectErr != nil,
+		Server:           in.Server,
+		ServerName:       in.Server.Name,
+		Transport:        string(in.Server.Transport),
+		Target:           reportTarget(in.Server),
+		Source:           in.Server.Source,
+		Client:           in.Server.Client,
+		ProjectDir:       in.Server.ProjectDir,
+		ToolCount:        len(in.Tools),
+		ResourceCount:    len(in.Resources),
+		PromptCount:      len(in.Prompts),
+		ContentScanned:   in.ContentScanned,
+		ContentTextCount: len(in.ContentText),
+		Connected:        in.Init != nil,
+		Probed:           in.Init != nil || in.ConnectErr != nil,
 	}
 	if in.ConnectErr != nil {
 		r.ConnectError = in.ConnectErr.Error()

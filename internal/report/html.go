@@ -187,6 +187,9 @@ main{max-width:none;padding:0}
 		if srv.Source != "" {
 			b.WriteString(fmt.Sprintf(`<div class="meta"><span class="dim">source</span> %s (%s)</div>`, esc(srv.Source), esc(srv.Client)))
 		}
+		if res.ContentScanned {
+			b.WriteString(fmt.Sprintf(`<div class="meta"><span class="dim">content</span> prompt/resource text inspected: %d block(s)</div>`, res.ContentTextCount))
+		}
 		// chips
 		b.WriteString(`<div class="chips">`)
 		addChip := func(t string, c string) {

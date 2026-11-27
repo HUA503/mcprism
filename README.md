@@ -300,6 +300,9 @@ mcprism scan mcp.json
 # Probe live servers (starts the process; run in a sandbox)
 mcprism scan mcp.json --dynamic
 
+# Also request bounded prompt/resource text and scan it for injection
+mcprism scan mcp.json --dynamic --read-content
+
 # Enforce a profile or a custom policy
 mcprism scan --profile strict
 mcprism scan --policy policy.yml --suppressions suppressions.yml
@@ -317,6 +320,7 @@ mcprism vet "uvx some-mcp-server"
 mcprism vet https://mcp.example.com
 mcprism vet npm:@scope/name
 mcprism vet --probe -- npx -y some-mcp-server   # actually run it and list tools
+mcprism vet --probe --read-content -- npx -y some-mcp-server
 
 # Search and statically scan one server from the official MCP Registry
 mcprism registry search filesystem
@@ -327,6 +331,7 @@ mcprism registry audit filesystem --all --limit 100 --require-complete --format 
 
 # Reference
 mcprism inspect mcp.json     # list a server's tools/resources/prompts
+mcprism inspect mcp.json --read-content  # also inspect bounded prompt/resource text
 mcprism rules                # list built-in rules
 mcprism profiles             # list built-in profiles
 
@@ -368,9 +373,15 @@ Add the command to your shell profile to enable completion in new sessions.
 | `--transport` | Force `http` (Streamable HTTP) or `sse` (legacy) for URLs |
 | `--dynamic` (`scan`) | Probe live servers: launch/connect and enumerate tools, resources and prompts. Starts the target process, which may run code or reach the network; run it in a sandbox |
 | `--probe` (`vet`) | Launch/connect and enumerate tools; runs the target, prefer a sandbox |
+| `--read-content` | With `scan --dynamic`, `vet --probe`, or `inspect`, request text from up to 10 resources and 10 prompts (1 MiB total) and scan it for prompt injection. Required-argument prompts are skipped. This does not call tools; raw content is not included in reports. |
 | `--inherit-env` | When spawning a server for probing, pass through the full parent environment. Default is a small safe allowlist, so credentials in your shell are not handed to an untrusted server |
 | `--no-color` | Disable ANSI colors in the terminal report |
 | `--ascii` | Use ASCII-only glyphs in the terminal (auto-enabled for legacy Windows consoles and `TERM=dumb`; honors `NO_COLOR`) |
+
+`--read-content` is opt-in because `resources/read` and `prompts/get` invoke server
+handlers and may expose data the server chooses to return. Use it only with a
+trusted target, preferably in a sandbox. The scanner does not save retrieved
+text in its report; matched evidence may appear when a rule fires.
 
 For batch `scan` and `vet` runs, use the exit code to distinguish audit results
 from command errors.

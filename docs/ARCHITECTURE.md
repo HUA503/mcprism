@@ -104,6 +104,9 @@ A bubbletea program for browsing results in a terminal.
 2. For each server the CLI either builds a static `Input` (the default: no
    process is spawned) or, with `--dynamic`/`--probe`, dials the server and
    records the initialize response and the listed tools, resources and prompts.
+   When `--read-content` is set, it also requests bounded resource and prompt
+   text and sends it through the same poisoning rules; raw text is not retained
+   in reports.
 3. `rules.AnalyzeAll` produces results: capabilities are inferred from the
    package and live metadata, then every check contributes findings.
 4. `policy.Enforce` applies overrides, deny matches (`MCP700`) and network

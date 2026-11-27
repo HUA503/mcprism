@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 // injectionSigs 是元数据中的提示注入特征。
@@ -82,6 +83,10 @@ func metadataPoisoningRules(in Input) []Finding {
 	if in.Init != nil && strings.TrimSpace(in.Init.Instructions) != "" {
 		f = append(f, scanMetadata(in.Server.Name, "server instructions", "server:instructions", in.Init.Instructions)...)
 	}
+	for _, content := range in.ContentText {
+		location := content.Kind + "-content:" + content.Name
+		f = append(f, scanMetadata(in.Server.Name, content.Kind+" content", location, content.Text)...)
+	}
 
 	for _, t := range in.Tools {
 		scan := strings.Join([]string{t.Name, t.Title, t.Description, string(t.Annotations), string(t.InputSchema)}, "\n")
@@ -138,6 +143,11 @@ func metadataPoisoningRules(in Input) []Finding {
 func scanMetadata(server, kind, loc, scan string) []Finding {
 	var f []Finding
 	noun := kind
+	textLabel := kind + " metadata"
+	if strings.HasSuffix(kind, " content") {
+		textLabel = kind
+		noun = strings.TrimSuffix(kind, " content")
+	}
 	// Fold NFKC compatibility forms and Cyrillic/Greek homoglyphs so injection
 	// phrasing hidden behind full-width letters or look-alike code points still
 	// matches the English signatures.
@@ -158,6 +168,8 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 		title := "Prompt injection in " + noun + " metadata"
 		if kind == "server instructions" {
 			title = "Prompt injection in server instructions"
+		} else if strings.HasSuffix(kind, " content") {
+			title = "Prompt injection in " + kind
 		}
 		f = append(f, Finding{
 			RuleID: "MCP201", Title: title,
@@ -178,7 +190,7 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 			sev = SeverityCritical
 		}
 		f = append(f, Finding{
-			RuleID: "MCP202", Title: "Invisible or bidirectional Unicode in " + noun + " metadata",
+			RuleID: "MCP202", Title: "Invisible or bidirectional Unicode in " + textLabel,
 			Severity: sev, OWASP: "MCP03", Server: server, Location: loc,
 			Evidence:    fmt.Sprintf("%s character U+%04X", invKind, r),
 			Description: "Zero-width, bidirectional-override or Unicode Tags characters can hide instructions or visually rearrange text so reviewers and the model see different things.",
@@ -189,7 +201,7 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 	if tok := findMixedScriptToken(scan); tok != "" {
 		obfuscated = true
 		f = append(f, Finding{
-			RuleID: "MCP202", Title: "Mixed-script homoglyph in " + noun + " metadata",
+			RuleID: "MCP202", Title: "Mixed-script homoglyph in " + textLabel,
 			Severity: SeverityHigh, OWASP: "MCP03", Server: server, Location: loc,
 			Evidence:    "mixed-script token: " + clipEvidence(tok, 60),
 			Description: "A single token mixes Latin with Cyrillic/Greek letters that look nearly identical, a common way to disguise keywords from plaintext review and ASCII-based scanners.",
@@ -200,7 +212,7 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 	// 3. Hidden HTML / Markdown.
 	if m := hiddenHTML.FindString(scan); m != "" {
 		f = append(f, Finding{
-			RuleID: "MCP203", Title: "Hidden HTML in " + noun + " metadata",
+			RuleID: "MCP203", Title: "Hidden HTML in " + textLabel,
 			Severity: SeverityHigh, OWASP: "MCP03", Server: server, Location: loc, Evidence: clipEvidence(m, 80),
 			Description: "Hidden HTML comments or tags can carry instructions that are not visibly shown but may be acted on by the model.",
 			Advice:      "Remove HTML comments/script tags from server metadata.",
@@ -208,7 +220,7 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 	}
 	if m := hiddenMD.FindString(scan); m != "" {
 		f = append(f, Finding{
-			RuleID: "MCP203", Title: "Embedded image/link in " + noun + " metadata",
+			RuleID: "MCP203", Title: "Embedded image/link in " + textLabel,
 			Severity: SeverityMedium, OWASP: "MCP03", Server: server, Location: loc, Evidence: clipEvidence(m, 80),
 			Description: "Embedded images/links can be used for tracking or to exfiltrate data via request parameters when rendered or fetched.",
 			Advice:      "Avoid external image/link references in server metadata.",
@@ -218,7 +230,7 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 	// 4. Large encoded blobs.
 	if m := b64Blob.FindString(scan); m != "" {
 		f = append(f, Finding{
-			RuleID: "MCP204", Title: "Large encoded blob in " + noun + " metadata",
+			RuleID: "MCP204", Title: "Large encoded blob in " + textLabel,
 			Severity: SeverityMedium, OWASP: "MCP03", Server: server, Location: loc, Evidence: "base64 length " + fmt.Sprint(len(m)),
 			Description: "A long base64 blob may conceal a payload or instructions that avoid plaintext review.",
 			Advice:      "Decode and inspect encoded blobs; remove those that are not required.",
@@ -226,7 +238,7 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 	}
 	if m := hexBlob.FindString(scan); m != "" {
 		f = append(f, Finding{
-			RuleID: "MCP204", Title: "Large hex blob in " + noun + " metadata",
+			RuleID: "MCP204", Title: "Large hex blob in " + textLabel,
 			Severity: SeverityMedium, OWASP: "MCP03", Server: server, Location: loc, Evidence: "hex length " + fmt.Sprint(len(m)),
 			Description: "A long hex blob may conceal a payload that avoids plaintext review.",
 			Advice:      "Decode and inspect encoded blobs; remove those that are not required.",
@@ -239,7 +251,7 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 	if obfuscated {
 		if m := imperative.FindString(folded); m != "" {
 			f = append(f, Finding{
-				RuleID: "MCP205", Title: "Directive language combined with hidden text in " + noun + " metadata",
+				RuleID: "MCP205", Title: "Directive language combined with hidden text in " + textLabel,
 				Severity: SeverityInfo, OWASP: "MCP03", Server: server, Location: loc, Evidence: clipEvidence(m, 80),
 				Description: "Imperative phrasing steers the model, and here it appears together with invisible or confusable characters, which is a strong poisoning indicator.",
 				Advice:      "Prefer factual descriptions and strip the hidden/confusable characters.",
@@ -279,7 +291,11 @@ func clipEvidence(s string, max int) string {
 	s = strings.TrimSpace(s)
 	s = strings.ReplaceAll(s, "\n", " ")
 	if len(s) > max {
-		return s[:max] + "..."
+		end := max
+		for end > 0 && end < len(s) && !utf8.RuneStart(s[end]) {
+			end--
+		}
+		return s[:end] + "..."
 	}
 	return s
 }
