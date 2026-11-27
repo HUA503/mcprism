@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
-## [Unreleased]
+## [0.27.0] - 2026-11-27
 
 ### Added
 
@@ -555,6 +555,16 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
+[0.27.0]: https://github.com/HUA503/mcprism/compare/v0.26.0...v0.27.0
+[0.26.0]: https://github.com/HUA503/mcprism/compare/v0.25.0...v0.26.0
+[0.25.0]: https://github.com/HUA503/mcprism/compare/v0.24.0...v0.25.0
+[0.24.0]: https://github.com/HUA503/mcprism/compare/v0.23.0...v0.24.0
+[0.23.0]: https://github.com/HUA503/mcprism/compare/v0.22.0...v0.23.0
+[0.22.0]: https://github.com/HUA503/mcprism/compare/v0.21.0...v0.22.0
+[0.21.0]: https://github.com/HUA503/mcprism/compare/v0.20.0...v0.21.0
+[0.20.0]: https://github.com/HUA503/mcprism/compare/v0.19.0...v0.20.0
+[0.19.0]: https://github.com/HUA503/mcprism/compare/v0.18.0...v0.19.0
+[0.18.0]: https://github.com/HUA503/mcprism/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/HUA503/mcprism/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/HUA503/mcprism/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/HUA503/mcprism/compare/v0.14.0...v0.15.0
