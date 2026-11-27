@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Improved
+
+- Expand Chinese prompt-injection signatures for role-play jailbreaks and
+  instructions that claim priority over system or developer rules.
+
 ## [0.42.1] - 2026-11-27
 
 ### Improved

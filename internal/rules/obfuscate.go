@@ -30,9 +30,10 @@ var confusable = map[rune]rune{
 	0x03A1: 'P', 0x03A4: 'T', 0x03A5: 'Y', 0x03A7: 'X',
 }
 
-// normalizeForScan folds away text-level obfuscation before matching English
-// injection signatures: NFKC (full-width Latin/digits, ligatures, super/
-// subscripts, compatibility forms) followed by Cyrillic/Greek-to-Latin
+// normalizeForScan folds away text-level obfuscation before matching
+// language-specific injection signatures: NFKC (full-width Latin/digits,
+// ligatures, super/subscripts, compatibility forms) followed by
+// Cyrillic/Greek-to-Latin
 // confusable folding. It does not modify what is shown in the report; it only
 // decides whether a signature is present.
 func normalizeForScan(s string) string {
