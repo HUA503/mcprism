@@ -235,7 +235,7 @@ https://github.com/HUA503/mcprism
 | Reddit (which sub) |  |  |  |
 | X |  |  |  |
 | V2EX |  |  |  |
-| [awesome-agentic-mcp-security](https://github.com/mcp-security-project/awesome-agentic-mcp-security/pull/44) | Open (checked Nov 27, 2026) | Maintainer asked for a rebase; latest listing commit still references v0.9.2 | MCP Scanners |
-| [awesome-mcp-security](https://github.com/Puliczek/awesome-mcp-security/pull/405) | Open (checked Nov 27, 2026) | Awaiting maintainer review | Tools and code |
+| [awesome-agentic-mcp-security](https://github.com/mcp-security-project/awesome-agentic-mcp-security/pull/44) | Open (updated Nov 27, 2026) | Based on current main and refreshed to v0.29.0; awaiting review | MCP Scanners |
+| [awesome-mcp-security](https://github.com/Puliczek/awesome-mcp-security/pull/405) | Open (updated Nov 27, 2026) | Refreshed description to v0.29.0 capabilities; awaiting review | Tools and code |
 | [awesome-mcp-enterprise](https://github.com/bh-rat/awesome-mcp-enterprise/issues/154) | Open; no labels (checked Nov 27, 2026) | Wait for `approved-for-pr`; proposal evidence still points to v0.2.0 | Emerging list |
 | mcp.so / Glama |  |  | These catalog servers; list only if a tools section applies |
