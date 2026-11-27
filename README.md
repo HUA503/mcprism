@@ -155,6 +155,10 @@ below, with no network needed.
   named like command, url or path that accepts any value is flagged as command,
   SSRF or path risk. Parameters constrained with enum, const or pattern are
   left alone.
+- Tool-poisoning checks. Deterministic offline signatures cover common prompt
+  injection directives in English, Simplified and Traditional Chinese, Japanese
+  and Korean. They flag known patterns; they do not understand every paraphrase
+  or prove that tool metadata is safe.
 - Policy as code. Turn rules on/off, change severity, allow or deny packages,
   commands and domains, and require network isolation. Built-in profiles give
   you `default`, `strict` and `ci` baselines.
@@ -842,7 +846,9 @@ so only run servers you trust.
 - [x] Nix package
 - [x] Rust `rmcp` tool SAST
 - [ ] More SAST languages (Java, C#)
-- [ ] Cross-file, object-flow and JavaScript inter-procedural taint tracking
+- [ ] Broader data-flow coverage for dynamic dispatch, returned values and
+  complex object graphs; current cross-file and helper tracking is bounded and
+  language-specific ([details](docs/SAST.md)).
 - [ ] Built-in sandbox wrapper for live probes
 
 ## Contributing
