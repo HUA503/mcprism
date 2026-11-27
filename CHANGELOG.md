@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Follow JavaScript/TypeScript helpers imported through destructured CommonJS
+  `require()` bindings from bounded same-directory modules.
+
 ## [0.26.0] - 2026-11-27
 
 ### Added

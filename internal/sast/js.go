@@ -79,10 +79,15 @@ func buildJSFunctionScope(path, src string, depth int, scopes *jsFunctionScopes)
 	return functions
 }
 
-// mergeJSImportedFunctions resolves named imports from bounded, same-directory
-// source modules. Only exported helpers imported under an unambiguous local
-// name are added; package imports, namespace imports and star exports are not.
+// mergeJSImportedFunctions resolves named ES imports and destructured CommonJS
+// require imports from bounded, same-directory source modules. Only exported
+// helpers imported under an unambiguous local name are added; package imports,
+// namespace imports and star exports are not.
 func mergeJSImportedFunctions(path, src string, functions map[string]handlerBlock, localNames map[string]bool, depth int, scopes *jsFunctionScopes) {
+	type binding struct {
+		original string
+		alias    string
+	}
 	type candidate struct {
 		block handlerBlock
 		count int
@@ -90,61 +95,99 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 	candidates := map[string]candidate{}
 	text := maskJSComments(src)
 	structure := maskJSCode(src)
-	for _, m := range jsNamedImportRe.FindAllStringSubmatchIndex(text, -1) {
-		if m[1]-m[0] < len("import") || structure[m[0]:m[0]+len("import")] != "import" {
-			continue
-		}
-		module := text[m[4]:m[5]]
+	merge := func(module string, bindings []binding) {
 		modulePath := jsLocalModulePath(path, module)
 		if modulePath == "" {
-			continue
+			return
 		}
 		moduleKey := filepath.Clean(modulePath)
 		moduleFunctions, ok := scopes.functions[moduleKey]
 		if !ok {
 			if scopes.files >= maxJSModuleFiles || depth >= maxJSModuleDepth {
-				continue
+				return
 			}
 			info, err := os.Lstat(modulePath)
 			if err != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize {
-				continue
+				return
 			}
 			if scopes.bytes+info.Size() > maxJSModuleBytes {
-				continue
+				return
 			}
 			moduleBytes, err := os.ReadFile(modulePath)
 			if err != nil {
-				continue
+				return
 			}
 			scopes.bytes += int64(len(moduleBytes))
 			scopes.files++
 			moduleFunctions = buildJSFunctionScope(modulePath, string(moduleBytes), depth+1, scopes)
 		}
 		exported := scopes.exports[moduleKey]
-		for _, item := range strings.Split(text[m[2]:m[3]], ",") {
-			fields := strings.Fields(strings.TrimSpace(item))
-			if len(fields) == 0 {
-				continue
-			}
-			original, alias := fields[0], fields[0]
-			if len(fields) == 3 && fields[1] == "as" {
-				alias = fields[2]
-			} else if len(fields) != 1 {
-				continue
-			}
-			helper, exists := moduleFunctions[original]
-			if !exported[original] {
+		for _, item := range bindings {
+			helper, exists := moduleFunctions[item.original]
+			if !exported[item.original] {
 				exists = false
 			}
-			if !exists || localNames[alias] {
+			if !exists || localNames[item.alias] {
 				continue
 			}
-			helper.name = alias
-			c := candidates[alias]
+			helper.name = item.alias
+			c := candidates[item.alias]
 			c.block = helper
 			c.count++
-			candidates[alias] = c
+			candidates[item.alias] = c
 		}
+	}
+	parseBindings := func(items string, separator string) []binding {
+		var bindings []binding
+		for _, item := range splitCallArgs(items) {
+			item = strings.TrimSpace(item)
+			if item == "" {
+				continue
+			}
+			original, alias := item, item
+			if separator == ":" {
+				if colon := strings.IndexByte(item, ':'); colon >= 0 {
+					original = strings.TrimSpace(item[:colon])
+					alias = strings.TrimSpace(item[colon+1:])
+				}
+			} else {
+				fields := strings.Fields(item)
+				if len(fields) == 3 && fields[1] == separator {
+					original, alias = fields[0], fields[2]
+				} else if len(fields) != 1 {
+					continue
+				} else {
+					original = fields[0]
+					alias = fields[0]
+				}
+			}
+			if original == "" || alias == "" {
+				continue
+			}
+			bindings = append(bindings, binding{original: original, alias: alias})
+		}
+		return bindings
+	}
+	for _, m := range jsNamedImportRe.FindAllStringSubmatchIndex(text, -1) {
+		if m[1]-m[0] < len("import") || structure[m[0]:m[0]+len("import")] != "import" {
+			continue
+		}
+		merge(text[m[4]:m[5]], parseBindings(text[m[2]:m[3]], "as"))
+	}
+
+	// CommonJS destructured requires are static only when the requested module
+	// is a quoted relative path and the binding appears in a variable declaration.
+	requireImport := regexp.MustCompile(`\b(?:const|let|var)\s*\{([^}]*)\}\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)`)
+	for _, m := range requireImport.FindAllStringSubmatchIndex(text, -1) {
+		fields := strings.Fields(structure[m[0]:m[1]])
+		if len(fields) == 0 {
+			continue
+		}
+		declaration := fields[0]
+		if declaration != "const" && declaration != "let" && declaration != "var" {
+			continue
+		}
+		merge(text[m[4]:m[5]], parseBindings(text[m[2]:m[3]], ":"))
 	}
 	for alias, c := range candidates {
 		if c.count == 1 && !localNames[alias] {
@@ -187,6 +230,25 @@ func jsExportedFunctionNames(src string) map[string]bool {
 	exportVariable := regexp.MustCompile(`\bexport\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=`)
 	for _, re := range []*regexp.Regexp{exportFunction, exportVariable} {
 		for _, m := range re.FindAllStringSubmatch(structure, -1) {
+			names[m[1]] = true
+		}
+	}
+	// Support the common CommonJS pattern `module.exports = { runHelper }`.
+	// Only same-name shorthand properties are resolved, avoiding guesses about
+	// getters, computed properties, or arbitrary export expressions.
+	moduleExports := regexp.MustCompile(`\bmodule\s*\.\s*exports\s*=\s*\{([^{}]*)\}`)
+	identifier := regexp.MustCompile(`^[A-Za-z_$][\w$]*$`)
+	for _, m := range moduleExports.FindAllStringSubmatch(structure, -1) {
+		for _, property := range splitCallArgs(m[1]) {
+			property = strings.TrimSpace(property)
+			if identifier.MatchString(property) {
+				names[property] = true
+			}
+		}
+	}
+	moduleExportAssignment := regexp.MustCompile(`\b(?:module\s*\.\s*exports|exports)\s*\.\s*([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\b`)
+	for _, m := range moduleExportAssignment.FindAllStringSubmatch(structure, -1) {
+		if m[1] == m[2] {
 			names[m[1]] = true
 		}
 	}
