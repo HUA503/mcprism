@@ -42,8 +42,9 @@ deserialization that runs code, so MCP804 and MCP805 are not emitted for Go;
 the command, SSRF, path and secret rules (MCP801/802/803/806) are.
 
 Python sink checks follow explicit import aliases for `os`, `subprocess`,
-`requests`, `httpx`, `urllib`, `pickle`, `marshal` and `yaml`, including both
-`import module as alias` and `from module import function as alias` forms.
+`requests`, `httpx`, `urllib`, `pathlib`, `pickle`, `marshal` and `yaml`,
+including both `import module as alias` and `from module import function as
+alias` forms.
 
 ## How taint is tracked
 

@@ -758,12 +758,11 @@ func scanPythonBlock(path string, b handlerBlock, imports pythonImports) []Issue
 		}
 	}
 	// Path(tool input) combined with read_text/write_text.
-	pathCtorRe := regexp.MustCompile(`Path\s*\(`)
-	for _, m := range pathCtorRe.FindAllStringIndex(text, -1) {
-		open := m[1] - 1
+	for _, call := range pythonCalls(text, imports, "pathlib.Path", "Path") {
+		open := call.end - 1
 		close := matchClose(text, open, '(', ')')
 		arg := text[open+1 : close]
-		line := off2line(m[0])
+		line := off2line(call.start)
 		code := lineText(b, line)
 		if isPyPathConfined(arg, guarded) {
 			continue
