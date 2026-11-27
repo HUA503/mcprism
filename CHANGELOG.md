@@ -4,14 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 semantic versioning.
 
+## [0.28.0] - 2026-11-27
+
+### Added
+
+- Follow direct named helper calls through statically required CommonJS module
+  objects in bounded same-directory modules.
+
 ## [0.27.0] - 2026-11-27
 
 ### Added
 
 - Follow JavaScript/TypeScript helpers imported through destructured CommonJS
   `require()` bindings from bounded same-directory modules.
-- Follow direct named helper calls through statically required CommonJS module
-  objects in bounded same-directory modules.
 
 ## [0.26.0] - 2026-11-27
 
@@ -557,6 +562,7 @@ secrets on a command line no longer appear in reports.
 - table, JSON, SARIF, Markdown and HTML reports.
 - Interactive terminal UI and a bundled demo server.
 
+[0.28.0]: https://github.com/HUA503/mcprism/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/HUA503/mcprism/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/HUA503/mcprism/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/HUA503/mcprism/compare/v0.24.0...v0.25.0
