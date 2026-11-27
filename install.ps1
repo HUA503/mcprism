@@ -12,7 +12,7 @@ if ([string]::IsNullOrWhiteSpace($requestedVersion) -or $requestedVersion -eq "l
     $releaseBase = "https://github.com/$repository/releases/latest/download"
 } else {
     if ($requestedVersion -cnotmatch '\Av?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?\z') {
-        throw "Invalid MC_PRISM_VERSION '$requestedVersion'. Expected 'latest' or a version such as 'v0.30.0'."
+        throw "Invalid MC_PRISM_VERSION '$requestedVersion'. Expected 'latest' or a version such as 'v0.30.1'."
     }
     if (-not $requestedVersion.StartsWith("v", [System.StringComparison]::Ordinal)) {
         $requestedVersion = "v$requestedVersion"
