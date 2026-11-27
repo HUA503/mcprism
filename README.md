@@ -495,7 +495,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - The engine uses pattern matching and no third-party parser, keeping the binary
   small and self-contained. JS/TS, Python and Go taint tracking follows local
   aliases and arguments passed through unambiguous helper functions. Go also
-  follows unique free functions across files in the same package. JS/TS
+  follows unique free functions and methods with inferable receiver types
+  across files in the same package. JS/TS
   recognizes function declarations and block-bodied arrow helpers. JS/TS also
   follows named imports of exported helpers and their helper chains across
   same-directory modules, within bounded depth, file count and source size.
@@ -504,12 +505,13 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods
   and through unique same-file helpers.
   Be aware of the known limits; a clean report is not proof of safety:
-- Cross-file taint tracking is limited to Go same-package free-function helpers
-  and explicitly imported Python/JS/TS helpers. Python and JS/TS module traversal
-  is bounded. The engine does not track re-exports, object properties, returned
-  values, dynamic dispatch, JS/TS default or namespace imports, or package
-  imports. Sink matching is pattern-based, so unusual formatting and generated
-  code can still be missed or misclassified.
+- Cross-file taint tracking is limited to Go same-package free functions and
+  methods with an inferable receiver type, plus explicitly imported Python/JS/TS
+  helpers. Go leaves calls on opaque or captured receivers unresolved. Python
+  and JS/TS module traversal is bounded. The engine does not track re-exports,
+  object properties, returned values, dynamic dispatch, JS/TS default or
+  namespace imports, or package imports. Sink matching is pattern-based, so
+  unusual formatting and generated code can still be missed or misclassified.
 - Go uses the standard-library `go/parser` to locate helper function boundaries;
   it does not build a full-program data-flow graph. JS/Python do not use
   tree-sitter.

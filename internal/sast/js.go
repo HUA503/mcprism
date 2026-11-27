@@ -777,10 +777,12 @@ func isJSIdent(s string) bool {
 // ---------- shared block/lexer helpers ----------
 
 type handlerBlock struct {
-	name   string
-	params []string
-	lines  []srcLine
-	path   string
+	name         string
+	params       []string
+	lines        []srcLine
+	path         string
+	receiverName string
+	receiverType string
 }
 
 // matchClose returns the index of the closing character for the opener at
