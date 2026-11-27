@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode"
 )
@@ -15,11 +16,19 @@ const (
 )
 
 type jsFunctionScopes struct {
-	functions  map[string]map[string]handlerBlock
-	staticMaps map[string]map[string]string
-	exports    map[string]map[string]bool
-	bytes      int64
-	files      int
+	functions   map[string]map[string]handlerBlock
+	staticMaps  map[string]map[string]string
+	exports     map[string]map[string]bool
+	sinkImports map[string]jsSinkImports
+	bytes       int64
+	files       int
+}
+
+type jsSinkImports struct {
+	calls            map[string]string
+	modules          map[string]string
+	ambiguousCalls   map[string]bool
+	ambiguousModules map[string]bool
 }
 
 func analyzeJS(path string) []Issue {
@@ -29,11 +38,12 @@ func analyzeJS(path string) []Issue {
 	}
 	var out []Issue
 	scopes := &jsFunctionScopes{
-		functions:  map[string]map[string]handlerBlock{},
-		staticMaps: map[string]map[string]string{},
-		exports:    map[string]map[string]bool{},
-		bytes:      int64(len(src)),
-		files:      1,
+		functions:   map[string]map[string]handlerBlock{},
+		staticMaps:  map[string]map[string]string{},
+		exports:     map[string]map[string]bool{},
+		sinkImports: map[string]jsSinkImports{},
+		bytes:       int64(len(src)),
+		files:       1,
 	}
 	buildJSFunctionScope(path, src, 0, scopes)
 	for _, b := range extractJSHandlers(maskJSComments(src)) {
@@ -51,6 +61,206 @@ func analyzeJS(path string) []Issue {
 var jsHandlerRe = regexp.MustCompile(`(?:\.tool|setRequestHandler|registerTool)\s*\(`)
 var jsNamedImportRe = regexp.MustCompile(`(?s)\bimport\s*\{([^}]*)\}\s*from\s*["']([^"']+)["']`)
 
+func canonicalJSSinkImport(module, imported string) string {
+	module = strings.TrimPrefix(module, "node:")
+	switch module {
+	case "child_process":
+		switch imported {
+		case "exec", "execSync", "execFile", "spawn", "spawnSync":
+			return imported
+		}
+	case "axios":
+		if imported == "default" {
+			return "axios"
+		}
+		switch imported {
+		case "get", "post", "put", "request":
+			return "axios." + imported
+		}
+	case "got":
+		if imported == "default" || imported == "got" {
+			return "got"
+		}
+	case "request":
+		if imported == "default" || imported == "request" {
+			return "request"
+		}
+	case "node-fetch", "undici":
+		if imported == "fetch" || imported == "default" {
+			return "fetch"
+		}
+	case "http", "https":
+		if imported == "get" {
+			return module + ".get"
+		}
+	}
+	return ""
+}
+
+func parseJSSinkImports(src string) jsSinkImports {
+	imports := jsSinkImports{
+		calls: map[string]string{}, modules: map[string]string{},
+		ambiguousCalls: map[string]bool{}, ambiguousModules: map[string]bool{},
+	}
+	add := func(dst map[string]string, ambiguous map[string]bool, alias, canonical string) {
+		if alias == "" || ambiguous[alias] {
+			return
+		}
+		if prior, ok := dst[alias]; ok && prior != canonical {
+			delete(dst, alias)
+			ambiguous[alias] = true
+			return
+		}
+		dst[alias] = canonical
+	}
+	text := maskJSComments(src)
+	structure := maskJSCode(text)
+	for _, m := range jsNamedImportRe.FindAllStringSubmatchIndex(text, -1) {
+		if m[1]-m[0] < len("import") || structure[m[0]:m[0]+len("import")] != "import" {
+			continue
+		}
+		module := text[m[4]:m[5]]
+		for _, item := range splitCallArgs(text[m[2]:m[3]]) {
+			fields := strings.Fields(strings.TrimSpace(item))
+			if len(fields) == 0 {
+				continue
+			}
+			imported, alias := fields[0], fields[0]
+			if len(fields) == 3 && fields[1] == "as" {
+				alias = fields[2]
+			} else if len(fields) != 1 {
+				continue
+			}
+			if canonical := canonicalJSSinkImport(module, imported); canonical != "" {
+				add(imports.calls, imports.ambiguousCalls, alias, canonical)
+			}
+		}
+	}
+	defaultImport := regexp.MustCompile(`\bimport\s+(?:([A-Za-z_$][\w$]*)|\*\s+as\s+([A-Za-z_$][\w$]*))\s+from\s*["']([^"']+)["']`)
+	for _, m := range defaultImport.FindAllStringSubmatch(text, -1) {
+		alias := m[1]
+		if alias == "" {
+			alias = m[2]
+		}
+		module := strings.TrimPrefix(m[3], "node:")
+		if canonical := canonicalJSSinkImport(m[3], "default"); canonical != "" {
+			add(imports.calls, imports.ambiguousCalls, alias, canonical)
+			continue
+		}
+		switch module {
+		case "child_process", "axios", "got", "request", "node-fetch", "undici", "http", "https":
+			add(imports.modules, imports.ambiguousModules, alias, module)
+		}
+	}
+	for _, pattern := range []string{
+		`\b(?:const|let|var)\s*\{([^}]*)\}\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)`,
+	} {
+		re := regexp.MustCompile(pattern)
+		for _, m := range re.FindAllStringSubmatch(text, -1) {
+			for _, item := range splitCallArgs(m[1]) {
+				item = strings.TrimSpace(item)
+				fields := strings.Fields(item)
+				if len(fields) == 0 {
+					continue
+				}
+				imported, alias := fields[0], fields[0]
+				if colon := strings.IndexByte(item, ':'); colon >= 0 {
+					imported = strings.TrimSpace(item[:colon])
+					alias = strings.TrimSpace(item[colon+1:])
+					if imported == "" || alias == "" {
+						continue
+					}
+				} else if len(fields) != 1 {
+					continue
+				}
+				if canonical := canonicalJSSinkImport(m[2], imported); canonical != "" {
+					add(imports.calls, imports.ambiguousCalls, alias, canonical)
+				}
+			}
+		}
+	}
+	requireModule := regexp.MustCompile(`\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*["']([^"']+)["']\s*\)`)
+	for _, m := range requireModule.FindAllStringSubmatch(text, -1) {
+		module := strings.TrimPrefix(m[2], "node:")
+		switch module {
+		case "child_process", "axios", "got", "request", "node-fetch", "undici", "http", "https":
+			add(imports.modules, imports.ambiguousModules, m[1], module)
+		}
+	}
+	return imports
+}
+
+func mergeJSSinkImports(base, local jsSinkImports) jsSinkImports {
+	merged := jsSinkImports{
+		calls: map[string]string{}, modules: map[string]string{},
+		ambiguousCalls: map[string]bool{}, ambiguousModules: map[string]bool{},
+	}
+	for alias, canonical := range base.calls {
+		merged.calls[alias] = canonical
+	}
+	for alias, module := range base.modules {
+		merged.modules[alias] = module
+	}
+	for alias := range local.ambiguousCalls {
+		delete(merged.calls, alias)
+		merged.ambiguousCalls[alias] = true
+	}
+	for alias := range local.ambiguousModules {
+		delete(merged.modules, alias)
+		merged.ambiguousModules[alias] = true
+	}
+	for alias, canonical := range local.calls {
+		if !merged.ambiguousCalls[alias] {
+			merged.calls[alias] = canonical
+		}
+	}
+	for alias, module := range local.modules {
+		if !merged.ambiguousModules[alias] {
+			merged.modules[alias] = module
+		}
+	}
+	return merged
+}
+
+type jsSinkCall struct {
+	start, end int
+	canonical  string
+}
+
+func jsSinkCalls(text string, imports jsSinkImports, targets ...string) []jsSinkCall {
+	var calls []jsSinkCall
+	seen := map[string]bool{}
+	for _, target := range targets {
+		names := map[string]bool{target: true}
+		for alias, canonical := range imports.calls {
+			if canonical == target {
+				names[alias] = true
+			}
+		}
+		for alias, module := range imports.modules {
+			if target == module {
+				names[alias] = true
+			} else if strings.HasPrefix(target, module+".") {
+				names[alias+strings.TrimPrefix(target, module)] = true
+			}
+		}
+		alternatives := make([]string, 0, len(names))
+		for name := range names {
+			alternatives = append(alternatives, regexp.QuoteMeta(name))
+		}
+		re := regexp.MustCompile(`\b(?:` + strings.Join(alternatives, "|") + `)\s*\(`)
+		for _, match := range re.FindAllStringIndex(text, -1) {
+			key := itoa(match[0]) + ":" + itoa(match[1]) + ":" + target
+			if !seen[key] {
+				seen[key] = true
+				calls = append(calls, jsSinkCall{match[0], match[1], target})
+			}
+		}
+	}
+	sort.Slice(calls, func(i, j int) bool { return calls[i].start < calls[j].start })
+	return calls
+}
+
 func buildJSFunctionScope(path, src string, depth int, scopes *jsFunctionScopes) map[string]handlerBlock {
 	key := filepath.Clean(path)
 	if functions, ok := scopes.functions[key]; ok {
@@ -65,6 +275,7 @@ func buildJSFunctionScope(path, src string, depth int, scopes *jsFunctionScopes)
 	scopes.functions[key] = functions
 	scopes.staticMaps[key] = jsStaticMapNames(src)
 	scopes.exports[key] = jsExportedFunctionNames(src)
+	scopes.sinkImports[key] = parseJSSinkImports(src)
 	localNames := map[string]bool{}
 	for name := range functions {
 		localNames[name] = true
@@ -529,7 +740,8 @@ func scanReachableJS(path string, entry handlerBlock, scopes *jsFunctionScopes) 
 		if issuePath == "" {
 			issuePath = path
 		}
-		out = append(out, scanJSBlock(issuePath, block)...)
+		imports := mergeJSSinkImports(scopes.sinkImports[moduleKey], parseJSSinkImports(joinLines(block.lines)))
+		out = append(out, scanJSBlock(issuePath, block, imports)...)
 
 		text := maskJSComments(joinLines(block.lines))
 		structure := maskJSCode(text)
@@ -654,7 +866,7 @@ func mapKeys(set map[string]bool) []string {
 
 // ---------- sink scanning ----------
 
-func scanJSBlock(path string, b handlerBlock) []Issue {
+func scanJSBlock(path string, b handlerBlock, imports jsSinkImports) []Issue {
 	var out []Issue
 	text := maskJSComments(joinLines(b.lines))
 	structure := maskJSCode(text)
@@ -662,17 +874,17 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 	off2line := func(off int) int { return baseLine + strings.Count(text[:off], "\n") }
 
 	// 1. process execution
-	cmdRe := regexp.MustCompile(`\b(exec|execSync|execFile|spawn|spawnSync)\s*\(`)
-	for _, m := range cmdRe.FindAllStringIndex(structure, -1) {
-		open := m[1] - 1
+	cmdTargets := []string{"exec", "execSync", "execFile", "spawn", "spawnSync"}
+	for _, call := range jsSinkCalls(structure, imports, cmdTargets...) {
+		open := call.end - 1
 		close := matchClose(text, open, '(', ')')
 		if close < 0 {
 			continue
 		}
 		arg := text[open+1 : close]
-		line := off2line(open)
+		line := off2line(call.start)
 		code := lineText(b, line)
-		name := sinkName(text[m[0]:m[1]])
+		name := call.canonical
 		firstArg, rest := splitTopComma(arg)
 		switch {
 		case jsExprControllable(firstArg, b.params):
@@ -704,13 +916,13 @@ func scanJSBlock(path string, b handlerBlock) []Issue {
 	}
 
 	// 3. outbound network (SSRF)
-	netRe := regexp.MustCompile(`\b(fetch|got|request|axios\.(get|post|put)|https?\.get)\s*\(`)
-	for _, m := range netRe.FindAllStringIndex(structure, -1) {
-		open := m[1] - 1
+	netTargets := []string{"fetch", "got", "request", "axios", "axios.get", "axios.post", "axios.put", "axios.request", "http.get", "https.get"}
+	for _, call := range jsSinkCalls(structure, imports, netTargets...) {
+		open := call.end - 1
 		close := matchClose(text, open, '(', ')')
 		arg := text[open+1 : close]
 		firstArg, _ := splitTopComma(arg)
-		line := off2line(open)
+		line := off2line(call.start)
 		code := lineText(b, line)
 		if jsExprControllable(firstArg, b.params) && !isConstURLArg(firstArg) {
 			out = append(out, issue(path, "MCP802", "Tool argument controls a request URL (SSRF)", SeverityHigh, line, code,
