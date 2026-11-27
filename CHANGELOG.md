@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Improved
+
+- Follow tool-controlled Rust arguments through explicitly imported, uniquely
+  named local helpers in the same Cargo package during directory scans.
+
 ## [0.42.2] - 2026-11-27
 
 ### Improved

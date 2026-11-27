@@ -550,12 +550,16 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   within bounded depth, file count and source size.
   JS/TS, Python and Go also track taint through simple statically named fields;
   Python and Go support literal dictionary/map keys.
-  Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods
-  and through unique same-file helpers.
+  Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods,
+  same-file helpers, and explicitly imported, uniquely named free functions in
+  the same Cargo package during a source-tree scan.
   Be aware of the known limits; a clean report is not proof of safety:
 - Cross-file taint tracking is limited to Go same-package free functions,
-  inferable methods, and exported free functions in local module packages, plus
-  explicitly imported Python/JS/TS helpers. Go leaves imported methods and
+  inferable methods, and exported free functions in local module packages;
+  explicitly imported Python/JS/TS helpers; and Rust free functions imported
+  with simple `crate`, `self` or `super` paths from the same Cargo package.
+  Rust helper traversal is bounded and excludes test/example/bench and `src/bin`
+  trees. Go leaves imported methods and
   calls on opaque or ambiguous receivers unresolved. Python and JS/TS module
   traversal is bounded. The engine does not model arbitrary
   object graphs, returned values, dynamic dispatch, JS/TS ES default imports,
@@ -568,8 +572,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 - Rust analysis recognizes the official `rmcp` `#[tool]` macro and common
   process, `reqwest`, filesystem and secret patterns, including direct and
   grouped `use` aliases for `std::process::Command` and `std::fs::File`. It
-  follows uniquely named same-file helpers but does not expand macros or resolve
-  trait dispatch.
+  follows uniquely named same-file helpers and explicitly imported helpers
+  during Cargo directory scans, but does not expand macros or resolve trait
+  dispatch.
 - Only JavaScript/TypeScript, Python, Go and Rust are analyzed; servers in other
   languages get config- and metadata-level checks only.
 

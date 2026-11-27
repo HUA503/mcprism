@@ -1,15 +1,34 @@
 package sast
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 )
 
+const (
+	maxRustModuleDepth = 8
+	maxRustModuleFiles = 64
+	maxRustModuleBytes = 16 << 20
+)
+
+type rustHelperIndex struct {
+	byPackage map[string]map[string]handlerBlock
+	byFile    map[string]map[string]handlerBlock
+	sources   map[string]string
+	roots     map[string]string
+}
+
 // analyzeRust supports the official rmcp #[tool] macro and bounded taint flow
 // through unambiguous same-file helpers. It does not expand macros or resolve
 // trait-based dispatch.
 func analyzeRust(path string) []Issue {
+	return analyzeRustWithIndex(path, nil)
+}
+
+func analyzeRustWithIndex(path string, index *rustHelperIndex) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
 		return nil
@@ -18,8 +37,24 @@ func analyzeRust(path string) []Issue {
 	var out []Issue
 	if strings.Contains(code, "rmcp") {
 		functions := extractRustFunctions(src, code)
+		for name, block := range functions {
+			block.path = filepath.Clean(path)
+			functions[name] = block
+		}
+		var packageFunctions map[string]handlerBlock
+		var sources map[string]string
+		var functionsByPath map[string]map[string]handlerBlock
+		if index != nil {
+			if root := index.roots[filepath.Clean(path)]; root != "" {
+				functions = index.byFile[filepath.Clean(path)]
+				packageFunctions = index.byPackage[root]
+				sources = index.sources
+				functionsByPath = index.byFile
+			}
+		}
 		for _, block := range extractRustHandlers(src, code) {
-			out = append(out, scanReachableRust(path, src, block, functions)...)
+			block.path = filepath.Clean(path)
+			out = append(out, scanReachableRust(path, src, block, functions, packageFunctions, sources, functionsByPath)...)
 		}
 	}
 	for _, line := range maskedLines(lines, maskRustComments) {
@@ -27,6 +62,121 @@ func analyzeRust(path string) []Issue {
 	}
 	out = append(out, rustSecretIssues(path, src)...)
 	return dedupIssues(out)
+}
+
+// buildRustHelperIndex indexes uniquely named Rust free functions within each
+// Cargo package. Cross-file resolution only follows explicit crate/self/super
+// imports; ambiguous names and files outside Cargo packages stay unresolved.
+func buildRustHelperIndex(paths []string, scanRoot string) *rustHelperIndex {
+	index := &rustHelperIndex{
+		byPackage: map[string]map[string]handlerBlock{},
+		byFile:    map[string]map[string]handlerBlock{},
+		sources:   map[string]string{},
+		roots:     map[string]string{},
+	}
+	bytesByRoot := map[string]int64{}
+	filesByRoot := map[string]int{}
+	ambiguous := map[string]map[string]bool{}
+	sorted := append([]string(nil), paths...)
+	sort.Strings(sorted)
+	for _, rawPath := range sorted {
+		if !strings.EqualFold(filepath.Ext(rawPath), ".rs") {
+			continue
+		}
+		path := filepath.Clean(rawPath)
+		root, ok := rustCargoRoot(path, scanRoot)
+		if !ok {
+			continue
+		}
+		if !rustCrossFileEligible(path, root) {
+			continue
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.Size() > maxSourceFileSize ||
+			filesByRoot[root] >= maxRustModuleFiles || bytesByRoot[root]+info.Size() > maxRustModuleBytes {
+			continue
+		}
+		_, src := readLines(path)
+		if src == "" {
+			continue
+		}
+		filesByRoot[root]++
+		bytesByRoot[root] += int64(len(src))
+		code := maskRustCode(src)
+		functions := extractRustFunctions(src, code)
+		for name, block := range functions {
+			block.path = path
+			functions[name] = block
+		}
+		index.byFile[path] = functions
+		index.sources[path] = src
+		index.roots[path] = root
+		if index.byPackage[root] == nil {
+			index.byPackage[root] = map[string]handlerBlock{}
+			ambiguous[root] = map[string]bool{}
+		}
+		for name, block := range functions {
+			if ambiguous[root][name] {
+				continue
+			}
+			if _, exists := index.byPackage[root][name]; exists {
+				delete(index.byPackage[root], name)
+				ambiguous[root][name] = true
+				continue
+			}
+			block.path = path
+			index.byPackage[root][name] = block
+		}
+	}
+	return index
+}
+
+func rustCargoRoot(path, scanRoot string) (string, bool) {
+	dir, err := filepath.Abs(filepath.Dir(path))
+	if err != nil {
+		return "", false
+	}
+	limit, err := filepath.Abs(scanRoot)
+	if err != nil {
+		return "", false
+	}
+	for depth := 0; depth <= maxWalkDepth; depth++ {
+		if hasFile(dir, "Cargo.toml") {
+			return dir, true
+		}
+		if dir == limit {
+			break
+		}
+		rel, relErr := filepath.Rel(limit, dir)
+		if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			break
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", false
+}
+
+func rustCrossFileEligible(path, packageRoot string) bool {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(packageRoot, absPath)
+	if err != nil {
+		return false
+	}
+	parts := strings.Split(filepath.ToSlash(rel), "/")
+	for _, part := range parts {
+		switch part {
+		case "tests", "examples", "benches":
+			return false
+		}
+	}
+	return !(len(parts) >= 3 && parts[0] == "src" && parts[1] == "bin")
 }
 
 var rustToolAttributeRe = regexp.MustCompile(`(?m)#\[\s*(?:rmcp::)?tool(?:\s*\([^]]*\))?\s*\]`)
@@ -130,14 +280,52 @@ func rustFunctionParameters(src string) []string {
 	return names
 }
 
-func scanReachableRust(path, src string, entry handlerBlock, functions map[string]handlerBlock) []Issue {
+var rustLocalHelperImportRe = regexp.MustCompile(`(?m)^\s*use\s+(?:crate|self|super)::([A-Za-z_]\w*(?:::[A-Za-z_]\w*)*)(?:\s+as\s+([A-Za-z_]\w*))?\s*;`)
+
+func rustLocalHelperImports(src string) map[string]string {
+	imports := map[string]string{}
+	ambiguous := map[string]bool{}
+	for _, m := range rustLocalHelperImportRe.FindAllStringSubmatch(maskRustComments(src), -1) {
+		parts := strings.Split(m[1], "::")
+		if len(parts) == 0 {
+			continue
+		}
+		name := parts[len(parts)-1]
+		alias := name
+		if m[2] != "" {
+			alias = m[2]
+		}
+		if prior, ok := imports[alias]; ok && prior != name {
+			delete(imports, alias)
+			ambiguous[alias] = true
+			continue
+		}
+		if !ambiguous[alias] {
+			imports[alias] = name
+		}
+	}
+	return imports
+}
+
+func scanReachableRust(path, src string, entry handlerBlock, functions, packageFunctions map[string]handlerBlock, sources map[string]string, functionsByPath map[string]map[string]handlerBlock) []Issue {
 	taintedByName := map[string]map[string]bool{}
 	processedByName := map[string]map[string]bool{}
 	queue := []handlerBlock{entry}
+	seenFiles := map[string]bool{filepath.Clean(entry.path): true}
+	seenBytes := int64(len(src))
 	callRe := regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
 	var out []Issue
 	for head := 0; head < len(queue); head++ {
 		block := queue[head]
+		blockPath := filepath.Clean(block.path)
+		blockSrc := src
+		blockFunctions := functions
+		if indexed, ok := sources[blockPath]; ok {
+			blockSrc = indexed
+		}
+		if indexed, ok := functionsByPath[blockPath]; ok {
+			blockFunctions = indexed
+		}
 		seed := rustTaintedNames(block.lines, block.params)
 		known := taintedByName[block.name]
 		if known == nil {
@@ -167,16 +355,29 @@ func scanReachableRust(path, src string, entry handlerBlock, functions map[strin
 			params = append(params, name)
 		}
 		block.params = params
-		out = append(out, scanRustBlock(path, src, block)...)
+		scanPath := blockPath
+		if scanPath == "." || scanPath == "" {
+			scanPath = path
+		}
+		out = append(out, scanRustBlock(scanPath, blockSrc, block)...)
 
 		text := maskRustCode(joinLines(block.lines))
 		ctrl := rustTaintedNames(block.lines, params)
+		imports := rustLocalHelperImports(blockSrc)
 		for _, call := range callRe.FindAllStringSubmatchIndex(text, -1) {
 			name := text[call[2]:call[3]]
-			helper, ok := functions[name]
+			helper, ok := blockFunctions[name]
+			imported := false
+			if !ok {
+				if target, exists := imports[name]; exists {
+					helper, ok = packageFunctions[target]
+					imported = ok
+				}
+			}
 			if !ok || call[0] > 0 && text[call[0]-1] == ':' {
 				continue
 			}
+			crossFile := imported && filepath.Clean(helper.path) != blockPath
 			if call[0] > 0 && text[call[0]-1] == '.' {
 				receiver := strings.TrimSpace(text[:call[0]-1])
 				if !strings.HasSuffix(receiver, "self") {
@@ -206,13 +407,35 @@ func scanReachableRust(path, src string, entry handlerBlock, functions map[strin
 				if !rustControllable(args[i], ctrl) {
 					continue
 				}
-				if taintedByName[name] == nil {
-					taintedByName[name] = map[string]bool{}
+				if crossFile {
+					helperPath := filepath.Clean(helper.path)
+					if block.rustModuleDepth >= maxRustModuleDepth {
+						continue
+					}
+					if !seenFiles[helperPath] {
+						if len(seenFiles) >= maxRustModuleFiles {
+							continue
+						}
+						sourceBytes := int64(len(sources[helperPath]))
+						if sourceBytes == 0 || seenBytes+sourceBytes > maxRustModuleBytes {
+							continue
+						}
+						seenFiles[helperPath] = true
+						seenBytes += sourceBytes
+					}
 				}
-				if !taintedByName[name][param] {
-					taintedByName[name][param] = true
+				stateName := helper.name
+				if taintedByName[stateName] == nil {
+					taintedByName[stateName] = map[string]bool{}
+				}
+				if !taintedByName[stateName][param] {
+					taintedByName[stateName][param] = true
 					child := helper
 					child.params = []string{param}
+					child.rustModuleDepth = block.rustModuleDepth
+					if crossFile {
+						child.rustModuleDepth++
+					}
 					queue = append(queue, child)
 				}
 			}

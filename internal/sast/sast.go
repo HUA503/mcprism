@@ -58,6 +58,7 @@ func Analyze(root string) ([]Issue, error) {
 		return nil, err
 	}
 	goIndex := buildGoHelperIndex(sourcePaths)
+	rustIndex := buildRustHelperIndex(sourcePaths, root)
 	var issues []Issue
 	for _, p := range sourcePaths {
 		if strings.EqualFold(filepath.Ext(p), ".go") {
@@ -67,6 +68,10 @@ func Analyze(root string) ([]Issue, error) {
 				issues = append(issues, analyzeGoWithFunctions(p, functions, goIndex)...)
 				continue
 			}
+		}
+		if strings.EqualFold(filepath.Ext(p), ".rs") {
+			issues = append(issues, analyzeRustWithIndex(p, rustIndex)...)
+			continue
 		}
 		issues = append(issues, AnalyzeFile(p)...)
 	}
