@@ -202,11 +202,14 @@ Prompt-injection checks use offline signatures rather than a language model.
 The current signatures include common English, Simplified/Traditional Chinese,
 Japanese, Korean, Spanish, French, German, Portuguese, Russian and Arabic
 patterns, including some multi-step credential collection and exfiltration
-phrasing. Coverage is a starter set of high-signal phrases, not complete
-language understanding. It can still miss paraphrases, indirect semantic
-coercion and instructions whose meaning depends on context; a clean result is
-not proof that metadata is safe. Conversely, matching generic phrases in benign
-documentation can produce false positives.
+phrasing. A second matching view removes Unicode whitespace and format
+characters, so line breaks or zero-width characters cannot trivially split a
+known directive; format characters are still reported separately. Coverage is
+a starter set of high-signal phrases, not complete language understanding. It
+can still miss paraphrases, indirect semantic coercion and instructions whose
+meaning depends on context; a clean result is not proof that metadata is safe.
+Conversely, matching generic phrases in benign documentation can produce false
+positives.
 
 Python and Go also use a conservative expression-level rule for local
 assignments: if the right-hand side contains a tainted name, the assigned value

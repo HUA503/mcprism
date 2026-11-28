@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -186,12 +187,25 @@ func scanMetadata(server, kind, loc, scan string) []Finding {
 	// phrasing hidden behind full-width letters or look-alike code points still
 	// matches the English signatures.
 	folded := normalizeForScan(scan)
+	// Go regex '.' does not cross newlines, and zero-width format characters
+	// can split a Chinese directive without changing how it reads. Match a
+	// compact second view as well; MCP202 still reports the original characters.
+	compact := strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) || unicode.Is(unicode.Cf, r) {
+			return -1
+		}
+		return r
+	}, folded)
 
 	// 1. Prompt injection (aggregate every hit on this object, keep the worst).
 	var hits []string
 	worst := SeverityInfo
 	for _, sig := range injectionSigs {
-		if m := sig.re.FindString(folded); m != "" {
+		m := sig.re.FindString(folded)
+		if m == "" && compact != folded {
+			m = sig.re.FindString(compact)
+		}
+		if m != "" {
 			hits = append(hits, clipEvidence(m, 60))
 			if sevRank(sig.sev) > sevRank(worst) {
 				worst = sig.sev
