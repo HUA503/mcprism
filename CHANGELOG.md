@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Improved
 
+- Recognize Spring AI `@McpTool` methods as Java SAST entry points, including
+  parameters marked with `@McpToolParam`.
 - Follow uniquely named Java helper methods up to eight calls deep when a
   callback passes MCP tool arguments directly to them.
 
