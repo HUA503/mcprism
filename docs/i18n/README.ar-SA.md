@@ -305,7 +305,7 @@ mcprism profiles             # تعداد الملفات الشخصية المد
 </div>
 
 ```text
-◆ mcprism   v0.42.5 · 2026-11-28
+◆ mcprism   v0.43.0 · 2026-11-28
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
