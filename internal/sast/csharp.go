@@ -1,6 +1,8 @@
 package sast
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -9,6 +11,8 @@ import (
 // pattern. It is deliberately a bounded lexical pass: it does not run dotnet,
 // load assemblies, or resolve arbitrary dependency-injection and reflection.
 type csharpFunction struct {
+	path      string
+	owner     string
 	name      string
 	params    []string
 	body      string
@@ -18,6 +22,7 @@ type csharpFunction struct {
 }
 
 type csharpHandler struct {
+	path        string
 	body        string
 	startLine   int
 	name        string
@@ -31,23 +36,86 @@ type csharpTypeRange struct {
 	toolType   bool
 }
 
+const (
+	maxCSharpProjectFiles = 64
+	maxCSharpProjectBytes = 16 << 20
+)
+
+type csharpFileIndex struct {
+	lines     []string
+	functions map[string]csharpFunction
+}
+
+type csharpProjectIndex struct {
+	files   map[string]csharpFileIndex
+	methods map[string]csharpFunction
+	ambig   map[string]bool
+}
+
 var (
-	csharpTypeDeclRe     = regexp.MustCompile(`\bclass\s+([A-Za-z_][A-Za-z0-9_]*)[^;{}]*\{`)
-	csharpMethodRe       = regexp.MustCompile(`(?m)(?:^|[;{}])\s*(?:\[[^\]]*\]\s*)*(?:(?:public|private|protected|internal|static|async|virtual|override|sealed|partial|new|unsafe|extern|readonly|ref|file)\s+)*(?:[A-Za-z_][\w.<>,?\[\] ]*?)\s+([A-Za-z_][\w]*)\s*\(([^()]*)\)\s*(?:where\s+[\w, :]+\s*)?\{`)
-	csharpToolAttrRe     = regexp.MustCompile(`\[\s*(?:[A-Za-z_][\w.]*\.)?McpServerTool(?:Attribute)?\b`)
-	csharpTypeAttrRe     = regexp.MustCompile(`\[\s*(?:[A-Za-z_][\w.]*\.)?McpServerToolType(?:Attribute)?\b`)
-	csharpCallRe         = regexp.MustCompile(`(?:\bthis\s*\.\s*)?\b([A-Za-z_][\w]*)\s*\(`)
-	csharpAssignRe       = regexp.MustCompile(`(?:^|[;{}\n])\s*(?:(?:var|dynamic|readonly)\s+|[\w.<>,?\[\]]+\s+)?([A-Za-z_][\w]*)\s*=\s*([^;{}]+);`)
-	csharpProcessRe      = regexp.MustCompile(`(?:Process\s*\.\s*Start|new\s+ProcessStartInfo)\s*\(`)
-	csharpNetworkRe      = regexp.MustCompile(`(?:new\s+Uri|WebRequest\s*\.\s*Create|new\s+HttpRequestMessage|\b[A-Za-z_][\w]*\s*\.\s*(?:GetAsync|PostAsync|PutAsync|DeleteAsync|SendAsync|GetStringAsync|GetByteArrayAsync))\s*\(`)
-	csharpFileRe         = regexp.MustCompile(`(?:File\s*\.\s*(?:Open\w*|Read\w*|Write\w*|Append\w*|Create\w*|Copy|Move|Delete)|Directory\s*\.\s*(?:Get\w*|Enumerate\w*|Create\w*|Move|Delete)|new\s+(?:FileStream|FileInfo|DirectoryInfo))\s*\(`)
-	csharpEvalRe         = regexp.MustCompile(`CSharpScript\s*\.\s*(?:EvaluateAsync|RunAsync|Create)\s*\(`)
-	csharpClassLoadRe    = regexp.MustCompile(`(?:Type\s*\.\s*GetType|Assembly\s*\.\s*Load(?:From)?)\s*\(`)
-	csharpDeserialTypeRe = regexp.MustCompile(`(?:BinaryFormatter|LosFormatter|NetDataContractSerializer)`)
-	csharpDeserialVarRe  = regexp.MustCompile(`(?:BinaryFormatter|LosFormatter|NetDataContractSerializer)\s+([A-Za-z_][\w]*)|var\s+([A-Za-z_][\w]*)\s*=\s*new\s+(?:BinaryFormatter|LosFormatter|NetDataContractSerializer)\b`)
+	csharpTypeDeclRe      = regexp.MustCompile(`\bclass\s+([A-Za-z_][A-Za-z0-9_]*)[^;{}]*\{`)
+	csharpMethodRe        = regexp.MustCompile(`(?m)(?:^|[;{}])\s*(?:\[[^\]]*\]\s*)*(?:(?:public|private|protected|internal|static|async|virtual|override|sealed|partial|new|unsafe|extern|readonly|ref|file)\s+)*(?:[A-Za-z_][\w.<>,?\[\] ]*?)\s+([A-Za-z_][\w]*)\s*\(([^()]*)\)\s*(?:where\s+[\w, :]+\s*)?\{`)
+	csharpToolAttrRe      = regexp.MustCompile(`\[\s*(?:[A-Za-z_][\w.]*\.)?McpServerTool(?:Attribute)?\b`)
+	csharpTypeAttrRe      = regexp.MustCompile(`\[\s*(?:[A-Za-z_][\w.]*\.)?McpServerToolType(?:Attribute)?\b`)
+	csharpCallRe          = regexp.MustCompile(`(?:\bthis\s*\.\s*)?\b([A-Za-z_][\w]*)\s*\(`)
+	csharpQualifiedCallRe = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
+	csharpAssignRe        = regexp.MustCompile(`(?:^|[;{}\n])\s*(?:(?:var|dynamic|readonly)\s+|[\w.<>,?\[\]]+\s+)?([A-Za-z_][\w]*)\s*=\s*([^;{}]+);`)
+	csharpProcessRe       = regexp.MustCompile(`(?:Process\s*\.\s*Start|new\s+ProcessStartInfo)\s*\(`)
+	csharpNetworkRe       = regexp.MustCompile(`(?:new\s+Uri|WebRequest\s*\.\s*Create|new\s+HttpRequestMessage|\b[A-Za-z_][\w]*\s*\.\s*(?:GetAsync|PostAsync|PutAsync|DeleteAsync|SendAsync|GetStringAsync|GetByteArrayAsync))\s*\(`)
+	csharpFileRe          = regexp.MustCompile(`(?:File\s*\.\s*(?:Open\w*|Read\w*|Write\w*|Append\w*|Create\w*|Copy|Move|Delete)|Directory\s*\.\s*(?:Get\w*|Enumerate\w*|Create\w*|Move|Delete)|new\s+(?:FileStream|FileInfo|DirectoryInfo))\s*\(`)
+	csharpEvalRe          = regexp.MustCompile(`CSharpScript\s*\.\s*(?:EvaluateAsync|RunAsync|Create)\s*\(`)
+	csharpClassLoadRe     = regexp.MustCompile(`(?:Type\s*\.\s*GetType|Assembly\s*\.\s*Load(?:From)?)\s*\(`)
+	csharpDeserialTypeRe  = regexp.MustCompile(`(?:BinaryFormatter|LosFormatter|NetDataContractSerializer)`)
+	csharpDeserialVarRe   = regexp.MustCompile(`(?:BinaryFormatter|LosFormatter|NetDataContractSerializer)\s+([A-Za-z_][\w]*)|var\s+([A-Za-z_][\w]*)\s*=\s*new\s+(?:BinaryFormatter|LosFormatter|NetDataContractSerializer)\b`)
 )
 
 func analyzeCSharp(path string) []Issue {
+	return analyzeCSharpWithIndex(path, nil)
+}
+
+func buildCSharpProjectIndex(paths []string) *csharpProjectIndex {
+	idx := &csharpProjectIndex{files: map[string]csharpFileIndex{}, methods: map[string]csharpFunction{}, ambig: map[string]bool{}}
+	files, bytes := 0, int64(0)
+	for _, path := range paths {
+		if !strings.EqualFold(filepath.Ext(path), ".cs") || files >= maxCSharpProjectFiles {
+			continue
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.Size() > maxSourceFileSize || bytes+info.Size() > maxCSharpProjectBytes {
+			continue
+		}
+		_, src := readLines(path)
+		if src == "" {
+			continue
+		}
+		code := maskCSharpLiterals(src)
+		functions := extractCSharpFunctions(src, code, extractCSharpTypes(code))
+		for name, fn := range functions {
+			fn.path = path
+			functions[name] = fn
+			if fn.owner == "" {
+				continue
+			}
+			key := fn.owner + "#" + fn.name
+			if _, exists := idx.methods[key]; exists {
+				delete(idx.methods, key)
+				idx.ambig[key] = true
+			} else if !idx.ambig[key] {
+				idx.methods[key] = fn
+			}
+		}
+		idx.files[path] = csharpFileIndex{lines: splitCSharpLines(src), functions: functions}
+		files++
+		bytes += int64(len(src))
+	}
+	return idx
+}
+
+func splitCSharpLines(src string) []string {
+	return strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
+}
+
+func analyzeCSharpWithIndex(path string, index *csharpProjectIndex) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
 		return nil
@@ -55,11 +123,16 @@ func analyzeCSharp(path string) []Issue {
 	parseCode := maskCSharpLiterals(src)
 	types := extractCSharpTypes(parseCode)
 	functions := extractCSharpFunctions(src, parseCode, types)
-	allLines := strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
+	allLines := splitCSharpLines(src)
+	if index != nil {
+		if file, ok := index.files[path]; ok {
+			functions, allLines = file.functions, file.lines
+		}
+	}
 	var queue []csharpHandler
 	for _, fn := range functions {
 		if fn.tool {
-			queue = append(queue, csharpHandler{body: fn.body, startLine: fn.startLine, name: fn.name, seededTaint: fn.toolTaint})
+			queue = append(queue, csharpHandler{path: path, body: fn.body, startLine: fn.startLine, name: fn.name, seededTaint: fn.toolTaint})
 		}
 	}
 	seen := map[string]bool{}
@@ -71,7 +144,17 @@ func analyzeCSharp(path string) []Issue {
 			continue
 		}
 		seen[key] = true
-		found, helpers := scanCSharpHandler(path, allLines, handler, functions)
+		handlerPath := handler.path
+		if handlerPath == "" {
+			handlerPath = path
+		}
+		handlerFunctions, handlerLines := functions, allLines
+		if index != nil {
+			if file, ok := index.files[handlerPath]; ok {
+				handlerFunctions, handlerLines = file.functions, file.lines
+			}
+		}
+		found, helpers := scanCSharpHandler(handlerPath, handlerLines, handler, handlerFunctions, index)
 		issues = append(issues, found...)
 		queue = append(queue, helpers...)
 	}
@@ -108,10 +191,11 @@ func extractCSharpFunctions(src, parseCode string, types []csharpTypeRange) map[
 		if close < 0 {
 			continue
 		}
-		ownerIsToolType := false
+		ownerIsToolType, owner := false, ""
 		for _, typ := range types {
-			if brace >= typ.start && brace < typ.end && typ.toolType {
-				ownerIsToolType = true
+			if brace >= typ.start && brace < typ.end {
+				owner = typ.name
+				ownerIsToolType = typ.toolType
 				break
 			}
 		}
@@ -141,7 +225,7 @@ func extractCSharpFunctions(src, parseCode string, types []csharpTypeRange) map[
 		}
 		if !ambiguous[name] {
 			functions[name] = csharpFunction{
-				name: name, params: params, body: src[brace+1 : close],
+				owner: owner, name: name, params: params, body: src[brace+1 : close],
 				startLine: strings.Count(src[:brace+1], "\n") + 1,
 				tool:      isTool, toolTaint: toolTaint,
 			}
@@ -159,7 +243,7 @@ func csharpContextParam(param string) bool {
 	return false
 }
 
-func scanCSharpHandler(path string, sourceLines []string, handler csharpHandler, functions map[string]csharpFunction) ([]Issue, []csharpHandler) {
+func scanCSharpHandler(path string, sourceLines []string, handler csharpHandler, functions map[string]csharpFunction, index *csharpProjectIndex) ([]Issue, []csharpHandler) {
 	body := maskCSharpComments(handler.body)
 	tainted := map[string]bool{}
 	for name := range handler.seededTaint {
@@ -226,7 +310,35 @@ func scanCSharpHandler(path string, sourceLines []string, handler csharpHandler,
 				}
 			}
 			if len(seeded) != 0 {
-				helpers = append(helpers, csharpHandler{body: function.body, startLine: function.startLine, name: function.name, depth: handler.depth + 1, seededTaint: seeded})
+				helpers = append(helpers, csharpHandler{path: function.path, body: function.body, startLine: function.startLine, name: function.name, depth: handler.depth + 1, seededTaint: seeded})
+			}
+		}
+		if index != nil {
+			for _, call := range csharpQualifiedCallRe.FindAllStringSubmatchIndex(body, -1) {
+				owner, name := body[call[2]:call[3]], body[call[4]:call[5]]
+				key := owner + "#" + name
+				function, ok := index.methods[key]
+				if !ok || index.ambig[key] {
+					continue
+				}
+				open := strings.LastIndexByte(body[call[0]:call[1]], '(') + call[0]
+				close := matchClose(body, open, '(', ')')
+				if close < 0 {
+					continue
+				}
+				args := splitJavaTopLevel(body[open+1 : close])
+				if len(args) != len(function.params) {
+					continue
+				}
+				seeded := map[string]bool{}
+				for i, arg := range args {
+					if exprIsTainted(arg) {
+						seeded[function.params[i]] = true
+					}
+				}
+				if len(seeded) != 0 {
+					helpers = append(helpers, csharpHandler{path: function.path, body: function.body, startLine: function.startLine, name: key, depth: handler.depth + 1, seededTaint: seeded})
+				}
 			}
 		}
 	}
