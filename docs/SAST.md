@@ -99,9 +99,12 @@ direct argument reads in explicit Java SDK callback lambdas and checks nearby
 process, URL, filesystem, script-evaluation, object-deserialization and
 class-loading sinks. It also recognizes Spring AI `@McpTool` methods and treats
 their non-context parameters as tool input. It follows uniquely named same-file
-helper methods when tainted arguments are passed directly, up to eight calls
-deep. It does not resolve other bean wiring, reflection-based registration or
-returned values. JavaScript/TypeScript, Python and Go analysis
+helper methods and cross-file methods when a receiver type is explicit and the
+owner/method pair is unique, up to eight calls deep. Receiver types come from
+typed parameters or declarations in the current method body; ambiguous methods
+are skipped. It does not resolve other bean wiring, reflection, interface
+dispatch, static imports or returned values. Cross-file indexing is bounded to
+64 Java files and 16 MiB per scan. JavaScript/TypeScript, Python and Go analysis
 follows simple local assignments and propagates taint through arguments passed
 to unambiguous helper functions. JavaScript/TypeScript helper tracking covers function declarations
 and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
