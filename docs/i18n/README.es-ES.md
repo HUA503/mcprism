@@ -250,7 +250,7 @@ Añade el comando al perfil del shell para habilitarlo en las próximas sesiones
 Escaneo de dos servidores locales en modo estático:
 
 ```text
-◆ mcprism   v0.43.5 · 2026-11-28
+◆ mcprism   v0.43.6 · 2026-11-28
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1

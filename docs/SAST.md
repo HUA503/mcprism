@@ -35,7 +35,7 @@ downloads source, it is the one `vet` source mode that needs network access.
 |---|---|
 | JavaScript / TypeScript | `McpServer.tool(...)`, `Server.setRequestHandler(CallToolRequestSchema, ...)`, generic `.tool(...)` registrations |
 | Python | `FastMCP` `@mcp.tool()`, low-level `call_tool` handler, and direct local function callbacks passed to `.tool(...)`, `.add_tool(...)` or `.register_tool(...)` |
-| Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` inline callbacks, directly named handlers and method values resolved by receiver type or a unique matching MCP handler method, using `context.Context` plus `mcp.CallToolRequest` |
+| Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` inline callbacks, directly named handlers and method values resolved by receiver type or a unique matching MCP handler method; directory scans also resolve exported handlers from local packages in the scan tree |
 | Rust | official `rmcp` SDK methods marked with `#[tool]` |
 | Kotlin | Official Kotlin SDK `server.addTool(...) { request -> ... }` callbacks |
 | Java | Official Java SDK `.callHandler(...)` / `.toolCall(...)` lambda handlers; Spring AI `@McpTool` methods |
@@ -125,8 +125,9 @@ signature when the receiver type is known or only one matching MCP method
 exists in the package.
 It follows unique free-function helpers plus receiver-type-matched methods
 across files in the same package.
-It also follows exported functions imported from local packages in the same Go
-module and the helper chains they call, within the traversal limits above.
+It also resolves exported MCP handlers and follows exported functions imported
+from local packages in the same Go module, plus the helper chains they call,
+within the traversal limits above.
 Method calls are followed when the receiver type can be identified from a
 same-file declaration or composite literal, a unique same-package constructor
 return type, or the current method receiver. Python follows explicitly imported
