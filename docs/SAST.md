@@ -142,9 +142,9 @@ assignment look tainted. Review findings in context; the analyzer may
 over-report such flows as well as miss flows hidden by dynamic dispatch or
 unsupported syntax. Simple tuple/unpacking assignments propagate taint to each
 named target when the right-hand side contains controlled input. Go assignments
-with one expression per target preserve that position; when a single helper
-call returns multiple values, each target is conservatively treated as tainted
-if the call receives controlled input.
+with one expression per target, including `var` declarations, preserve that
+position; when a single helper call returns multiple values, each target is
+conservatively treated as tainted if the call receives controlled input.
 
 ---
 

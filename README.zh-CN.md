@@ -451,7 +451,7 @@ Python 的 sink 规则会识别 `os`、`subprocess`、`requests`、`httpx`、`ur
 JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`http`、`https`、`got`、`request`、`node-fetch` 和 `undici` 的具名 ES 导入及解构式 CommonJS 导入别名；支持的请求库还可通过静态模块别名调用。
 
 - 跨文件追踪覆盖 Go 同 package 普通函数、可推断 receiver 类型的方法，以及通过 `go.mod` 导入的本地 package 已导出函数；不会跟踪外部依赖或本地导入类型上的 method。Python/JS/TS 跟踪显式导入的 helper，其中 Python/JS/TS 有深度、文件数和源码体积上限，且不追踪重新导出。Python 支持 `__init__.py` 标记包中的显式多层相对导入；不解析绝对 dotted package 导入。JS/TS 支持同目录模块的具名和命名空间 ES 导入、解构式 CommonJS `require()` 导入，以及通过模块对象进行的静态具名调用；不支持默认 ES 导入、动态计算的属性名或 npm 等包导入。命名空间导入仅追踪直接调用的已导出函数。Go 无法识别或无法唯一确定 receiver 类型的 method 调用仍不会追踪。JS/TS、Python 和 Go 还会追踪由受控输入赋值的简单静态字段；Python 和 Go 支持字面量字典/map 键。引擎不建模任意对象图、函数返回值或动态分派。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
-- Python/Go 会保守地把包含受控变量的局部赋值结果也视为受控，不会分析 helper 实际返回什么；简单的 tuple/解包赋值也会传播 taint。Go 的多个 RHS 表达式会按位置追踪；若单个 helper 调用返回多个值，只要调用参数受控，就会保守地将所有目标都标记为受控。因此，即使 helper 总是返回固定白名单值，调用处仍可能报风险。报告需要结合 helper 实现复核。
+- Python/Go 会保守地把包含受控变量的局部赋值结果也视为受控，不会分析 helper 实际返回什么；简单的 tuple/解包赋值也会传播 taint，Go 同时支持 `var` 声明。Go 的多个 RHS 表达式会按位置追踪；若单个 helper 调用返回多个值，只要调用参数受控，就会保守地将所有目标都标记为受控。因此，即使 helper 总是返回固定白名单值，调用处仍可能报风险。报告需要结合 helper 实现复核。
 - Rust 跨文件追踪只在目录扫描时启用，且仅解析 Cargo 同包内简单 `crate`/`self`/`super` 导入的唯一自由函数；分组导入、重导出、直接限定路径调用和 `tests`、`examples`、`benches`、`src/bin` 文件不会纳入共享 helper 分析。
 - Go 使用标准库 `go/parser` 定位 helper 函数边界，并会跟踪 `run := exec.Command` 这类简单的本地进程执行函数别名；动态表达式和被赋予不同值的变量不会跟踪，且尚未构建全程序数据流图。JS/Python 没有使用 tree-sitter。
 - Rust 识别 `rmcp` 的 `#[tool]` 宏，以及常见进程、`reqwest`、文件系统和密钥模式；进程与文件规则支持 `std::process::Command`、`std::fs::File` 的直接及分组 `use` 别名。
