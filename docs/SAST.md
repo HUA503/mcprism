@@ -45,7 +45,8 @@ Go sink matching follows explicit package aliases for `os/exec`, `net/http`,
 `os`, `io/ioutil`, `path/filepath` and `strings`. Dot imports and aliases
 created through local variables are not resolved, except simple local function
 values for process execution such as `run := exec.Command` and chains of those
-assignments.
+assignments. When a local name is assigned different values in the analyzed
+block, it is treated as ambiguous and is not followed.
 
 When scanning a source tree with `go.mod`, Go analysis also follows calls to
 exported free functions in explicitly imported packages that are present in

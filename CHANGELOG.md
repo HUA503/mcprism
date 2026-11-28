@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Avoid following Python or Go sink aliases after the local variable is
+  reassigned to a different value.
+
 ## [0.42.4] - 2026-11-27
 
 ### Improved

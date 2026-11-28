@@ -116,11 +116,38 @@ func goImportNames(imports map[string][]string, importPath, fallback string) []s
 	return ordered
 }
 
-var goCallableAssignRe = regexp.MustCompile(`^\s*(?:var\s+)?([A-Za-z_]\w*)\s*(?::=|=)\s*([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*$`)
+var goAssignmentTargetRe = regexp.MustCompile(`^\s*(?:var\s+)?([A-Za-z_]\w*)\s*(?::=|=)\s*(.*?)\s*$`)
+var goCallableExprRe = regexp.MustCompile(`^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$`)
 
 // goCallableAliases follows simple local function-value assignments for known
-// sinks, for example `run := exec.Command` and `runAgain := run`.
+// sinks, omitting names reassigned to a different or dynamic value.
 func goCallableAliases(lines []srcLine, targets []string) map[string]string {
+	assignments := map[string]string{}
+	ambiguous := map[string]bool{}
+	for _, line := range maskedGoLines(lines) {
+		m := goAssignmentTargetRe.FindStringSubmatch(line.text)
+		if m == nil {
+			continue
+		}
+		alias, expr := m[1], m[2]
+		if strings.HasPrefix(strings.TrimSpace(expr), "=") {
+			continue
+		}
+		if !goCallableExprRe.MatchString(expr) {
+			delete(assignments, alias)
+			ambiguous[alias] = true
+			continue
+		}
+		if prior, exists := assignments[alias]; exists && prior != expr {
+			delete(assignments, alias)
+			ambiguous[alias] = true
+			continue
+		}
+		if !ambiguous[alias] {
+			assignments[alias] = expr
+		}
+	}
+
 	aliases := map[string]string{}
 	known := map[string]bool{}
 	for _, target := range targets {
@@ -128,12 +155,10 @@ func goCallableAliases(lines []srcLine, targets []string) map[string]string {
 	}
 	for changed := true; changed; {
 		changed = false
-		for _, line := range maskedGoLines(lines) {
-			m := goCallableAssignRe.FindStringSubmatch(line.text)
-			if m == nil {
+		for alias, expr := range assignments {
+			if ambiguous[alias] {
 				continue
 			}
-			alias, expr := m[1], m[2]
 			canonical := expr
 			if prior, ok := aliases[expr]; ok {
 				canonical = prior
