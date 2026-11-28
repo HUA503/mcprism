@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Documentation
+
+- Clarify that Python/Go expression-level taint may over-report helper calls
+  whose return value is actually fixed or safe.
+
 ## [0.43.0] - 2026-11-28
 
 ### Improved
