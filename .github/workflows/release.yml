@@ -37,7 +37,7 @@ jobs:
           extension_version="${GITHUB_REF_NAME#v}"
           npm version "$extension_version" --no-git-tag-version --allow-same-version
           vsix="mcprism-vscode-${extension_version}.vsix"
-          npx --yes @vscode/vsce@4.0.2 package --out "$vsix"
+          npx --yes @vscode/vsce@4.1.1 package --out "$vsix"
           sha256sum "$vsix" >> ../../dist/checksums.txt
           gh release upload "$GITHUB_REF_NAME" "$vsix" ../../dist/checksums.txt --clobber
       - name: Attest release archives
@@ -85,5 +85,5 @@ jobs:
           extension_version="${RELEASE_TAG#v}"
           npm version "$extension_version" --no-git-tag-version --allow-same-version
           vsix="$RUNNER_TEMP/mcprism-vscode-${extension_version}.vsix"
-          npx --yes @vscode/vsce@4.0.2 package --out "$vsix"
-          npx --yes @vscode/vsce@4.0.2 publish --packagePath "$vsix" --oidc
+          npx --yes @vscode/vsce@4.1.1 package --out "$vsix"
+          npx --yes @vscode/vsce@4.1.1 publish --packagePath "$vsix" --oidc
