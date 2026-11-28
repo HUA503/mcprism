@@ -116,7 +116,7 @@ func goImportNames(imports map[string][]string, importPath, fallback string) []s
 	return ordered
 }
 
-var goAssignmentTargetRe = regexp.MustCompile(`^\s*(?:var\s+)?([A-Za-z_]\w*)\s*(?::=|=(?!=))\s*(.*?)\s*$`)
+var goAssignmentTargetRe = regexp.MustCompile(`^\s*(?:var\s+)?([A-Za-z_]\w*)\s*(?::=|=)\s*(.*?)\s*$`)
 var goCallableExprRe = regexp.MustCompile(`^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$`)
 
 // goCallableAliases follows simple local function-value assignments for known
@@ -130,6 +130,9 @@ func goCallableAliases(lines []srcLine, targets []string) map[string]string {
 			continue
 		}
 		alias, expr := m[1], m[2]
+		if strings.HasPrefix(strings.TrimSpace(expr), "=") {
+			continue
+		}
 		if !goCallableExprRe.MatchString(expr) {
 			delete(assignments, alias)
 			ambiguous[alias] = true

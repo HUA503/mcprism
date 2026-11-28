@@ -63,7 +63,7 @@ func analyzePython(path string) []Issue {
 var pyToolDecRe = regexp.MustCompile(`@[\w\.]+\.(tool|call_tool)\b`)
 var pyDefRe = regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
 var pyCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
-var pyAssignmentTargetRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*)(?:\s*:\s*[^=]+)?\s*=(?!=)\s*(.*?)\s*$`)
+var pyAssignmentTargetRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*)(?:\s*:\s*[^=]+)?\s*=\s*(.*?)\s*$`)
 var pyCallableExprRe = regexp.MustCompile(`^[A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*$`)
 var pyFromImportRe = regexp.MustCompile(`^from\s+(\.*[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*|\.+)\s+import\s+(.+?)\s*$`)
 var pyImportRe = regexp.MustCompile(`^import\s+(.+?)\s*$`)
@@ -182,6 +182,9 @@ func pythonCallableAliases(text string, imports pythonImports) map[string]string
 			continue
 		}
 		alias, expr := m[1], strings.ReplaceAll(m[2], " ", "")
+		if strings.HasPrefix(strings.TrimSpace(expr), "=") {
+			continue
+		}
 		if !pyCallableExprRe.MatchString(m[2]) {
 			delete(assignments, alias)
 			ambiguous[alias] = true
