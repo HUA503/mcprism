@@ -575,6 +575,7 @@ func extractGoHandlersWithFunctions(src string, functions map[string]handlerBloc
 	if file == nil {
 		return out
 	}
+	receiverTypes := goReceiverTypesFromAST(file, goFunctionReturnTypes(file))
 	ast.Inspect(file, func(node ast.Node) bool {
 		call, ok := node.(*ast.CallExpr)
 		if !ok || len(call.Args) == 0 {
@@ -596,10 +597,54 @@ func extractGoHandlersWithFunctions(src string, functions map[string]handlerBloc
 			// extraction in its body seeds taint as it does for inline handlers.
 			block.params = nil
 			out = append(out, block)
+		case *ast.SelectorExpr:
+			if goExprStartsWithPackageAlias(handler.X, imports) {
+				return true
+			}
+			receiverType := goExprType(handler.X, receiverTypes)
+			block, found := resolveGoMCPMethod(functions, receiverType, handler.Sel.Name)
+			if !found {
+				return true
+			}
+			block.params = nil
+			out = append(out, block)
 		}
 		return true
 	})
 	return out
+}
+
+func goExprStartsWithPackageAlias(expr ast.Expr, imports map[string][]string) bool {
+	switch node := expr.(type) {
+	case *ast.Ident:
+		return goImportedPathForAlias(imports, node.Name) != ""
+	case *ast.SelectorExpr:
+		return goExprStartsWithPackageAlias(node.X, imports)
+	default:
+		return false
+	}
+}
+
+func resolveGoMCPMethod(functions map[string]handlerBlock, receiverType, methodName string) (handlerBlock, bool) {
+	if receiverType != "" {
+		block, ok := functions[goMethodKey(receiverType, methodName)]
+		return block, ok && block.goToolHandler
+	}
+	// If local type inference cannot identify the receiver, accept only one
+	// same-named method in the package with the exact MCP handler signature.
+	var match handlerBlock
+	found := false
+	for key, block := range functions {
+		if !strings.HasPrefix(key, "@") || !strings.HasSuffix(key, "."+methodName) || !block.goToolHandler {
+			continue
+		}
+		if found {
+			return handlerBlock{}, false
+		}
+		match = block
+		found = true
+	}
+	return match, found
 }
 
 func goMCPToolHandler(fn *ast.FuncType, file *ast.File) bool {
