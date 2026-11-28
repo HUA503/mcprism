@@ -175,7 +175,7 @@ mcprism vet server.py            # 审查单个文件
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 
 # 固定安装版本，不使用 latest
-curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.43.1 sh
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.43.2 sh
 ```
 
 ```powershell
@@ -183,7 +183,7 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 
 # 固定安装版本，不使用 latest
-$env:MC_PRISM_VERSION = "v0.43.1"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+$env:MC_PRISM_VERSION = "v0.43.2"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 ```
 
 ```sh
@@ -345,7 +345,7 @@ Registry 批量审计默认只检查一页（最多 100 条）。加上 `--all` 
 以静态模式扫描两个本地 server：
 
 ```text
-◆ mcprism   v0.43.1 · 2026-11-28
+◆ mcprism   v0.43.2 · 2026-11-28
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -534,7 +534,7 @@ Roo Code 配置。全局扩展配置也会从 VS Code 兼容编辑器的存储�
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.43.1
+  rev: v0.43.2
   hooks:
     - id: mcprism
 ```
@@ -567,10 +567,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.43.1
+        uses: HUA503/mcprism@v0.43.2
         with:
           target: mcp.json
+          source-target: ./server
           sarif-file: mcprism.sarif
+          source-sarif-file: mcprism-source.sarif
           # 可选：会动态连接单个 server；请使用不含密钥的隔离 runner。
           # inventory-target: mcp.json
           # inventory-baseline: mcp.tools.lock.json
@@ -578,13 +580,20 @@ jobs:
         if: always() && hashFiles('mcprism.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
           sarif_file: mcprism.sarif
+          category: mcprism-config
+      - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
+        if: always() && hashFiles('mcprism-source.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          sarif_file: mcprism-source.sarif
+          category: mcprism-source
 ```
 
 该 Action 会下载匹配的 Linux、macOS 或 Windows release、验证 SHA-256 校验和，
-并默认使用
-`ci` profile。可通过 `policy`、`suppressions`、`baseline` 或 `fail-on` 设置自定义门禁。
-`sarif-file` 输出可传给上传步骤。上传结果需要 workflow 有
-`security-events: write` 权限。该 Action 支持 Linux、macOS 和 Windows runner；
+并默认使用 `ci` profile。可选的 `source-target` 会静态分析 MCP server 源码，
+生成独立 SARIF，不会启动项目代码；设置 `scan-config: false` 可只做源码扫描。
+可通过 `policy`、`suppressions`、`baseline` 或 `fail-on` 设置自定义门禁。
+`sarif-file` 和 `source-sarif-file` 输出可分别上传，并使用不同的 category。
+上传结果需要 workflow 有 `security-events: write` 权限。该 Action 支持 Linux、macOS 和 Windows runner；
 Jenkins、GitLab 等其他 CI 请使用上面的 CLI 示例。
 Action 固定到 release tag 时会自动使用同版本二进制。需要更强的供应链保护时，可将 Action 固定到完整 commit SHA。
 

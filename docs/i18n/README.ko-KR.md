@@ -249,7 +249,7 @@ mcprism profiles             # 내장 프로필 나열
 정적 모드로 두 개의 로컬 서버를 스캔:
 
 ```text
-◆ mcprism   v0.43.1 · 2026-11-28
+◆ mcprism   v0.43.2 · 2026-11-28
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1

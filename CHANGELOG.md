@@ -61,6 +61,18 @@ semantic versioning.
 - Add bilingual guidance to issue forms so English- and Chinese-speaking users
   can ask questions, report bugs and suggest features with safer examples.
 
+## [0.43.2] - 2026-11-28
+
+### Added
+
+- Extend the GitHub Action with optional source-code SAST and separate SARIF
+  output, including source-only workflows.
+
+### Improved
+
+- Follow direct TypeScript `compilerOptions.paths` mappings from the scan-root
+  `tsconfig.json` during bounded helper analysis.
+
 ## [0.43.1] - 2026-11-28
 
 ### Improved
@@ -803,6 +815,7 @@ secrets on a command line no longer appear in reports.
 [0.38.0]: https://github.com/HUA503/mcprism/compare/v0.37.0...v0.38.0
 [0.39.0]: https://github.com/HUA503/mcprism/compare/v0.38.0...v0.39.0
 [0.41.0]: https://github.com/HUA503/mcprism/compare/v0.40.0...v0.41.0
+[0.43.2]: https://github.com/HUA503/mcprism/compare/v0.43.1...v0.43.2
 [0.43.1]: https://github.com/HUA503/mcprism/compare/v0.43.0...v0.43.1
 [0.43.0]: https://github.com/HUA503/mcprism/compare/v0.42.5...v0.43.0
 [0.42.5]: https://github.com/HUA503/mcprism/compare/v0.42.4...v0.42.5

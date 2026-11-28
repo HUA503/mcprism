@@ -247,7 +247,7 @@ Batch review across many servers (static mode):
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 
 # Pin a release instead of installing the latest one
-curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.43.1 sh
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.43.2 sh
 ```
 
 ```powershell
@@ -255,7 +255,7 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 
 # Pin a release instead of installing the latest one
-$env:MC_PRISM_VERSION = "v0.43.1"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+$env:MC_PRISM_VERSION = "v0.43.2"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 ```
 
 ```sh
@@ -430,7 +430,7 @@ from command errors.
 Scanning two local servers in static mode:
 
 ```text
-◆ mcprism   v0.43.1 · 2026-11-28
+◆ mcprism   v0.43.2 · 2026-11-28
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -761,7 +761,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.43.1
+  rev: v0.43.2
   hooks:
     - id: mcprism
 ```
@@ -796,10 +796,12 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.43.1
+        uses: HUA503/mcprism@v0.43.2
         with:
           target: mcp.json
+          source-target: ./server
           sarif-file: mcprism.sarif
+          source-sarif-file: mcprism-source.sarif
           # Optional: this dynamically connects to one server; use an isolated runner without secrets.
           # inventory-target: mcp.json
           # inventory-baseline: mcp.tools.lock.json
@@ -807,12 +809,23 @@ jobs:
         if: always() && hashFiles('mcprism.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         with:
           sarif_file: mcprism.sarif
+          category: mcprism-config
+      - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4
+        if: always() && hashFiles('mcprism-source.sarif') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          sarif_file: mcprism-source.sarif
+          category: mcprism-source
 ```
 
 The action downloads the matching Linux, macOS, or Windows release, verifies its
-SHA-256 checksum, and runs the `ci` profile by default. Set `policy`,
+SHA-256 checksum, and runs the `ci` profile by default. `source-target` is
+optional; when set, the action also runs the static source review and writes a
+second SARIF report. This scan never launches the project. Set `scan-config:
+false` to run source review alone. Set `policy`,
 `suppressions`, `baseline`, or `fail-on` to use your own gate. Its `sarif-file` output can be
-passed to the upload step. The workflow needs `security-events: write` to publish findings.
+passed to the config upload step; `source-sarif-file` is available when
+`source-target` is set. Upload the reports with separate categories. The
+workflow needs `security-events: write` to publish findings.
 When the action is pinned to a release tag, it uses that matching binary
 version automatically. Pin to a full commit SHA for stricter supply-chain
 protection.
