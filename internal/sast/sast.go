@@ -93,7 +93,7 @@ func depthOf(rel string) int {
 
 func sourceExtSupported(name string) bool {
 	switch strings.ToLower(filepath.Ext(name)) {
-	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs", ".java":
+	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs", ".java", ".cs":
 		return true
 	}
 	return false
@@ -119,6 +119,8 @@ func AnalyzeFile(path string) []Issue {
 		return analyzeRust(path)
 	case ".java":
 		return analyzeJava(path)
+	case ".cs":
+		return analyzeCSharp(path)
 	}
 	return nil
 }
@@ -128,7 +130,7 @@ func AnalyzeFile(path string) []Issue {
 func IsSourceProject(dir string) bool {
 	if hasFile(dir, "package.json") || hasFile(dir, "pyproject.toml") || hasFile(dir, "Cargo.toml") ||
 		hasFile(dir, "setup.py") || hasFile(dir, "go.mod") || hasFile(dir, "pom.xml") ||
-		hasFile(dir, "build.gradle") || hasFile(dir, "build.gradle.kts") {
+		hasFile(dir, "build.gradle") || hasFile(dir, "build.gradle.kts") || hasFileGlob(dir, "*.csproj") || hasFileGlob(dir, "*.sln") {
 		return true
 	}
 	found := false
@@ -143,7 +145,7 @@ func IsSourceProject(dir string) bool {
 			return nil
 		}
 		switch strings.ToLower(filepath.Ext(d.Name())) {
-		case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs", ".java":
+		case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs", ".java", ".cs":
 			found = true
 		}
 		return nil
@@ -156,9 +158,22 @@ func hasFile(dir, name string) bool {
 	return err == nil && !info.IsDir()
 }
 
+func hasFileGlob(dir, pattern string) bool {
+	matches, err := filepath.Glob(filepath.Join(dir, pattern))
+	if err != nil {
+		return false
+	}
+	for _, path := range matches {
+		if info, e := os.Stat(path); e == nil && !info.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
 func skipDir(n string) bool {
 	switch n {
-	case "node_modules", ".git", "dist", "build", "target", "vendor", "venv", ".venv",
+	case "node_modules", ".git", "dist", "build", "bin", "obj", "target", "vendor", "venv", ".venv",
 		"__pycache__", ".cache", ".mypy_cache", ".pytest_cache", "eggs", ".eggs", ".gradle", "out":
 		return true
 	}

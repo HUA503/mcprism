@@ -24,7 +24,7 @@ servers. It looks at a server from three angles:
    cleartext transport, credentials in config, cloud metadata and private
    network targets.
 2. **Source code** — when the implementation is on disk, it reads the
-   JS/TS/Python/Go/Rust/Java tool handlers and traces arguments an agent can control into
+   JS/TS/Python/Go/Rust/Java/C# tool handlers and traces arguments an agent can control into
    dangerous sinks: process execution, outbound requests (SSRF) and filesystem
    paths, along with eval, unsafe deserialization and hardcoded secrets.
 3. **Runtime** — it negotiates the current stateless MCP protocol or the legacy
@@ -164,7 +164,7 @@ repository's default branch.
 ## What it does
 
 - One binary. No Python or Node setup, no LLM API key, no account.
-- Static by default. It reads the config and reviews JS/TS/Python/Go/Rust source,
+- Static by default. It reads the config and reviews JS/TS/Python/Go/Rust/C# source,
   plus direct callback handlers in the official Java MCP SDK.
   Pass `--dynamic` to negotiate with current or legacy MCP servers and list
   tools, resources and prompts. It never calls a tool.
@@ -644,7 +644,7 @@ analyzer and manual review. Rule details and more examples are in
 - Supply-chain risk: unpinned packages, typosquat look-alikes, and code run
   straight from a remote URL.
 - Policy violations: denied packages/commands/domains and broken network isolation.
-- Source-code flaws: JS/TS/Python/Go handlers are checked for command, network,
+- Source-code flaws: JS/TS/Python/Go/Java/C# handlers are checked for command, network,
   file, dynamic-code and deserialization risks; Rust `rmcp #[tool]` handlers
   are checked for process, `reqwest` URL, filesystem and hardcoded-secret risks.
   See [Source-code review](#source-code-review-sast).
@@ -913,7 +913,7 @@ so only run servers you trust.
 - [x] Homebrew formula
 - [x] Nix package
 - [x] Rust `rmcp` tool SAST
-- [ ] More SAST languages (C#)
+- [x] Initial C# SAST for official SDK `[McpServerTool]` methods
 - [ ] Broader data-flow coverage for dynamic dispatch, returned values and
   complex object graphs; current cross-file and helper tracking is bounded and
   language-specific ([details](docs/SAST.md)).

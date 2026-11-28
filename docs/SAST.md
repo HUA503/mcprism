@@ -38,12 +38,14 @@ downloads source, it is the one `vet` source mode that needs network access.
 | Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` callbacks |
 | Rust | official `rmcp` SDK methods marked with `#[tool]` |
 | Java | Official Java SDK `.callHandler(...)` / `.toolCall(...)` lambda handlers; Spring AI `@McpTool` methods |
+| C# | Official C# SDK methods marked `[McpServerTool]` inside `[McpServerToolType]` classes |
 
 Files with the extensions `.js .jsx .ts .tsx .mts .cts .mjs .cjs`, `.py`, `.go`,
-`.rs` and `.java` are reviewed. Cargo projects are recognized through
-`Cargo.toml`; Java projects are recognized through Maven or Gradle manifests.
-Build output such as `target/`, `build/`, `.gradle/` and `out/` is skipped, as
-are dependency and virtual-environment directories.
+`.rs`, `.java` and `.cs` are reviewed. Cargo projects are recognized through
+`Cargo.toml`; Java projects through Maven or Gradle manifests; C# projects
+through `.csproj` or `.sln` files. Build output such as `target/`, `build/`,
+`bin/`, `obj/`, `.gradle/` and `out/` is skipped, as are dependency and
+virtual-environment directories.
 
 For Go, tool arguments are read through `req.RequireString`, `req.GetString` or
 `req.Params.Arguments[...]`. Go has no `eval` and no standard-library
@@ -120,6 +122,15 @@ same-directory modules, including parent-package modules reached through
 explicit relative imports. Parent traversal requires an `__init__.py` marker
 at each package level, so a crafted import cannot expand a single-file scan
 into unrelated parent directories.
+
+C# analysis recognizes `[McpServerTool]` methods inside `[McpServerToolType]`
+classes, tracks direct argument reads, simple local assignments and arguments
+passed to uniquely named same-file helpers up to eight calls deep. It checks
+process execution, outbound request targets, filesystem paths, dynamic code
+loading and legacy unsafe deserialization. It does not resolve manually created
+delegates, reflection, dependency-injection wiring, returned values or
+cross-file helper calls. C# parsing is lexical and may miss syntax hidden by
+complex attributes or newer language constructs.
 JS/TS follows named and namespace ES imports, destructured CommonJS
 `require()` imports, and direct named calls through a statically required
 CommonJS module object when they reference exported helpers from same-directory
@@ -332,6 +343,29 @@ The finding points to the sink in `local_helpers.py`. The same analysis follows
 further unambiguous local helper calls and named imports within its resource
 limits. In a package, `from ..shell import run` is also followed when each
 parent package level has an `__init__.py` file.
+
+Vulnerable (C#, official SDK):
+
+```csharp
+using ModelContextProtocol.Server;
+using System.Diagnostics;
+
+[McpServerToolType]
+public static class Tools
+{
+    [McpServerTool]
+    public static void Run(string command)
+    {
+        Process.Start(new ProcessStartInfo("cmd.exe", $"/c {command}")
+        {
+            UseShellExecute = false
+        });
+    }
+}
+```
+
+The scanner marks the `command` parameter as tool-controlled and reports
+MCP801 at the process launch.
 
 Vulnerable (Go), a tool argument handed to a shell:
 
@@ -662,13 +696,13 @@ api_token = os.environ["API_TOKEN"]
 Values read from `process.env` or `os.environ`, and obvious placeholders, are
 not flagged.
 
-## MCP807 — Agent-controlled module loading
+## MCP807 — Agent-controlled module or type loading
 
 Severity: medium. CWE-829.
 
-A handler passes an agent-controlled value to `require()`. The agent can then
-select an unexpected installed module whose initialization code runs inside
-the server process.
+A handler uses an agent-controlled value to select a module or runtime type,
+for example through `require()`, dynamic `import()`, Java `Class.forName()` or
+C# `Type.GetType()`. This can select code or types outside the intended set.
 
 Vulnerable:
 

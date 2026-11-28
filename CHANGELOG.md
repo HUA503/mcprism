@@ -19,6 +19,9 @@ semantic versioning.
 
 ### Added
 
+- Add initial C# SAST for official SDK `[McpServerTool]` methods, following
+  direct input flows into process, network, filesystem, code-loading and unsafe
+  deserialization sinks.
 - Add initial Java SAST for tool callbacks registered through the official
   Java SDK's `.callHandler(...)` and `.toolCall(...)` lambda APIs.
 

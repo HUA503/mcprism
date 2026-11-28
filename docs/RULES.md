@@ -54,8 +54,9 @@ disabled, reweighted or suppressed through policy; see POLICIES.md.
 
 ## Source code review
 
-These rules review the server's own JS/TS/Python implementation and trace tool
-arguments into sinks. [SAST.md](SAST.md) has vulnerable and fixed code for each.
+These rules review the server's own JS/TS/Python/Go/Rust/Java/C# implementation
+and trace tool arguments into sinks. [SAST.md](SAST.md) has vulnerable and
+fixed code for each.
 
 | Rule | OWASP | Default | What it detects |
 |---|---|---|---|
@@ -65,7 +66,7 @@ arguments into sinks. [SAST.md](SAST.md) has vulnerable and fixed code for each.
 | MCP804 | MCP05 | High (Critical with input) | Dynamic code execution (eval/Function/exec) |
 | MCP805 | MCP05 | High | Unsafe deserialization (pickle/marshal/yaml.load) |
 | MCP806 | MCP01 | High (Medium suspected) | Hardcoded credential in the source |
-| MCP807 | MCP05 | Medium | Tool input controls a dynamic module `require()` target |
+| MCP807 | MCP05 | Medium | Tool input selects a dynamic module or runtime type |
 
 ## Connectivity & cross-server
 
