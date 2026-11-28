@@ -22,6 +22,8 @@ semantic versioning.
 
 ### Added
 
+- Add initial Kotlin SAST for official SDK `server.addTool` trailing-lambda
+  handlers, tracing direct request arguments through simple local assignments.
 - Add initial C# SAST for official SDK `[McpServerTool]` methods, following
   direct input flows into process, network, filesystem, code-loading and unsafe
   deserialization sinks.

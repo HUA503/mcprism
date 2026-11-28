@@ -83,6 +83,10 @@ func Analyze(root string) ([]Issue, error) {
 			issues = append(issues, analyzeCSharpWithIndex(p, csharpIndex)...)
 			continue
 		}
+		if strings.EqualFold(filepath.Ext(p), ".kt") || strings.EqualFold(filepath.Ext(p), ".kts") {
+			issues = append(issues, analyzeKotlin(p)...)
+			continue
+		}
 		issues = append(issues, AnalyzeFile(p)...)
 	}
 	return issues, nil
@@ -98,7 +102,7 @@ func depthOf(rel string) int {
 
 func sourceExtSupported(name string) bool {
 	switch strings.ToLower(filepath.Ext(name)) {
-	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs", ".java", ".cs":
+	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs", ".java", ".cs", ".kt", ".kts":
 		return true
 	}
 	return false
@@ -126,6 +130,8 @@ func AnalyzeFile(path string) []Issue {
 		return analyzeJava(path)
 	case ".cs":
 		return analyzeCSharp(path)
+	case ".kt", ".kts":
+		return analyzeKotlin(path)
 	}
 	return nil
 }
@@ -150,7 +156,7 @@ func IsSourceProject(dir string) bool {
 			return nil
 		}
 		switch strings.ToLower(filepath.Ext(d.Name())) {
-		case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs", ".java", ".cs":
+		case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs", ".java", ".cs", ".kt", ".kts":
 			found = true
 		}
 		return nil
