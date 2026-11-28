@@ -1067,6 +1067,55 @@ func scanGoBlockWithTaint(path string, b handlerBlock, seeds []string) []Issue {
 		}
 	}
 
+	// net.Dial accepts a network address rather than a URL, but untrusted
+	// addresses can still reach internal services and metadata endpoints.
+	netPkg := goImportNamePattern(b.goImports, "net", "net")
+	dialCalls := regexp.MustCompile(`\b` + netPkg + `\.(Dial|DialTimeout)\s*\(`)
+	for _, m := range dialCalls.FindAllStringIndex(text, -1) {
+		open := m[1] - 1
+		close := matchClose(text, open, '(', ')')
+		if close < 0 {
+			continue
+		}
+		args := splitCallArgs(text[open+1 : close])
+		if len(args) < 2 || !goExprControllable(args[1], ctrl) {
+			continue
+		}
+		line := off2line(open)
+		out = append(out, issue(path, "MCP802", "Tool argument controls an outbound network target (SSRF)", SeverityHigh, line, lineText(b, line),
+			"Use a fixed destination or allow-list approved hosts, and reject private, loopback and link-local addresses after resolving the target."))
+	}
+	var dialerNames []string
+	for name, typ := range goLocalReceiverTypes(b.lines, b.receiverTypes) {
+		for _, alias := range goImportNames(b.goImports, "net", "net") {
+			if typ == alias+".Dialer" {
+				dialerNames = append(dialerNames, name)
+				break
+			}
+		}
+	}
+	if len(dialerNames) > 0 {
+		quoted := make([]string, 0, len(dialerNames))
+		for _, name := range dialerNames {
+			quoted = append(quoted, regexp.QuoteMeta(name))
+		}
+		dialContext := regexp.MustCompile(`\b(?:` + strings.Join(quoted, "|") + `)\s*\.\s*DialContext\s*\(`)
+		for _, m := range dialContext.FindAllStringIndex(text, -1) {
+			open := m[1] - 1
+			close := matchClose(text, open, '(', ')')
+			if close < 0 {
+				continue
+			}
+			args := splitCallArgs(text[open+1 : close])
+			if len(args) < 3 || !goExprControllable(args[2], ctrl) {
+				continue
+			}
+			line := off2line(open)
+			out = append(out, issue(path, "MCP802", "Tool argument controls an outbound network target (SSRF)", SeverityHigh, line, lineText(b, line),
+				"Use a fixed destination or allow-list approved hosts, and reject private, loopback and link-local addresses after resolving the target."))
+		}
+	}
+
 	// 3. filesystem paths (MCP803)
 	// A path is confined only when the exact variable that reaches a file sink
 	// is guarded by HasPrefix. A bare filepath.Clean is not a boundary check: it

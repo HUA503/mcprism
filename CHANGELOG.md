@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Improved
 
+- Detect Go MCP tool input passed to `net.Dial`, `net.DialTimeout` and
+  `net.Dialer.DialContext` as an outbound network-target risk.
 - Follow exported methods on explicitly known types from local Go module imports,
   including receiver types inferred from imported constructors.
 - Trace tainted receivers through uniquely resolved same-file and explicitly
