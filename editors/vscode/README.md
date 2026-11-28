@@ -16,8 +16,9 @@ Marketplace.
 ## Use
 
 Open an MCP server source workspace, then run **mcprism: Scan Workspace** from
-the Command Palette. Findings with source locations appear in Problems; other
-findings and scan details appear in the mcprism output channel.
+the Command Palette. In a multi-root workspace, each folder is scanned in turn.
+Findings with source locations appear in Problems; other findings and scan
+details appear in the mcprism output channel.
 
 If the CLI is not on `PATH`, set `mcprism.executablePath` in VS Code settings to
 its full path. Static findings are best-effort security signals, not proof that

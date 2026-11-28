@@ -26,81 +26,97 @@ function severityFor(value) {
   }
 }
 
+function runVet(executable, root) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(executable, ['vet', '--format', 'json', root], {
+      cwd: root,
+      windowsHide: true,
+      shell: false,
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk; });
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk; });
+    child.once('error', reject);
+    child.once('close', (code) => {
+      try {
+        resolve({ report: JSON.parse(stdout), stderr, code });
+      } catch {
+        reject(new Error(stderr.trim() || `mcprism returned invalid JSON (exit code ${code}).`));
+      }
+    });
+  });
+}
+
 function activate(context) {
   const diagnostics = vscode.languages.createDiagnosticCollection('mcprism');
   const output = vscode.window.createOutputChannel('mcprism');
   context.subscriptions.push(diagnostics, output);
 
   context.subscriptions.push(vscode.commands.registerCommand('mcprism.scanWorkspace', async () => {
-    const folder = vscode.workspace.workspaceFolders?.[0];
-    if (!folder) {
+    const folders = vscode.workspace.workspaceFolders || [];
+    if (folders.length === 0) {
       vscode.window.showErrorMessage('Open an MCP server workspace before scanning.');
       return;
     }
 
     const executable = vscode.workspace.getConfiguration('mcprism').get('executablePath', 'mcprism');
-    const root = folder.uri.fsPath;
     const status = vscode.window.setStatusBarMessage('mcprism: scanning workspace…');
     output.clear();
-    output.appendLine(`Scanning ${root}`);
+    diagnostics.clear();
+    let totalFindings = 0;
+    let sourceFindings = 0;
+    let failedRoots = 0;
 
     try {
-      const { stdout, stderr, code } = await new Promise((resolve, reject) => {
-        const child = spawn(executable, ['vet', '--format', 'json', root], {
-          cwd: root,
-          windowsHide: true,
-          shell: false,
-        });
-        let stdout = '';
-        let stderr = '';
-        child.stdout.setEncoding('utf8').on('data', (chunk) => { stdout += chunk; });
-        child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr += chunk; });
-        child.once('error', reject);
-        child.once('close', (code) => resolve({ stdout, stderr, code }));
-      });
+      for (const folder of folders) {
+        const root = folder.uri.fsPath;
+        output.appendLine(`Scanning ${root}`);
+        try {
+          const { report, stderr } = await runVet(executable, root);
+          totalFindings += report.summary?.findings ?? 0;
+          if (stderr.trim()) output.appendLine(stderr.trim());
 
-      let report;
-      try {
-        report = JSON.parse(stdout);
-      } catch {
-        throw new Error(stderr.trim() || `mcprism returned invalid JSON (exit code ${code}).`);
-      }
+          for (const result of report.results || []) {
+            for (const finding of result.findings || []) {
+              const parsed = parseSourceLocation(finding.location || '');
+              if (!parsed) {
+                output.appendLine(`${finding.severity || 'INFO'} ${finding.ruleId || ''} ${finding.location || ''} ${finding.title || ''}`);
+                continue;
+              }
 
-      diagnostics.clear();
-      let sourceFindings = 0;
-      for (const result of report.results || []) {
-        for (const finding of result.findings || []) {
-          const parsed = parseSourceLocation(finding.location || '');
-          if (!parsed) {
-            output.appendLine(`${finding.severity || 'INFO'} ${finding.ruleId || ''} ${finding.location || ''} ${finding.title || ''}`);
-            continue;
+              const file = path.resolve(root, parsed.file);
+              const relative = path.relative(root, file);
+              if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+                output.appendLine(`Skipped out-of-workspace location: ${finding.location}`);
+                continue;
+              }
+
+              const uri = vscode.Uri.file(file);
+              const range = new vscode.Range(parsed.line, 0, parsed.line, 0);
+              const diagnostic = new vscode.Diagnostic(range, finding.title || finding.description || finding.ruleId, severityFor(finding.severity));
+              diagnostic.source = 'mcprism';
+              diagnostic.code = finding.ruleId;
+              if (finding.evidence) diagnostic.message += `\n${finding.evidence}`;
+              const details = [finding.description, finding.advice].filter(Boolean).join('\n\n');
+              if (details) diagnostic.relatedInformation = [new vscode.DiagnosticRelatedInformation(new vscode.Location(uri, range), details)];
+              const existing = diagnostics.get(uri) || [];
+              diagnostics.set(uri, [...existing, diagnostic]);
+              sourceFindings++;
+            }
           }
-
-          const file = path.resolve(root, parsed.file);
-          const relative = path.relative(root, file);
-          if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-            output.appendLine(`Skipped out-of-workspace location: ${finding.location}`);
-            continue;
-          }
-
-          const uri = vscode.Uri.file(file);
-          const range = new vscode.Range(parsed.line, 0, parsed.line, 0);
-          const diagnostic = new vscode.Diagnostic(range, finding.title || finding.description || finding.ruleId, severityFor(finding.severity));
-          diagnostic.source = 'mcprism';
-          diagnostic.code = finding.ruleId;
-          if (finding.evidence) diagnostic.message += `\n${finding.evidence}`;
-          const details = [finding.description, finding.advice].filter(Boolean).join('\n\n');
-          if (details) diagnostic.relatedInformation = [new vscode.DiagnosticRelatedInformation(new vscode.Location(uri, range), details)];
-          const existing = diagnostics.get(uri) || [];
-          diagnostics.set(uri, [...existing, diagnostic]);
-          sourceFindings++;
+        } catch (error) {
+          failedRoots++;
+          output.appendLine(`Failed to scan ${root}: ${error.message || error}`);
         }
       }
 
-      const summary = report.summary || {};
-      output.appendLine(`Finished with ${summary.findings ?? sourceFindings} finding(s).`);
-      if (stderr.trim()) output.appendLine(stderr.trim());
-      vscode.window.showInformationMessage(`mcprism found ${summary.findings ?? sourceFindings} finding(s); ${sourceFindings} shown in Problems.`);
+      output.appendLine(`Finished: ${totalFindings} finding(s) across ${folders.length - failedRoots}/${folders.length} workspace folder(s).`);
+      if (failedRoots > 0) {
+        vscode.window.showWarningMessage(`mcprism scanned ${folders.length - failedRoots}/${folders.length} workspace folder(s); ${totalFindings} finding(s), ${sourceFindings} shown in Problems.`);
+      } else {
+        vscode.window.showInformationMessage(`mcprism found ${totalFindings} finding(s) across ${folders.length} workspace folder(s); ${sourceFindings} shown in Problems.`);
+      }
     } catch (error) {
       output.appendLine(String(error));
       vscode.window.showErrorMessage(`mcprism scan failed: ${error.message || error}`);
