@@ -164,7 +164,7 @@ mcprism vet server.py            # 审查单个文件
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 
 # 固定安装版本，不使用 latest
-curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.42.4 sh
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.42.5 sh
 ```
 
 ```powershell
@@ -172,7 +172,7 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 
 # 固定安装版本，不使用 latest
-$env:MC_PRISM_VERSION = "v0.42.4"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+$env:MC_PRISM_VERSION = "v0.42.5"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 ```
 
 ```sh
@@ -334,7 +334,7 @@ Registry 批量审计默认只检查一页（最多 100 条）。加上 `--all` 
 以静态模式扫描两个本地 server：
 
 ```text
-◆ mcprism   v0.42.4 · 2026-11-27
+◆ mcprism   v0.42.5 · 2026-11-28
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -513,7 +513,7 @@ Roo Code 配置。全局扩展配置也会从 VS Code 兼容编辑器的存储�
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.42.4
+  rev: v0.42.5
   hooks:
     - id: mcprism
 ```
@@ -546,7 +546,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.42.4
+        uses: HUA503/mcprism@v0.42.5
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
