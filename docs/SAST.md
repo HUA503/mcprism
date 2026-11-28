@@ -97,9 +97,10 @@ function references passed to `.tool(...)`, `.add_tool(...)` and
 objects or dynamically selected callbacks. Java analysis currently recognizes
 direct argument reads in explicit Java SDK callback lambdas and checks nearby
 process, URL, filesystem, script-evaluation, object-deserialization and
-class-loading sinks. It does not
-resolve helper methods, Spring annotations, bean wiring, reflection-based
-registration or returned values. JavaScript/TypeScript, Python and Go analysis
+class-loading sinks. It follows uniquely named same-file helper methods when
+tainted arguments are passed directly, up to eight calls deep. It does not
+resolve Spring annotations, bean wiring, reflection-based registration or
+returned values. JavaScript/TypeScript, Python and Go analysis
 follows simple local assignments and propagates taint through arguments passed
 to unambiguous helper functions. JavaScript/TypeScript helper tracking covers function declarations
 and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard

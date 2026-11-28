@@ -1,7 +1,9 @@
 package sast
 
 import (
+	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -12,12 +14,24 @@ type javaHandler struct {
 	body        string
 	requestName string
 	startLine   int
+	name        string
+	depth       int
+	seededTaint map[string]bool
+}
+
+type javaFunction struct {
+	name      string
+	params    []string
+	body      string
+	startLine int
 }
 
 var (
 	javaToolCallbackRe = regexp.MustCompile(`\.(callHandler|toolCall)\s*\(`)
 	javaLambdaArgsRe   = regexp.MustCompile(`(?:\(([^()]*)\)|([A-Za-z_$][\w$]*))\s*$`)
 	javaIdentifierRe   = regexp.MustCompile(`[A-Za-z_$][\w$]*`)
+	javaFunctionRe     = regexp.MustCompile(`(?m)(?:^|[;{}])\s*(?:(?:public|protected|private|static|final|synchronized|native|abstract|default)\s+)*[\w.$<>, ?\[\]]+\s+([A-Za-z_$][\w$]*)\s*\(([^()]*)\)\s*(?:throws\s+[\w.$, ]+)?\s*\{`)
+	javaCallRe         = regexp.MustCompile(`\b([A-Za-z_$][\w$]*)\s*\(`)
 	javaAssignRe       = regexp.MustCompile(`(?:^|[;{}\n])\s*(?:final\s+)?[\w.$<>?, \t\[\]]*?\b([A-Za-z_$][\w$]*)\s*=\s*([^;{}]+);`)
 	javaProcessSinkRe  = regexp.MustCompile(`(?:new\s+ProcessBuilder|Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec)\s*\(`)
 	javaNetworkSinkRe  = regexp.MustCompile(`(?:new\s+URL|URI\s*\.\s*create|HttpRequest\s*\.\s*newBuilder|(?:restTemplate|httpClient|webClient|client)\s*\.\s*(?:getForObject|getForEntity|exchange|execute))\s*\(`)
@@ -35,13 +49,96 @@ func analyzeJava(path string) []Issue {
 	code := maskJavaComments(src)
 	allLines := strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
 	var issues []Issue
-	for _, handler := range extractJavaHandlers(code) {
-		issues = append(issues, scanJavaHandler(path, allLines, handler)...)
+	functions := extractJavaFunctions(code)
+	queue := extractJavaHandlers(code)
+	seen := map[string]bool{}
+	for head := 0; head < len(queue); head++ {
+		handler := queue[head]
+		key := javaTaintKey(handler.name, handler.seededTaint)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		found, helpers := scanJavaHandler(path, allLines, handler, functions)
+		issues = append(issues, found...)
+		queue = append(queue, helpers...)
 	}
 	for _, line := range maskedGoLines(lines) {
 		issues = append(issues, goLineSecretIssues(path, line)...)
 	}
 	return dedupIssues(issues)
+}
+
+func extractJavaFunctions(code string) map[string]javaFunction {
+	functions := map[string]javaFunction{}
+	counts := map[string]int{}
+	ambiguous := map[string]bool{}
+	for _, match := range javaFunctionRe.FindAllStringSubmatchIndex(code, -1) {
+		name := code[match[2]:match[3]]
+		paramsText := code[match[4]:match[5]]
+		brace := strings.LastIndexByte(code[match[0]:match[1]], '{') + match[0]
+		close := matchClose(code, brace, '{', '}')
+		if close < 0 {
+			continue
+		}
+		params := javaParameterNames(paramsText)
+		counts[name]++
+		if counts[name] > 1 {
+			delete(functions, name)
+			ambiguous[name] = true
+			continue
+		}
+		if !ambiguous[name] {
+			functions[name] = javaFunction{
+				name: name, params: params, body: code[brace+1 : close],
+				startLine: strings.Count(code[:brace+1], "\n") + 1,
+			}
+		}
+	}
+	return functions
+}
+
+func javaParameterNames(text string) []string {
+	var names []string
+	for _, param := range splitJavaTopLevel(text) {
+		ids := javaIdentifierRe.FindAllString(param, -1)
+		if len(ids) != 0 {
+			names = append(names, ids[len(ids)-1])
+		}
+	}
+	return names
+}
+
+func splitJavaTopLevel(text string) []string {
+	var out []string
+	start, parens, brackets, angles := 0, 0, 0, 0
+	for i := 0; i < len(text); i++ {
+		switch text[i] {
+		case '(':
+			parens++
+		case ')':
+			parens--
+		case '[':
+			brackets++
+		case ']':
+			brackets--
+		case '<':
+			angles++
+		case '>':
+			if angles > 0 {
+				angles--
+			}
+		case ',':
+			if parens == 0 && brackets == 0 && angles == 0 {
+				out = append(out, strings.TrimSpace(text[start:i]))
+				start = i + 1
+			}
+		}
+	}
+	if tail := strings.TrimSpace(text[start:]); tail != "" {
+		out = append(out, tail)
+	}
+	return out
 }
 
 func maskJavaComments(src string) string {
@@ -162,18 +259,22 @@ func extractJavaHandlers(code string) []javaHandler {
 		handlers = append(handlers, javaHandler{
 			body: code[bodyStart+1 : bodyEnd], requestName: ids[len(ids)-1],
 			startLine: strings.Count(code[:bodyStart+1], "\n") + 1,
+			name:      fmt.Sprintf("<callback:%d>", strings.Count(code[:bodyStart+1], "\n")+1),
 		})
 	}
 	return handlers
 }
 
-func scanJavaHandler(path string, sourceLines []string, handler javaHandler) []Issue {
+func scanJavaHandler(path string, sourceLines []string, handler javaHandler, functions map[string]javaFunction) ([]Issue, []javaHandler) {
 	body := handler.body
 	tainted := map[string]bool{}
+	for name := range handler.seededTaint {
+		tainted[name] = true
+	}
 	requestArgsRe := regexp.MustCompile(`\b` + regexp.QuoteMeta(handler.requestName) + `\s*\.\s*arguments\s*\(\s*\)`)
 	requestValueRe := regexp.MustCompile(`\b` + regexp.QuoteMeta(handler.requestName) + `\s*\.\s*arguments\s*\(\s*\)\s*\.\s*get(?:OrDefault)?\s*\(`)
 	exprIsTainted := func(expr string) bool {
-		if requestValueRe.MatchString(expr) || requestArgsRe.MatchString(expr) {
+		if handler.requestName != "" && (requestValueRe.MatchString(expr) || requestArgsRe.MatchString(expr)) {
 			return true
 		}
 		for name := range tainted {
@@ -198,6 +299,7 @@ func scanJavaHandler(path string, sourceLines []string, handler javaHandler) []I
 		}
 	}
 	var out []Issue
+	var helpers []javaHandler
 	addSink := func(pattern *regexp.Regexp, ruleID, title string, severity Severity, advice string) {
 		for _, match := range pattern.FindAllStringIndex(body, -1) {
 			open := strings.LastIndexByte(body[match[0]:match[1]], '(')
@@ -217,6 +319,37 @@ func scanJavaHandler(path string, sourceLines []string, handler javaHandler) []I
 			out = append(out, Issue{RuleID: ruleID, Title: title, Severity: severity, File: path, Line: line, Code: codeLine, Advice: advice})
 		}
 	}
+	if handler.depth < 8 {
+		for _, call := range javaCallRe.FindAllStringSubmatchIndex(body, -1) {
+			name := body[call[2]:call[3]]
+			function, ok := functions[name]
+			if !ok {
+				continue
+			}
+			open := strings.LastIndexByte(body[call[0]:call[1]], '(') + call[0]
+			close := matchClose(body, open, '(', ')')
+			if close < 0 {
+				continue
+			}
+			args := splitJavaTopLevel(body[open+1 : close])
+			if len(args) != len(function.params) {
+				continue
+			}
+			seeded := map[string]bool{}
+			for i, arg := range args {
+				if exprIsTainted(arg) {
+					seeded[function.params[i]] = true
+				}
+			}
+			if len(seeded) == 0 {
+				continue
+			}
+			helpers = append(helpers, javaHandler{
+				body: function.body, startLine: function.startLine, name: function.name,
+				depth: handler.depth + 1, seededTaint: seeded,
+			})
+		}
+	}
 	addSink(javaProcessSinkRe, "MCP801", "Agent-controlled input reaches Java process execution", SeverityCritical,
 		"Do not pass tool arguments to ProcessBuilder or Runtime.exec. Use a fixed executable and validate each argument against an allow-list.")
 	addSink(javaNetworkSinkRe, "MCP802", "Agent-controlled input controls a Java request target", SeverityHigh,
@@ -229,5 +362,20 @@ func scanJavaHandler(path string, sourceLines []string, handler javaHandler) []I
 		"Do not deserialize attacker-controlled bytes with ObjectInputStream. Use a safe data format and validate its schema.")
 	addSink(javaClassLoadRe, "MCP807", "Agent-controlled input selects a Java class", SeverityMedium,
 		"Use an allow-list of supported class names instead of loading a class selected by tool input.")
-	return out
+	return out, helpers
+}
+
+func javaTaintKey(name string, tainted map[string]bool) string {
+	var b strings.Builder
+	b.WriteString(name)
+	params := make([]string, 0, len(tainted))
+	for param := range tainted {
+		params = append(params, param)
+	}
+	sort.Strings(params)
+	for _, param := range params {
+		b.WriteByte(':')
+		b.WriteString(param)
+	}
+	return b.String()
 }

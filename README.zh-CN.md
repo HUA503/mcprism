@@ -403,7 +403,7 @@ mcprism vet ./mcp-server/src/tool.ts
 - Python：`FastMCP` 的 `@mcp.tool()` 装饰器、底层 `call_tool` handler，以及 `.tool(...)`、`.add_tool(...)`、`.register_tool(...)` 直接传入的本地函数回调。
 - Go：mcp-go 的 `server.AddTool` / `mcp.AddTool` 回调。
 - Rust：官方 `rmcp` SDK 的 `#[tool]` 方法。
-- Java：官方 SDK 的 `.callHandler(...)` / `.toolCall(...)` lambda 回调；当前仅跟踪回调中的直接参数流。
+- Java：官方 SDK 的 `.callHandler(...)` / `.toolCall(...)` lambda 回调；可追踪回调中的直接参数流，以及传给同文件唯一命名 helper 的参数（最多 8 层）。
 
 对每个工具，它把 handler 参数当作攻击者可控的数据。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 还能跨同一 package 的多个源码文件追踪唯一普通函数和 receiver 类型可识别的方法，也会沿 `go.mod` 中本地 package 的显式导入继续追踪已导出的函数（每个入口最多 8 层、64 个源码文件、16 MiB）；此外会识别标准库危险 sink 的显式导入别名。Rust 支持多层同文件 helper 调用。发现会标明文件和行号、展示代码、给出修复方式：
 
@@ -457,7 +457,7 @@ JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`ht
 - Rust 跨文件追踪只在目录扫描时启用，且仅解析 Cargo 同包内简单 `crate`/`self`/`super` 导入的唯一自由函数；分组导入、重导出、直接限定路径调用和 `tests`、`examples`、`benches`、`src/bin` 文件不会纳入共享 helper 分析。
 - Go 使用标准库 `go/parser` 定位 helper 函数边界，并会跟踪 `run := exec.Command` 这类简单的本地进程执行函数别名；动态表达式和被赋予不同值的变量不会跟踪，且尚未构建全程序数据流图。JS/Python 没有使用 tree-sitter。
 - Rust 识别 `rmcp` 的 `#[tool]` 宏，以及常见进程、`reqwest`、文件系统和密钥模式；进程与文件规则支持 `std::process::Command`、`std::fs::File` 的直接及分组 `use` 别名。
-- JavaScript/TypeScript、Python、Go、Rust 会执行各自文档描述的源码分析；Java 当前仅覆盖官方 SDK 显式 lambda 回调中的直接数据流。其他语言写的 server 只做配置和元数据层面的检查。
+- JavaScript/TypeScript、Python、Go、Rust 会执行各自文档描述的源码分析；Java 当前覆盖官方 SDK 显式 lambda 回调及其同文件 helper（最多 8 层）。其他语言写的 server 只做配置和元数据层面的检查。
 
 对高风险 server，请配合完整数据流分析工具和人工复核一起使用。规则细节和更多示例见 [docs/SAST.md](docs/SAST.md)。
 
@@ -658,7 +658,7 @@ flowchart TD
 - [x] Homebrew 公式
 - [x] Nix 包
 - [x] Rust `rmcp` MCP 工具的 SAST 支持
-- [ ] 支持更多 SAST 语言（Java、C#）
+- [ ] 支持更多 SAST 语言（C#）
 - [ ] 扩大动态分派、函数返回值和复杂对象图的数据流覆盖；当前跨文件和 helper 追踪有范围上限，且按语言分别实现。详见 [SAST 分析边界](docs/SAST.md)。
 - [ ] 为实时探测提供内置沙箱封装
 
