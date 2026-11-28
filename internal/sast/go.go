@@ -1097,10 +1097,25 @@ func goTaintedNames(ls []srcLine, seeds []string) map[string]bool {
 			}
 			lhs := strings.TrimSpace(t[:i])
 			rhs := strings.TrimSpace(t[i+width:])
-			first := strings.TrimSpace(strings.Split(lhs, ",")[0])
-			if isGoIdent(first) && !set[first] && goExprControllable(rhs, set) {
-				set[first] = true
-				changed = true
+			targets := goAssignmentTargets(lhs)
+			rhsValues := splitCallArgs(rhs)
+			if len(targets) > 1 && len(rhsValues) == len(targets) {
+				for i, target := range targets {
+					if goExprControllable(rhsValues[i], set) && !set[target] {
+						set[target] = true
+						changed = true
+					}
+				}
+			} else if goExprControllable(rhs, set) {
+				if goDirectInputSource(rhs) && len(targets) > 1 {
+					targets = targets[:1]
+				}
+				for _, target := range targets {
+					if !set[target] {
+						set[target] = true
+						changed = true
+					}
+				}
 			}
 			if m := fieldAssign.FindStringSubmatch(t); m != nil {
 				target := normalizeTaintTarget(m[1])
@@ -1114,9 +1129,22 @@ func goTaintedNames(ls []srcLine, seeds []string) map[string]bool {
 	return set
 }
 
+func goAssignmentTargets(lhs string) []string {
+	lhs = strings.TrimSpace(lhs)
+	lhs = strings.TrimPrefix(lhs, "(")
+	lhs = strings.TrimSuffix(lhs, ")")
+	var targets []string
+	for _, target := range splitCallArgs(lhs) {
+		target = strings.TrimSpace(target)
+		if isGoIdent(target) {
+			targets = append(targets, target)
+		}
+	}
+	return targets
+}
+
 func goExprControllable(expr string, ctrl map[string]bool) bool {
-	if strings.Contains(expr, "RequireString(") || strings.Contains(expr, ".GetString(") ||
-		strings.Contains(expr, "Arguments[") || strings.Contains(expr, "GetArguments(") {
+	if goDirectInputSource(expr) {
 		return true
 	}
 	expr = normalizeTaintTarget(expr)
@@ -1126,6 +1154,11 @@ func goExprControllable(expr string, ctrl map[string]bool) bool {
 		}
 	}
 	return false
+}
+
+func goDirectInputSource(expr string) bool {
+	return strings.Contains(expr, "RequireString(") || strings.Contains(expr, ".GetString(") ||
+		strings.Contains(expr, "Arguments[") || strings.Contains(expr, "GetArguments(")
 }
 
 func goHasShellConst(arg string) bool {

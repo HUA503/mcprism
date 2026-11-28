@@ -6,6 +6,10 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Improved
+
+- Propagate Python and Go taint through simple tuple/unpacking assignments.
+
 ### Documentation
 
 - Clarify that Python/Go expression-level taint may over-report helper calls
