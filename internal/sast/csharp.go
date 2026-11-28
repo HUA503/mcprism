@@ -11,23 +11,25 @@ import (
 // pattern. It is deliberately a bounded lexical pass: it does not run dotnet,
 // load assemblies, or resolve arbitrary dependency-injection and reflection.
 type csharpFunction struct {
-	path      string
-	owner     string
-	name      string
-	params    []string
-	body      string
-	startLine int
-	tool      bool
-	toolTaint map[string]bool
+	path          string
+	owner         string
+	name          string
+	params        []string
+	body          string
+	startLine     int
+	tool          bool
+	toolTaint     map[string]bool
+	receiverTypes map[string]string
 }
 
 type csharpHandler struct {
-	path        string
-	body        string
-	startLine   int
-	name        string
-	depth       int
-	seededTaint map[string]bool
+	path          string
+	body          string
+	startLine     int
+	name          string
+	depth         int
+	seededTaint   map[string]bool
+	receiverTypes map[string]string
 }
 
 type csharpTypeRange struct {
@@ -59,6 +61,8 @@ var (
 	csharpTypeAttrRe      = regexp.MustCompile(`\[\s*(?:[A-Za-z_][\w.]*\.)?McpServerToolType(?:Attribute)?\b`)
 	csharpCallRe          = regexp.MustCompile(`(?:\bthis\s*\.\s*)?\b([A-Za-z_][\w]*)\s*\(`)
 	csharpQualifiedCallRe = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
+	csharpTypedVarRe      = regexp.MustCompile(`(?:^|[;{}\n])\s*(?:(?:public|private|protected|internal|static|readonly|const|var)\s+)*(?:[A-Za-z_][\w.]*)(?:\s*<[^;={}()]+>)?(?:\[\])?\??\s+([A-Za-z_][\w]*)\s*(?:=|;|,|\))`)
+	csharpVarNewTypeRe    = regexp.MustCompile(`\bvar\s+([A-Za-z_][\w]*)\s*=\s*new\s+([A-Za-z_][\w]*)\b`)
 	csharpAssignRe        = regexp.MustCompile(`(?:^|[;{}\n])\s*(?:(?:var|dynamic|readonly)\s+|[\w.<>,?\[\]]+\s+)?([A-Za-z_][\w]*)\s*=\s*([^;{}]+);`)
 	csharpProcessRe       = regexp.MustCompile(`(?:Process\s*\.\s*Start|new\s+ProcessStartInfo)\s*\(`)
 	csharpNetworkRe       = regexp.MustCompile(`(?:new\s+Uri|WebRequest\s*\.\s*Create|new\s+HttpRequestMessage|\b[A-Za-z_][\w]*\s*\.\s*(?:GetAsync|PostAsync|PutAsync|DeleteAsync|SendAsync|GetStringAsync|GetByteArrayAsync))\s*\(`)
@@ -132,7 +136,7 @@ func analyzeCSharpWithIndex(path string, index *csharpProjectIndex) []Issue {
 	var queue []csharpHandler
 	for _, fn := range functions {
 		if fn.tool {
-			queue = append(queue, csharpHandler{path: path, body: fn.body, startLine: fn.startLine, name: fn.name, seededTaint: fn.toolTaint})
+			queue = append(queue, csharpHandler{path: path, body: fn.body, startLine: fn.startLine, name: fn.name, seededTaint: fn.toolTaint, receiverTypes: fn.receiverTypes})
 		}
 	}
 	seen := map[string]bool{}
@@ -227,11 +231,29 @@ func extractCSharpFunctions(src, parseCode string, types []csharpTypeRange) map[
 			functions[name] = csharpFunction{
 				owner: owner, name: name, params: params, body: src[brace+1 : close],
 				startLine: strings.Count(src[:brace+1], "\n") + 1,
-				tool:      isTool, toolTaint: toolTaint,
+				tool:      isTool, toolTaint: toolTaint, receiverTypes: csharpParameterTypes(paramsText),
 			}
 		}
 	}
 	return functions
+}
+
+func csharpParameterTypes(paramsText string) map[string]string {
+	types := map[string]string{}
+	for _, param := range splitJavaTopLevel(paramsText) {
+		ids := javaIdentifierRe.FindAllString(param, -1)
+		if len(ids) < 2 {
+			continue
+		}
+		name, typ := ids[len(ids)-1], ids[len(ids)-2]
+		// Generic parameters can contribute identifiers after the outer type;
+		// only use simple named types for receiver resolution.
+		if strings.Contains(param, "<") || strings.Contains(param, "[") {
+			continue
+		}
+		types[name] = typ
+	}
+	return types
 }
 
 func csharpContextParam(param string) bool {
@@ -268,6 +290,22 @@ func scanCSharpHandler(path string, sourceLines []string, handler csharpHandler,
 	}
 	var issues []Issue
 	var helpers []csharpHandler
+	receiverTypes := map[string]string{}
+	for name, typ := range handler.receiverTypes {
+		receiverTypes[name] = typ
+	}
+	for _, match := range csharpTypedVarRe.FindAllStringSubmatch(body, -1) {
+		// The variable's declared type is the identifier immediately before its
+		// name. Restrict resolution to simple named types in this lexical pass.
+		full := match[0]
+		ids := javaIdentifierRe.FindAllString(full, -1)
+		if len(ids) >= 2 {
+			receiverTypes[match[1]] = ids[len(ids)-2]
+		}
+	}
+	for _, match := range csharpVarNewTypeRe.FindAllStringSubmatch(body, -1) {
+		receiverTypes[match[1]] = match[2]
+	}
 	addSink := func(pattern *regexp.Regexp, ruleID, title string, severity Severity, advice string) {
 		for _, match := range pattern.FindAllStringIndex(body, -1) {
 			open := strings.LastIndexByte(body[match[0]:match[1]], '(')
@@ -310,12 +348,16 @@ func scanCSharpHandler(path string, sourceLines []string, handler csharpHandler,
 				}
 			}
 			if len(seeded) != 0 {
-				helpers = append(helpers, csharpHandler{path: function.path, body: function.body, startLine: function.startLine, name: function.name, depth: handler.depth + 1, seededTaint: seeded})
+				helpers = append(helpers, csharpHandler{path: function.path, body: function.body, startLine: function.startLine, name: function.name, depth: handler.depth + 1, seededTaint: seeded, receiverTypes: function.receiverTypes})
 			}
 		}
 		if index != nil {
 			for _, call := range csharpQualifiedCallRe.FindAllStringSubmatchIndex(body, -1) {
-				owner, name := body[call[2]:call[3]], body[call[4]:call[5]]
+				receiver, name := body[call[2]:call[3]], body[call[4]:call[5]]
+				owner := receiver
+				if typ := receiverTypes[receiver]; typ != "" {
+					owner = typ
+				}
 				key := owner + "#" + name
 				function, ok := index.methods[key]
 				if !ok || index.ambig[key] {
@@ -337,7 +379,7 @@ func scanCSharpHandler(path string, sourceLines []string, handler csharpHandler,
 					}
 				}
 				if len(seeded) != 0 {
-					helpers = append(helpers, csharpHandler{path: function.path, body: function.body, startLine: function.startLine, name: key, depth: handler.depth + 1, seededTaint: seeded})
+					helpers = append(helpers, csharpHandler{path: function.path, body: function.body, startLine: function.startLine, name: key, depth: handler.depth + 1, seededTaint: seeded, receiverTypes: function.receiverTypes})
 				}
 			}
 		}

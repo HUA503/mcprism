@@ -8,8 +8,9 @@ semantic versioning.
 
 ### Improved
 
-- Follow uniquely resolved type-qualified C# helper calls across files during
-  directory scans, with bounded indexing and sink locations in the helper file.
+- Follow uniquely resolved type-qualified and concrete-type receiver C# helper
+  calls across files during directory scans, with bounded indexing and sink
+  locations in the helper file.
 - Expand deterministic prompt-injection signatures with high-signal Spanish,
   French, German, Portuguese, Russian and Arabic directives.
 - Recognize Spring AI `@McpTool` methods as Java SAST entry points, including
