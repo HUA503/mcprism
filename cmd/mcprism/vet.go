@@ -15,6 +15,7 @@ import (
 func vetCmd() *cobra.Command {
 	var o auditOpts
 	var probe bool
+	var repoURL, repoRef string
 	cmd := &cobra.Command{
 		Use:   "vet [target] | vet -- <command> [args...]",
 		Short: "Vet a server straight from a launch command, URL or package name",
@@ -30,6 +31,7 @@ Targets:
   Package shorthand vet npm:@scope/name
                    vet pypi:some-package
   Source tree      vet ./path/to/server
+  GitHub source    vet --repo https://github.com/owner/repo [--ref branch-or-tag]
   Source file      vet server.py
 
 By default vet is static: it does not run the target and has no side effects.
@@ -39,6 +41,26 @@ Add --read-content to also request bounded text from listed resources and
 prompts. Required prompt arguments are skipped rather than guessed.`,
 		Args: cobra.ArbitraryArgs,
 		RunE: func(_ *cobra.Command, args []string) error {
+			if repoURL != "" {
+				if len(args) != 0 {
+					return fmt.Errorf("--repo cannot be combined with positional targets")
+				}
+				if probe || o.readContent {
+					return fmt.Errorf("GitHub source scans are static; --probe and --read-content are not available")
+				}
+				dir, err := fetchGitHubSource(repoURL, repoRef)
+				if err != nil {
+					return err
+				}
+				defer os.RemoveAll(dir)
+				if !sast.IsSourceProject(dir) {
+					return fmt.Errorf("GitHub repository contains no supported source project (JS/TS, Python, Go or Rust)")
+				}
+				return audit([]*config.Server{projectServer(dir)}, nil, false, o)
+			}
+			if repoRef != "" {
+				return fmt.Errorf("--ref requires --repo")
+			}
 			servers, err := resolveVetTargets(args)
 			if err != nil {
 				return err
@@ -48,6 +70,8 @@ prompts. Required prompt arguments are skipped rather than guessed.`,
 	}
 	addAuditFlags(cmd, &o)
 	cmd.Flags().BoolVar(&probe, "probe", false, "actually launch/connect to enumerate tools (runs the target; prefer a sandbox)")
+	cmd.Flags().StringVar(&repoURL, "repo", "", "scan a public GitHub repository source tree without running it")
+	cmd.Flags().StringVar(&repoRef, "ref", "", "branch, tag or commit to scan (requires --repo; default branch when omitted)")
 	return cmd
 }
 

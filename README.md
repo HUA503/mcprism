@@ -123,13 +123,16 @@ mcprism vet -- npx -y some-mcp-server
 mcprism vet https://mcp.example.com
 mcprism vet npm:@scope/name
 mcprism vet ./path/to/server     # review a source tree
+mcprism vet --repo https://github.com/owner/repo --ref main # public GitHub source
 mcprism vet server.py            # review one file
 ```
 
 `vet` and `scan` are static by default and do not run the target. Add
 `--probe` (vet) or `--dynamic` (scan) to launch it and enumerate its tools,
 resources and prompts. A source tree or file goes through the SAST engine
-below, with no network needed.
+below, with no network needed. `--repo` downloads a public GitHub source archive
+for static review; it never runs the downloaded code. Omit `--ref` to use the
+repository's default branch.
 
 <p align="center">
   <img src="assets/vet.png?v=0.9.2" alt="mcprism vet catching a curl|sh launch command" width="94%">
