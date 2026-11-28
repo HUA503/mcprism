@@ -2,6 +2,8 @@ package sast
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -11,22 +13,47 @@ import (
 // callHandler/toolCall APIs. The current analyzer intentionally supports
 // explicit lambda bodies rather than attempting to resolve Spring wiring.
 type javaHandler struct {
-	body        string
-	requestName string
-	startLine   int
-	name        string
-	depth       int
-	seededTaint map[string]bool
+	path          string
+	owner         string
+	body          string
+	requestName   string
+	startLine     int
+	name          string
+	depth         int
+	seededTaint   map[string]bool
+	receiverTypes map[string]string
 }
 
 type javaFunction struct {
-	name      string
-	params    []string
-	body      string
-	startLine int
-	tool      bool
-	toolTaint map[string]bool
+	path          string
+	owner         string
+	name          string
+	params        []string
+	body          string
+	startLine     int
+	tool          bool
+	toolTaint     map[string]bool
+	receiverTypes map[string]string
 }
+
+const (
+	maxJavaProjectFiles = 64
+	maxJavaProjectBytes = 16 << 20
+)
+
+type javaFileIndex struct {
+	code      string
+	lines     []string
+	functions map[string]javaFunction
+}
+
+type javaProjectIndex struct {
+	files   map[string]javaFileIndex
+	methods map[string]javaFunction
+	ambig   map[string]bool
+}
+
+var javaTypeDeclRe = regexp.MustCompile(`\b(?:class|interface|enum|record)\s+([A-Za-z_$][\w$]*)[^;{}]*\{`)
 
 var (
 	javaToolCallbackRe = regexp.MustCompile(`\.(callHandler|toolCall)\s*\(`)
@@ -34,7 +61,7 @@ var (
 	javaIdentifierRe   = regexp.MustCompile(`[A-Za-z_$][\w$]*`)
 	javaFunctionRe     = regexp.MustCompile(`(?m)(?:^|[;{}])\s*(?:(?:public|protected|private|static|final|synchronized|native|abstract|default)\s+)*[\w.$<>, ?\[\]]+\s+([A-Za-z_$][\w$]*)\s*\(([^()]*)\)\s*(?:throws\s+[\w.$, ]+)?\s*\{`)
 	javaMcpToolRe      = regexp.MustCompile(`@(?:[A-Za-z_$][\w$]*\.)*McpTool\b`)
-	javaCallRe         = regexp.MustCompile(`\b([A-Za-z_$][\w$]*)\s*\(`)
+	javaCallRe         = regexp.MustCompile(`(?:\b([A-Za-z_$][\w$]*)\s*\.\s*)?\b([A-Za-z_$][\w$]*)\s*\(`)
 	javaAssignRe       = regexp.MustCompile(`(?:^|[;{}\n])\s*(?:final\s+)?[\w.$<>?, \t\[\]]*?\b([A-Za-z_$][\w$]*)\s*=\s*([^;{}]+);`)
 	javaProcessSinkRe  = regexp.MustCompile(`(?:new\s+ProcessBuilder|Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec)\s*\(`)
 	javaNetworkSinkRe  = regexp.MustCompile(`(?:new\s+URL|URI\s*\.\s*create|HttpRequest\s*\.\s*newBuilder|(?:restTemplate|httpClient|webClient|client)\s*\.\s*(?:getForObject|getForEntity|exchange|execute))\s*\(`)
@@ -45,6 +72,48 @@ var (
 )
 
 func analyzeJava(path string) []Issue {
+	return analyzeJavaWithIndex(path, nil)
+}
+
+func buildJavaProjectIndex(paths []string) *javaProjectIndex {
+	idx := &javaProjectIndex{files: map[string]javaFileIndex{}, methods: map[string]javaFunction{}, ambig: map[string]bool{}}
+	files, bytes := 0, int64(0)
+	for _, path := range paths {
+		if !strings.EqualFold(filepath.Ext(path), ".java") || files >= maxJavaProjectFiles {
+			continue
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.Size() > maxSourceFileSize || bytes+info.Size() > maxJavaProjectBytes {
+			continue
+		}
+		_, src := readLines(path)
+		if src == "" {
+			continue
+		}
+		code := maskJavaComments(src)
+		functions := extractJavaFunctions(code)
+		for name, fn := range functions {
+			fn.path = path
+			functions[name] = fn
+			if fn.owner == "" {
+				continue
+			}
+			key := fn.owner + "#" + fn.name
+			if _, ok := idx.methods[key]; ok {
+				delete(idx.methods, key)
+				idx.ambig[key] = true
+			} else if !idx.ambig[key] {
+				idx.methods[key] = fn
+			}
+		}
+		idx.files[path] = javaFileIndex{code: code, lines: strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n"), functions: functions}
+		files++
+		bytes += int64(len(src))
+	}
+	return idx
+}
+
+func analyzeJavaWithIndex(path string, index *javaProjectIndex) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
 		return nil
@@ -53,12 +122,27 @@ func analyzeJava(path string) []Issue {
 	allLines := strings.Split(strings.ReplaceAll(src, "\r\n", "\n"), "\n")
 	var issues []Issue
 	functions := extractJavaFunctions(code)
+	if index != nil {
+		if file, ok := index.files[path]; ok {
+			code, allLines, functions = file.code, file.lines, file.functions
+		}
+	}
+	for name, fn := range functions {
+		if fn.path == "" {
+			fn.path = path
+			functions[name] = fn
+		}
+	}
 	queue := extractJavaHandlers(code)
+	for i := range queue {
+		queue[i].path = path
+	}
 	for _, function := range functions {
 		if function.tool {
 			queue = append(queue, javaHandler{
+				path: path, owner: function.owner,
 				body: function.body, startLine: function.startLine, name: function.name,
-				seededTaint: function.toolTaint,
+				seededTaint: function.toolTaint, receiverTypes: function.receiverTypes,
 			})
 		}
 	}
@@ -70,7 +154,17 @@ func analyzeJava(path string) []Issue {
 			continue
 		}
 		seen[key] = true
-		found, helpers := scanJavaHandler(path, allLines, handler, functions)
+		handlerPath := handler.path
+		if handlerPath == "" {
+			handlerPath = path
+		}
+		fileLines, fileFunctions := allLines, functions
+		if index != nil {
+			if file, ok := index.files[handlerPath]; ok {
+				fileLines, fileFunctions = file.lines, file.functions
+			}
+		}
+		found, helpers := scanJavaHandler(handlerPath, fileLines, handler, fileFunctions, index)
 		issues = append(issues, found...)
 		queue = append(queue, helpers...)
 	}
@@ -85,6 +179,7 @@ func extractJavaFunctions(code string) map[string]javaFunction {
 	counts := map[string]int{}
 	ambiguous := map[string]bool{}
 	parseCode := maskJavaAnnotations(code)
+	typeRanges := javaTypeRanges(parseCode)
 	for _, match := range javaFunctionRe.FindAllStringSubmatchIndex(parseCode, -1) {
 		name := parseCode[match[2]:match[3]]
 		paramsText := parseCode[match[4]:match[5]]
@@ -94,6 +189,14 @@ func extractJavaFunctions(code string) map[string]javaFunction {
 			continue
 		}
 		params := javaParameterNames(paramsText)
+		receiverTypes := javaParameterTypes(paramsText)
+		owner := ""
+		for _, classRange := range typeRanges {
+			if brace >= classRange.start && brace < classRange.end {
+				owner = classRange.name
+				break
+			}
+		}
 		toolTaint := map[string]bool{}
 		isTool := javaMcpToolRe.MatchString(code[match[0]:match[1]])
 		if isTool {
@@ -115,12 +218,57 @@ func extractJavaFunctions(code string) map[string]javaFunction {
 		}
 		if !ambiguous[name] {
 			functions[name] = javaFunction{
-				name: name, params: params, body: code[brace+1 : close], tool: isTool, toolTaint: toolTaint,
+				name: name, owner: owner, params: params, body: code[brace+1 : close], tool: isTool, toolTaint: toolTaint, receiverTypes: receiverTypes,
 				startLine: strings.Count(code[:brace+1], "\n") + 1,
 			}
 		}
 	}
 	return functions
+}
+
+func javaParameterTypes(text string) map[string]string {
+	types := map[string]string{}
+	for _, param := range splitJavaTopLevel(text) {
+		ids := javaIdentifierRe.FindAllStringIndex(param, -1)
+		if len(ids) < 2 {
+			continue
+		}
+		name := param[ids[len(ids)-1][0]:ids[len(ids)-1][1]]
+		typ := strings.TrimSpace(param[:ids[len(ids)-1][0]])
+		if strings.Contains(typ, " ") {
+			typ = strings.Fields(typ)[len(strings.Fields(typ))-1]
+		}
+		if strings.HasPrefix(typ, "final") {
+			typ = strings.TrimSpace(strings.TrimPrefix(typ, "final"))
+		}
+		if i := strings.IndexAny(typ, "<["); i >= 0 {
+			typ = typ[:i]
+		}
+		if i := strings.LastIndex(typ, "."); i >= 0 {
+			typ = typ[i+1:]
+		}
+		if typ != "" {
+			types[name] = typ
+		}
+	}
+	return types
+}
+
+type javaTypeRange struct {
+	name       string
+	start, end int
+}
+
+func javaTypeRanges(code string) []javaTypeRange {
+	var ranges []javaTypeRange
+	for _, match := range javaTypeDeclRe.FindAllStringSubmatchIndex(code, -1) {
+		brace := strings.LastIndexByte(code[match[0]:match[1]], '{') + match[0]
+		close := matchClose(code, brace, '{', '}')
+		if close >= 0 {
+			ranges = append(ranges, javaTypeRange{name: code[match[2]:match[3]], start: brace, end: close})
+		}
+	}
+	return ranges
 }
 
 func javaToolContextParam(param string) bool {
@@ -292,6 +440,7 @@ func maskJavaComments(src string) string {
 
 func extractJavaHandlers(code string) []javaHandler {
 	var handlers []javaHandler
+	typeRanges := javaTypeRanges(maskJavaAnnotations(code))
 	for _, match := range javaToolCallbackRe.FindAllStringIndex(code, -1) {
 		open := strings.LastIndexByte(code[match[0]:match[1]], '(')
 		if open < 0 {
@@ -335,7 +484,7 @@ func extractJavaHandlers(code string) []javaHandler {
 			continue
 		}
 		handlers = append(handlers, javaHandler{
-			body: code[bodyStart+1 : bodyEnd], requestName: ids[len(ids)-1],
+			body: code[bodyStart+1 : bodyEnd], requestName: ids[len(ids)-1], owner: javaOwnerAt(typeRanges, bodyStart),
 			startLine: strings.Count(code[:bodyStart+1], "\n") + 1,
 			name:      fmt.Sprintf("<callback:%d>", strings.Count(code[:bodyStart+1], "\n")+1),
 		})
@@ -343,7 +492,48 @@ func extractJavaHandlers(code string) []javaHandler {
 	return handlers
 }
 
-func scanJavaHandler(path string, sourceLines []string, handler javaHandler, functions map[string]javaFunction) ([]Issue, []javaHandler) {
+func javaOwnerAt(ranges []javaTypeRange, pos int) string {
+	for _, r := range ranges {
+		if pos >= r.start && pos < r.end {
+			return r.name
+		}
+	}
+	return ""
+}
+
+func javaReceiverType(body, receiver string) string {
+	if receiver == "this" {
+		return ""
+	}
+	if receiver != "" && receiver[0] >= 'A' && receiver[0] <= 'Z' {
+		return receiver
+	}
+	if receiver == "" {
+		return ""
+	}
+	re := regexp.MustCompile(`\b([A-Za-z_$][\w.$]*(?:\s*<[^;{}]+>)?(?:\s*\[\])?)\s+` + regexp.QuoteMeta(receiver) + `\b`)
+	matches := re.FindAllStringSubmatch(body, -1)
+	if len(matches) == 0 {
+		return ""
+	}
+	typ := strings.TrimSpace(matches[0][1])
+	if len(matches) > 1 {
+		for _, match := range matches[1:] {
+			if strings.TrimSpace(match[1]) != typ {
+				return ""
+			}
+		}
+	}
+	if i := strings.IndexAny(typ, "<["); i >= 0 {
+		typ = typ[:i]
+	}
+	if i := strings.LastIndex(typ, "."); i >= 0 {
+		typ = typ[i+1:]
+	}
+	return typ
+}
+
+func scanJavaHandler(path string, sourceLines []string, handler javaHandler, functions map[string]javaFunction, index *javaProjectIndex) ([]Issue, []javaHandler) {
 	body := handler.body
 	tainted := map[string]bool{}
 	for name := range handler.seededTaint {
@@ -399,8 +589,33 @@ func scanJavaHandler(path string, sourceLines []string, handler javaHandler, fun
 	}
 	if handler.depth < 8 {
 		for _, call := range javaCallRe.FindAllStringSubmatchIndex(body, -1) {
-			name := body[call[2]:call[3]]
-			function, ok := functions[name]
+			receiver, name := "", body[call[4]:call[5]]
+			if call[2] >= 0 {
+				receiver = body[call[2]:call[3]]
+			}
+			var function javaFunction
+			ok := false
+			switch receiver {
+			case "":
+				function, ok = functions[name]
+			case "this":
+				function, ok = functions[name]
+				if ok && handler.owner != "" && function.owner != handler.owner {
+					ok = false
+				}
+			default:
+				typ := javaReceiverType(body, receiver)
+				if typ == "" {
+					typ = handler.receiverTypes[receiver]
+				}
+				if typ == "" && receiver == handler.owner {
+					typ = receiver
+				}
+				key := typ + "#" + name
+				if index != nil && typ != "" && !index.ambig[key] {
+					function, ok = index.methods[key]
+				}
+			}
 			if !ok {
 				continue
 			}
@@ -423,8 +638,8 @@ func scanJavaHandler(path string, sourceLines []string, handler javaHandler, fun
 				continue
 			}
 			helpers = append(helpers, javaHandler{
-				body: function.body, startLine: function.startLine, name: function.name,
-				depth: handler.depth + 1, seededTaint: seeded,
+				path: function.path, owner: function.owner, body: function.body, startLine: function.startLine, name: function.owner + "." + function.name,
+				depth: handler.depth + 1, seededTaint: seeded, receiverTypes: function.receiverTypes,
 			})
 		}
 	}

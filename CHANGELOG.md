@@ -12,6 +12,8 @@ semantic versioning.
   parameters marked with `@McpToolParam`.
 - Follow uniquely named Java helper methods up to eight calls deep when a
   callback passes MCP tool arguments directly to them.
+- Follow typed, uniquely resolved Java helper calls across source files, with
+  a bounded project index and sink locations reported in the helper file.
 
 ### Added
 

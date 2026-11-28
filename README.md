@@ -502,7 +502,8 @@ It recognizes the common SDKs and frameworks:
 - Rust: `#[tool]` methods from the official `rmcp` SDK.
 - Java: explicit `.callHandler(...)` and `.toolCall(...)` lambda handlers from
   the official Java SDK, plus Spring AI `@McpTool` methods; Java analysis follows
-  direct flows and arguments passed to uniquely named same-file helpers.
+  direct flows and arguments passed to uniquely resolved same-file and
+  cross-file helpers when the receiver type is explicit.
 
 For each tool it treats handler arguments as attacker-controlled data. JS/TS,
 Python, Go and Rust analysis follows simple local aliases and arguments passed
@@ -602,7 +603,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   dispatch.
 - JavaScript/TypeScript, Python, Go and Rust receive their documented source
   analysis. Java currently covers explicit SDK callback lambdas, Spring AI
-  `@McpTool` methods and same-file helpers. Other languages get config- and
+  `@McpTool` methods, same-file helpers and typed direct calls across Java
+  files. It does not resolve reflection, interface dispatch or arbitrary bean
+  wiring. Other languages get config- and
   metadata-level checks only.
 
 For assurance on a high-risk server, pair mcprism with a full data-flow
