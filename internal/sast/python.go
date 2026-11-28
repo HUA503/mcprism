@@ -63,7 +63,8 @@ func analyzePython(path string) []Issue {
 var pyToolDecRe = regexp.MustCompile(`@[\w\.]+\.(tool|call_tool)\b`)
 var pyDefRe = regexp.MustCompile(`\bdef\s+(\w+)\s*\(([^)]*)\)`)
 var pyCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
-var pyCallableAssignRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*)\s*$`)
+var pyAssignmentTargetRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*)(?:\s*:\s*[^=]+)?\s*=(?!=)\s*(.*?)\s*$`)
+var pyCallableExprRe = regexp.MustCompile(`^[A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*$`)
 var pyFromImportRe = regexp.MustCompile(`^from\s+(\.*[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*|\.+)\s+import\s+(.+?)\s*$`)
 var pyImportRe = regexp.MustCompile(`^import\s+(.+?)\s*$`)
 var pyFieldAssignRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*|\s*\[\s*['"][A-Za-z_]\w*['"]\s*\]))\s*=\s*(.*)$`)
@@ -171,18 +172,38 @@ func pythonCalls(text string, imports pythonImports, targets ...string) []python
 
 // pythonCallableAliases follows simple local assignments of imported callables,
 // such as `run = subprocess.run` or `fetch = httpx.get`. This catches common
-// sink indirection without trying to resolve reassignment or dynamic values.
+// sink indirection while omitting names reassigned to a different or dynamic value.
 func pythonCallableAliases(text string, imports pythonImports) map[string]string {
+	assignments := map[string]string{}
+	ambiguous := map[string]bool{}
+	for _, line := range strings.Split(text, "\n") {
+		m := pyAssignmentTargetRe.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		alias, expr := m[1], strings.ReplaceAll(m[2], " ", "")
+		if !pyCallableExprRe.MatchString(m[2]) {
+			delete(assignments, alias)
+			ambiguous[alias] = true
+			continue
+		}
+		if prior, exists := assignments[alias]; exists && prior != expr {
+			delete(assignments, alias)
+			ambiguous[alias] = true
+			continue
+		}
+		if !ambiguous[alias] {
+			assignments[alias] = expr
+		}
+	}
+
 	aliases := map[string]string{}
-	lines := strings.Split(text, "\n")
 	for changed := true; changed; {
 		changed = false
-		for _, line := range lines {
-			m := pyCallableAssignRe.FindStringSubmatch(line)
-			if m == nil {
+		for alias, expr := range assignments {
+			if ambiguous[alias] {
 				continue
 			}
-			alias, expr := m[1], strings.ReplaceAll(m[2], " ", "")
 			canonical := aliases[expr]
 			if canonical == "" {
 				canonical = imports.calls[expr]
