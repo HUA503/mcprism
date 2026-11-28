@@ -250,7 +250,7 @@ Fügen Sie den Befehl zum Shell-Profil hinzu, damit er in neuen Sitzungen verfü
 Scan zweier lokaler Server im statischen Modus:
 
 ```text
-◆ mcprism   v0.43.2 · 2026-11-28
+◆ mcprism   v0.43.3 · 2026-11-28
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
