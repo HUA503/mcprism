@@ -88,6 +88,10 @@ func Analyze(root string) ([]Issue, error) {
 			issues = append(issues, analyzeKotlinWithIndex(p, kotlinIndex)...)
 			continue
 		}
+		if isJSSourceExt(filepath.Ext(p)) {
+			issues = append(issues, analyzeJSWithRoot(p, root)...)
+			continue
+		}
 		issues = append(issues, AnalyzeFile(p)...)
 	}
 	return issues, nil
@@ -120,7 +124,7 @@ func AnalyzeFile(path string) []Issue {
 	}
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs":
-		return analyzeJS(path)
+		return analyzeJSWithRoot(path, filepath.Dir(path))
 	case ".py":
 		return analyzePython(path)
 	case ".go":

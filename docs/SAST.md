@@ -165,12 +165,13 @@ top-level extension helpers when the receiver or an argument is tainted. It
 does not follow implicit `it` callbacks, unqualified cross-file calls,
 multiline expression bodies, overloads or complex expressions; the Kotlin pass
 is lexical and does not compile the project.
-JS/TS follows named and namespace ES imports, destructured CommonJS
+JS/TS follows named, namespace and default ES imports, destructured CommonJS
 `require()` imports, and direct named calls through a statically required
-CommonJS module object when they reference exported helpers from same-directory
-modules. It continues through helper calls in those modules. Python and JS/TS cross-module traversal
-is bounded by eight imports deep, 64 source files and 16 MiB of source per
-analyzed entry file. Rust recognizes the official `rmcp` `#[tool]` macro and
+CommonJS module object when they reference exported helpers from relative
+modules under the scan root. It continues through helper calls in those modules.
+Single-file scans use the file's parent directory as the root. Python and JS/TS
+cross-module traversal is bounded by eight imports deep, 64 source files and
+16 MiB of source per analyzed entry file. Rust recognizes the official `rmcp` `#[tool]` macro and
 follows local aliases through same-file helpers and explicitly imported,
 uniquely named free functions in the scanned Cargo package, within the bounds
 above. Rust does not expand macros or resolve trait-based dispatch.
@@ -194,11 +195,12 @@ named imports and direct module imports with an alias, including multi-level
 relative imports inside marked packages. JS/TS follows named, namespace and
 default ES imports plus CommonJS `require()` imports and local helper calls in
 imported modules within the limits above. Standalone default imports and
-default-plus-named imports are followed only
-when the local module statically exports a named function as its default (or
-exports a locally indexed helper identifier); anonymous default functions,
-computed module-object properties, re-exports, package resolution and other
-import forms are not resolved. The analyzers do not model arbitrary object
+default-plus-named imports are followed only when the local module statically
+exports a named function as its default (or exports a locally indexed helper
+identifier); anonymous default functions, computed module-object properties,
+re-exports, package resolution and other import forms are not resolved. Relative
+imports that escape the scan root and imports through skipped dependency/build
+directories are not followed. The analyzers do not model arbitrary object
 graphs, returned values or dynamic dispatch. Field tracking is limited to
 direct, statically named assignments and reads. The bounded analysis keeps the
 scanner dependency-free and predictable.
@@ -828,10 +830,12 @@ Do not construct a module name or path from tool input.
   `self` and `super` imports of uniquely named functions during Cargo directory
   scans, within eight import hops, 64 files and 16 MiB per entry; it excludes
   `tests`, `examples`, `benches` and `src/bin` from the shared helper index.
-  JS/TS also follows named ES imports
-  and static CommonJS `require()` imports or direct named calls through a
-  module object for exported helpers and their local helper chains across
-  same-directory modules, with bounded depth, file count and total source size.
+  JS/TS follows named, namespace and default ES imports (including
+  default-plus-named imports), static CommonJS `require()` imports and direct
+  named calls through a module object for exported helpers and their local
+  helper chains across relative modules inside the scan root, with bounded
+  depth, file count and total source size. Single-file scans use the file's
+  parent directory as the root.
   Python follows explicit imports and helper chains across same-directory
   modules and marked parent packages within the same limits. Absolute dotted
   package imports and re-exports are not resolved.
