@@ -674,6 +674,30 @@ func scanRustBlock(path, src string, b handlerBlock) []Issue {
 		}
 	}
 
+	for _, networkType := range []struct {
+		names   []string
+		methods string
+	}{
+		{rustImportedTypeNames(src, "std::net", "TcpStream"), `(?:connect|connect_timeout)`},
+		{rustImportedTypeNames(src, "tokio::net", "TcpStream"), `connect`},
+	} {
+		tcpConnectRe := regexp.MustCompile(`\b` + rustNameAlternation(networkType.names) + `\s*::\s*` + networkType.methods + `\s*\(`)
+		for _, m := range tcpConnectRe.FindAllStringIndex(text, -1) {
+			open := m[1] - 1
+			close := rustMatchClose(text, open, '(', ')')
+			if close < 0 {
+				continue
+			}
+			address, _ := splitTopComma(text[open+1 : close])
+			if !rustControllable(address, tainted) {
+				continue
+			}
+			line := off2line(open)
+			out = append(out, issue(path, "MCP802", "Tool input controls an outbound network target (SSRF)", SeverityHigh, line, lineText(b, line),
+				"Use a fixed destination or allow-list approved hosts, and reject private, loopback and link-local addresses after resolving the target."))
+		}
+	}
+
 	fileNames := rustStdImportNames(src, "fs::File", "File")
 	fileTypes := rustNameAlternation(fileNames)
 	fileRe := regexp.MustCompile(`\b(?:(?:std::|tokio::)?fs::(?:read|read_to_string|read_link|write|remove_file|remove_dir|metadata|canonicalize|create_dir_all|read_dir)|(?:std::)?fs::File::|` + fileTypes + `::)(?:open|create)\s*\(`)
@@ -716,6 +740,36 @@ func rustStdImportNames(src, path, canonical string) []string {
 				if len(fields) == 3 && fields[0] == itemName && fields[1] == "as" && isIdent(fields[2]) {
 					names[fields[2]] = true
 				}
+			}
+		}
+	}
+	result := make([]string, 0, len(names))
+	for name := range names {
+		result = append(result, name)
+	}
+	sort.Strings(result)
+	return result
+}
+
+func rustImportedTypeNames(src, modulePath, canonical string) []string {
+	names := map[string]bool{modulePath + "::" + canonical: true}
+	directImport := regexp.MustCompile(`(?m)^\s*use\s+` + regexp.QuoteMeta(modulePath) + `::` + regexp.QuoteMeta(canonical) + `(?:\s+as\s+([A-Za-z_]\w*))?\s*;`)
+	for _, match := range directImport.FindAllStringSubmatch(src, -1) {
+		alias := match[1]
+		if alias == "" {
+			alias = canonical
+		}
+		names[alias] = true
+	}
+	groupedImport := regexp.MustCompile(`(?m)^\s*use\s+` + regexp.QuoteMeta(modulePath) + `::\{([^}]*)\}\s*;`)
+	for _, match := range groupedImport.FindAllStringSubmatch(src, -1) {
+		for _, item := range strings.Split(match[1], ",") {
+			fields := strings.Fields(strings.TrimSpace(item))
+			if len(fields) == 1 && fields[0] == canonical {
+				names[canonical] = true
+			}
+			if len(fields) == 3 && fields[0] == canonical && fields[1] == "as" && isIdent(fields[2]) {
+				names[fields[2]] = true
 			}
 		}
 	}

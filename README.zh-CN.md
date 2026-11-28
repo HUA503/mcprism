@@ -410,7 +410,7 @@ mcprism vet ./mcp-server/src/tool.ts
 | 规则 | sink | 默认级别 |
 |---|---|---|
 | MCP801 | 工具参数流入命令/进程 sink（`exec`、`spawn`、`os.system`、`subprocess shell=True`） | critical |
-| MCP802 | 工具参数控制出站网络目标（`fetch`、`requests`、`httpx`、Python `socket`、Node.js `net` / `tls`、Go `net.Dial`）——SSRF | high |
+| MCP802 | 工具参数控制出站网络目标（`fetch`、`requests`、`httpx`、Python `socket`、Node.js `net` / `tls`、Go `net.Dial`、Rust `TcpStream`）——SSRF | high |
 | MCP803 | 工具参数被当作文件路径，且没有限定范围 | high |
 | MCP804 | 动态执行代码（`eval`、`Function`、`exec`） | high |
 | MCP805 | 不安全反序列化（`pickle`、`marshal`、`yaml.load`） | high |
@@ -456,7 +456,7 @@ JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`ht
 - Python/Go 会保守地把包含受控变量的局部赋值结果也视为受控，不会分析 helper 实际返回什么；简单的 tuple/list 解包赋值也会传播 taint，Python 支持 `*rest` 目标，Go 同时支持 `var` 声明。Go 的多个 RHS 表达式会按位置追踪；若单个 helper 调用返回多个值，只要调用参数受控，就会保守地将所有目标都标记为受控。因此，即使 helper 总是返回固定白名单值，调用处仍可能报风险。报告需要结合 helper 实现复核。
 - Rust 跨文件追踪只在目录扫描时启用，且仅解析 Cargo 同包内简单 `crate`/`self`/`super` 导入的唯一自由函数；分组导入、重导出、直接限定路径调用和 `tests`、`examples`、`benches`、`src/bin` 文件不会纳入共享 helper 分析。
 - Go 使用标准库 `go/parser` 定位 helper 函数边界，并会跟踪 `run := exec.Command` 这类简单的本地进程执行函数别名；动态表达式和被赋予不同值的变量不会跟踪，且尚未构建全程序数据流图。JS/Python 没有使用 tree-sitter。
-- Rust 识别 `rmcp` 的 `#[tool]` 宏，以及常见进程、`reqwest`、文件系统和密钥模式；进程与文件规则支持 `std::process::Command`、`std::fs::File` 的直接及分组 `use` 别名。
+- Rust 识别 `rmcp` 的 `#[tool]` 宏，以及常见进程、`reqwest`、`TcpStream` 网络连接、文件系统和密钥模式；进程与文件规则支持 `std::process::Command`、`std::fs::File` 的直接及分组 `use` 别名。
 - JavaScript/TypeScript、Python、Go、Rust 会执行各自文档描述的源码分析；Java 当前覆盖官方 SDK 显式 lambda 回调、Spring AI `@McpTool` 方法、同文件 helper，以及接收者类型明确的跨文件 helper（最多 8 层）。它不会解析反射、接口动态分派或任意 Spring Bean 装配。其他语言写的 server 只做配置和元数据层面的检查。
 
 对高风险 server，请配合完整数据流分析工具和人工复核一起使用。规则细节和更多示例见 [docs/SAST.md](docs/SAST.md)。
@@ -475,7 +475,7 @@ JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`ht
 - 危险能力组合，比如 shell 加联网、读文件加联网、写文件加 shell。
 - 网络目标。云元数据端点（`169.254.169.254`）和私有/回环地址段。
 - 供应链风险：未固定版本的包、近似的仿冒包名、直接从远程 URL 运行代码。
-- 源码风险：JS/TS/Python/Go/Java/Kotlin/C# handler 会检查命令、网络、文件、动态代码和反序列化风险；Rust `rmcp #[tool]` handler 会检查进程、`reqwest` URL、文件系统和硬编码密钥风险。Kotlin 支持官方 SDK 的 `server.addTool` 回调、同文件 helper 链和扩展函数接收者追踪，以及目录扫描时显式导入的唯一跨文件顶层函数和扩展函数；C# 目录扫描还会追踪唯一解析的跨文件 helper，包括具体类型限定调用和可确定具体类型的接收者调用。见[源码分析（SAST）](#源码分析sast)。
+- 源码风险：JS/TS/Python/Go/Java/Kotlin/C# handler 会检查命令、网络、文件、动态代码和反序列化风险；Rust `rmcp #[tool]` handler 会检查进程、`reqwest` URL、`TcpStream` 原始网络目标、文件系统和硬编码密钥风险。Kotlin 支持官方 SDK 的 `server.addTool` 回调、同文件 helper 链和扩展函数接收者追踪，以及目录扫描时显式导入的唯一跨文件顶层函数和扩展函数；C# 目录扫描还会追踪唯一解析的跨文件 helper，包括具体类型限定调用和可确定具体类型的接收者调用。见[源码分析（SAST）](#源码分析sast)。
 - 策略违规：被拒绝的包·命令·域名，以及违反网络隔离。
 - 跨 server 工具名冲突，以及分类后的连接失败（DNS / TLS / 拒绝连接 / 超时 / 命令不存在）。
 

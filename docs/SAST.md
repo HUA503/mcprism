@@ -89,6 +89,8 @@ first two destination arguments and skips callback-shaped second arguments.
 
 Rust process and file sinks follow direct and grouped aliases of
 `std::process::Command` and `std::fs::File` in explicit `use` declarations.
+MCP802 also checks tool-controlled addresses passed to `std::net::TcpStream` or
+`tokio::net::TcpStream` `connect` methods, including explicitly aliased imports.
 During Cargo directory scans, Rust also follows explicit `use crate::...`,
 `use self::...` and `use super::...` imports to uniquely named free functions
 in the same package. This traversal is limited to eight import hops, 64 source
@@ -585,6 +587,14 @@ const secureSocket = tls.connect({ host, port: 443 });
 Python recognizes `socket.create_connection` and `.connect()` / `.connect_ex()`
 on variables assigned from `socket.socket()` when their destination is
 controlled.
+
+Rust recognizes controlled addresses passed to `TcpStream::connect` from
+`std::net` and Tokio, and `TcpStream::connect_timeout` from `std::net`.
+
+```rust
+let target = args.address;
+let stream = tokio::net::TcpStream::connect(target).await?;
+```
 
 Vulnerable (Rust, official `rmcp` SDK):
 

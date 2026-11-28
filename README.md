@@ -515,7 +515,7 @@ name the file and line, show the code, and say how to fix it:
 | Rule | Sink | Default |
 |---|---|---|
 | MCP801 | Tool input reaches a process/command sink (`exec`, `spawn`, `os.system`, `subprocess shell=True`) | critical |
-| MCP802 | Tool input controls an outbound network target (`fetch`, `requests`, `httpx`, `socket`, `net`, `tls`) — SSRF | high |
+| MCP802 | Tool input controls an outbound network target (`fetch`, `requests`, `httpx`, `socket`, `net`, `tls`, `TcpStream`) — SSRF | high |
 | MCP803 | Tool input used as a filesystem path without confinement | high |
 | MCP804 | Dynamic code execution (`eval`, `Function`, `exec`) | high |
 | MCP805 | Unsafe deserialization (`pickle`, `marshal`, `yaml.load`) | high |
@@ -596,8 +596,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   it does not build a full-program data-flow graph. JS/Python do not use
   tree-sitter.
 - Rust analysis recognizes the official `rmcp` `#[tool]` macro and common
-  process, `reqwest`, filesystem and secret patterns, including direct and
-  grouped `use` aliases for `std::process::Command` and `std::fs::File`. It
+  process, `reqwest`, `TcpStream` network, filesystem and secret patterns,
+  including direct and grouped `use` aliases for `std::process::Command` and
+  `std::fs::File`. It
   follows uniquely named same-file helpers and explicitly imported helpers
   during Cargo directory scans, but does not expand macros or resolve trait
   dispatch.
@@ -646,7 +647,8 @@ analyzer and manual review. Rule details and more examples are in
 - Policy violations: denied packages/commands/domains and broken network isolation.
 - Source-code flaws: JS/TS/Python/Go/Java/Kotlin/C# handlers are checked for command, network,
   file, dynamic-code and deserialization risks; Rust `rmcp #[tool]` handlers
-  are checked for process, `reqwest` URL, filesystem and hardcoded-secret risks.
+  are checked for process, `reqwest` URL, `TcpStream` destination, filesystem
+  and hardcoded-secret risks.
   C# directory scans follow uniquely resolved helpers across files when calls
   use a concrete type or a receiver with a known concrete type. Kotlin directory
   scans follow explicitly imported, uniquely resolved top-level helpers and
