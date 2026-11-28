@@ -11,7 +11,7 @@ import (
 
 // Kotlin support starts from the official Kotlin SDK's server.addTool { ... }
 // callback. This bounded lexical pass does not compile Kotlin or resolve
-// overloads, extension-function receiver types, or member dispatch across files.
+// overloads, complex receiver types, or member dispatch across files.
 type kotlinToolHandler struct {
 	path      string
 	request   string
@@ -63,6 +63,7 @@ var (
 	kotlinLambdaParamRe        = regexp.MustCompile(`(?:\(\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\)?\s*->`)
 	kotlinFunctionRe           = regexp.MustCompile(`(?m)\bfun\s+(?:<[^>]+>\s*)?(?:[A-Za-z_][\w.]*\s*\.\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\(([^()]*)\)\s*(?::[^={\n]+)?\s*\{`)
 	kotlinExpressionFunctionRe = regexp.MustCompile(`(?m)\bfun\s+(?:<[^>]+>\s*)?(?:[A-Za-z_][\w.]*\s*\.\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\(([^()]*)\)\s*(?::[^=\n]+)?\s*=\s*([^\n;]+)`)
+	kotlinExtensionCallRe      = regexp.MustCompile(`((?:[A-Za-z_][A-Za-z0-9_]*|\([^()\n]*\))(?:\s*\.\s*[A-Za-z_][A-Za-z0-9_]*)*)\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
 	kotlinPackageRe            = regexp.MustCompile(`(?m)^\s*package\s+([A-Za-z_][\w.]*)`)
 	kotlinImportRe             = regexp.MustCompile(`(?m)^\s*import\s+([A-Za-z_][\w.]*)\s*(?:as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$`)
 	kotlinCallRe               = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
@@ -108,7 +109,7 @@ func buildKotlinProjectIndex(paths []string) *kotlinProjectIndex {
 		for name, fn := range functions {
 			fn.path, fn.packageName = path, packageName
 			functions[name] = fn
-			if !fn.topLevel || fn.private || fn.extension || packageName == "" {
+			if !fn.topLevel || fn.private || packageName == "" {
 				continue
 			}
 			key := packageName + "." + name
@@ -256,9 +257,6 @@ func kotlinTopLevelFunctionCounts(code string) map[string]int {
 	for _, declaration := range kotlinFunctionMatches(code) {
 		match := declaration.indices
 		if declaration.topLevel {
-			if strings.Contains(code[match[0]:match[2]], ".") {
-				continue
-			}
 			lineStart := strings.LastIndex(code[:match[0]], "\n") + 1
 			if regexp.MustCompile(`\bprivate\b`).MatchString(code[lineStart:match[0]]) {
 				continue
@@ -414,16 +412,21 @@ func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHan
 		}
 	}
 	if handler.depth < 8 {
+		extensionReceivers := map[int]string{}
+		for _, call := range kotlinExtensionCallRe.FindAllStringSubmatchIndex(body, -1) {
+			extensionReceivers[call[4]] = body[call[2]:call[3]]
+		}
 		for _, call := range kotlinCallRe.FindAllStringSubmatchIndex(body, -1) {
 			name := body[call[2]:call[3]]
 			function, ok := functions[name]
-			if ok && function.extension {
-				continue
-			}
 			if !ok && index != nil {
 				if qualified, imported := imports[name]; imported && !index.ambiguous[qualified] {
 					function, ok = index.functions[qualified]
 				}
+			}
+			receiver, hasExtensionReceiver := extensionReceivers[call[2]]
+			if function.extension != hasExtensionReceiver {
+				continue
 			}
 			if !ok {
 				continue
@@ -438,6 +441,9 @@ func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHan
 				continue
 			}
 			seeded := map[string]bool{}
+			if function.extension && exprIsTainted(receiver) {
+				seeded["this"] = true
+			}
 			for i, arg := range args {
 				if exprIsTainted(arg) {
 					seeded[function.params[i]] = true

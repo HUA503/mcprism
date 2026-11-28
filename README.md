@@ -649,7 +649,8 @@ analyzer and manual review. Rule details and more examples are in
   are checked for process, `reqwest` URL, filesystem and hardcoded-secret risks.
   C# directory scans follow uniquely resolved helpers across files when calls
   use a concrete type or a receiver with a known concrete type. Kotlin directory
-  scans follow explicitly imported, uniquely resolved top-level helpers.
+  scans follow explicitly imported, uniquely resolved top-level helpers and
+  extension helpers when their receiver or arguments are tainted.
   See [Source-code review](#source-code-review-sast).
 - Cross-server tool name collisions, and classified connectivity failures
   (DNS / TLS / refused / timeout / command not found).
