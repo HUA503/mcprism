@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Scan public GitHub repositories with `vet --repo [--ref]` using a bounded,
+  temporary source archive; downloaded code is never executed.
+
 ### Community
 
 - Add bilingual guidance to issue forms so English- and Chinese-speaking users

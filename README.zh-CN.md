@@ -93,10 +93,11 @@ mcprism vet -- npx -y some-mcp-server
 mcprism vet https://mcp.example.com
 mcprism vet npm:@scope/name
 mcprism vet ./path/to/server     # 审查整个源码目录
+mcprism vet --repo https://github.com/owner/repo --ref main # 扫描公开 GitHub 源码
 mcprism vet server.py            # 审查单个文件
 ```
 
-`vet` 默认只做静态分析，不会运行目标。加 `--probe` 才会启动它并枚举 tools、resources 和 prompts。源码目录或文件会走下面的源码分析引擎，不需要联网。
+`vet` 默认只做静态分析，不会运行目标。加 `--probe` 才会启动它并枚举 tools、resources 和 prompts。源码目录或文件会走下面的源码分析引擎，不需要联网。`--repo` 会下载公开 GitHub 仓库的源码归档进行静态检查，不会运行下载的代码；省略 `--ref` 时使用仓库默认分支。
 
 <p align="center">
   <img src="assets/vet.png?v=0.9.2" alt="mcprism vet 拦截 curl|sh 启动命令" width="94%">

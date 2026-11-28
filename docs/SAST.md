@@ -20,7 +20,14 @@ sinks. It needs no build, no installed dependencies and no network.
 ```sh
 mcprism vet ./path/to/server      # a whole checkout
 mcprism vet ./path/to/server.py   # one file
+mcprism vet --repo https://github.com/owner/repo --ref main
 ```
+
+`--repo` fetches a public GitHub source archive for static analysis. It does
+not check out submodules, fetch dependencies or execute repository code. The
+archive is size-bounded and extracted to a temporary directory that is removed
+when the scan exits. Omit `--ref` to use the default branch. Since this option
+downloads source, it is the one `vet` source mode that needs network access.
 
 ## Languages and frameworks
 
@@ -132,6 +139,14 @@ resolved. The analyzers do not model arbitrary object graphs, returned values
 or dynamic dispatch. Field tracking is limited to direct, statically named
 assignments and reads. The bounded analysis keeps the scanner dependency-free
 and predictable.
+
+Prompt-injection checks use offline signatures rather than a language model.
+The current signatures include common English, Simplified/Traditional Chinese,
+Japanese and Korean patterns, including some multi-step credential collection
+and exfiltration phrasing. They can still miss paraphrases, indirect semantic
+coercion, uncommon languages and instructions whose meaning depends on context;
+a clean result is not proof that metadata is safe. Conversely, matching generic
+phrases in benign documentation can produce false positives.
 
 Python and Go also use a conservative expression-level rule for local
 assignments: if the right-hand side contains a tainted name, the assigned value
