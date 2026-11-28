@@ -5,13 +5,18 @@ Problems panel. The extension requires the `mcprism` CLI to be installed; it
 does not bundle the scanner. Scans use `mcprism vet --format json` and never
 launch the workspace's MCP server.
 
-## Install from a VSIX
+## Install from GitHub Releases
 
-Build or download the `mcprism` CLI using the [main installation instructions](../../README.md#install),
-then package this extension from this directory with `npx @vscode/vsce package`.
-In VS Code, run **Extensions: Install from VSIX...** and select the generated
-`mcprism-0.1.0.vsix` file. The extension is not yet published to the VS Code
-Marketplace.
+Download the `mcprism-vscode-<version>.vsix` asset from the project's
+[GitHub Releases](https://github.com/HUA503/mcprism/releases) page. In VS Code,
+run **Extensions: Install from VSIX...** and select the downloaded file. Stable
+and prerelease CLI releases both include a matching VSIX. The extension is not
+yet published to the VS Code Marketplace. The asset's SHA-256 checksum is
+included in the release's `checksums.txt` file.
+
+Build or download the `mcprism` CLI using the [main installation instructions](../../README.md#install).
+For local development, package the extension from this directory with
+`npx @vscode/vsce package`.
 
 ## Use
 
