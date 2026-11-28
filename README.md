@@ -138,6 +138,13 @@ repository's default branch.
   <img src="assets/vet.png?v=0.9.2" alt="mcprism vet catching a curl|sh launch command" width="94%">
 </p>
 
+## VS Code
+
+Install the `mcprism` CLI, then follow the [VS Code extension guide](editors/vscode/README.md)
+to install the extension from a VSIX. Run **mcprism: Scan Workspace** from
+the Command Palette to review source findings in the Problems panel. The
+extension performs a static scan and does not launch the MCP server.
+
 ## Contents
 
 - [Changelog](CHANGELOG.md)
@@ -148,6 +155,7 @@ repository's default branch.
 - [Report](#report)
 - [Install](#install)
 - [Quick start](#quick-start)
+- [VS Code](#vs-code)
 - [Example output](#example-output)
 - [Policy as code](#policy-as-code)
 - [Source-code review (SAST)](#source-code-review-sast)
@@ -914,7 +922,8 @@ so only run servers you trust.
 - [x] User-defined regex checks in policy files
 - [x] Pre-commit hook
 - [x] GitHub Actions integration with SARIF output
-- [ ] Editor integrations (VS Code, JetBrains)
+- [x] VS Code workspace scan extension
+- [ ] JetBrains editor integration
 - [x] Scoop package
 - [x] Homebrew formula
 - [x] Nix package

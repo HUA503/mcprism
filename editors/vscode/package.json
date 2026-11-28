@@ -1,0 +1,43 @@
+{
+  "name": "mcprism",
+  "displayName": "mcprism",
+  "description": "Find security risks in MCP server source code from VS Code.",
+  "version": "0.1.0",
+  "publisher": "hua503",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HUA503/mcprism.git",
+    "directory": "editors/vscode"
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onCommand:mcprism.scanWorkspace"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "mcprism.scanWorkspace",
+        "title": "mcprism: Scan Workspace",
+        "category": "mcprism"
+      }
+    ],
+    "configuration": {
+      "title": "mcprism",
+      "properties": {
+        "mcprism.executablePath": {
+          "type": "string",
+          "default": "mcprism",
+          "description": "Path to the mcprism executable."
+        }
+      }
+    }
+  }
+}

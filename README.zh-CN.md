@@ -103,6 +103,12 @@ mcprism vet server.py            # 审查单个文件
   <img src="assets/vet.png?v=0.9.2" alt="mcprism vet 拦截 curl|sh 启动命令" width="94%">
 </p>
 
+## VS Code 编辑器
+
+先安装 `mcprism` 命令行工具，再按 [VS Code 扩展说明](editors/vscode/README.md)
+从 VSIX 安装扩展。在命令面板运行 **mcprism: Scan Workspace**，源码发现会显示在
+Problems 面板中。扫描是静态的，不会启动 MCP Server。
+
 ## 目录
 
 - [更新日志](CHANGELOG.md)
@@ -113,6 +119,7 @@ mcprism vet server.py            # 审查单个文件
 - [报告](#报告)
 - [安装](#安装)
 - [快速开始](#快速开始)
+- [VS Code 编辑器](#vs-code-编辑器)
 - [示例输出](#示例输出)
 - [策略即代码](#策略即代码)
 - [源码分析（SAST）](#源码分析sast)
@@ -653,7 +660,8 @@ flowchart TD
 - [x] 策略文件中的用户自定义匹配规则
 - [x] pre-commit hook
 - [x] GitHub Actions 集成和 SARIF 输出
-- [ ] 编辑器集成（VS Code、JetBrains）
+- [x] VS Code 工作区扫描扩展
+- [ ] JetBrains 编辑器集成
 - [x] Scoop 包
 - [x] Homebrew 公式
 - [x] Nix 包
