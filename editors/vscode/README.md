@@ -12,8 +12,21 @@ project's [GitHub Releases](https://github.com/HUA503/mcprism/releases) page.
 In VS Code, run **Extensions: Install from VSIX...** and select the downloaded
 file. Its SHA-256 checksum is included in the release's `checksums.txt` file.
 Older releases may not have a VSIX asset; use the source packaging instructions
-below for those versions. The extension is not yet published to the VS Code
-Marketplace.
+below for those versions. Marketplace publishing is prepared but disabled until
+the `hua503` publisher configures Trusted Publishing for
+`.github/workflows/release.yml` and the repository variable
+`VSCODE_MARKETPLACE_PUBLISH=true`. After that one-time setup, new CLI releases
+also publish the matching extension to the Marketplace. Until then, install the
+VSIX from GitHub Releases manually.
+
+Trusted Publishing setup is documented by
+[VS Code](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#publish-with-github-actions-and-trusted-publishing).
+Create a policy for GitHub owner `HUA503`, repository `mcprism`, workflow
+`release.yml`, with no environment, then set the repository Actions variable
+under **Settings → Secrets and variables → Actions → Variables**. The first
+The `hua503` Marketplace publisher must exist and be managed by the project
+owner before turning on the variable; tagged releases then publish the matching
+version.
 
 Build or download the `mcprism` CLI using the [main installation instructions](../../README.md#install).
 For local development, package the extension from this directory with

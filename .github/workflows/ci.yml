@@ -18,7 +18,7 @@ jobs:
           node-version: 24
       - name: Package VS Code extension
         working-directory: editors/vscode
-        run: npx --yes @vscode/vsce@4.0.0 package --no-dependencies --out /tmp/mcprism.vsix
+        run: npx --yes @vscode/vsce@4.0.2 package --no-dependencies --out /tmp/mcprism.vsix
 
   test:
     runs-on: ubuntu-latest

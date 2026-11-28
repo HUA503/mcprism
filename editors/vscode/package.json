@@ -2,6 +2,15 @@
   "name": "mcprism",
   "displayName": "mcprism",
   "description": "Find security risks in MCP server source code from VS Code.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "security",
+    "ai-agent",
+    "sast",
+    "prompt-injection",
+    "static-analysis"
+  ],
   "version": "0.1.0",
   "publisher": "hua503",
   "license": "MIT",
