@@ -102,8 +102,9 @@ On Windows PowerShell, open the report with `Invoke-Item .\mcprism-demo.html`.
 To scan your configured MCP clients, run `mcprism scan`.
 
 To try live inspection of prompt/resource bodies, build and scan the bundled
-fixture from a source checkout. It returns fixed sample content and never
-performs the actions described in its deliberately hostile text:
+fixture from a source checkout. It returns fixed English and Chinese injection
+examples and never performs the actions described in its deliberately hostile
+text:
 
 ```sh
 mkdir -p bin && go build -o bin/testserver ./examples/testserver
@@ -231,7 +232,7 @@ a static scan and does not launch the MCP server.
 ## Report
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png?v=0.43.7" alt="mcprism HTML report for a live server" width="86%">
+  <img src="assets/screenshot-dynamic.png?v=0.43.7-zh-demo" alt="mcprism HTML report for a live server" width="86%">
 </p>
 
 Batch review across many servers (static mode):

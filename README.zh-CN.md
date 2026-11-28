@@ -74,7 +74,8 @@ mcprism demo --format html --output mcprism-demo.html
 要扫描你实际配置的 MCP 客户端，运行 `mcprism scan`。
 
 想体验真实协议下的 prompt/resource 正文扫描，可以在源码仓库里构建并运行
-内置的安全示例 server。它只返回固定示例文本，不会执行恶意描述里的动作：
+内置的安全示例 server。它会返回中英文提示注入样本，展示中文检测效果；内容是固定文本，
+不会执行恶意描述里的动作：
 
 ```sh
 mkdir -p bin && go build -o bin/testserver ./examples/testserver
@@ -159,7 +160,7 @@ mcprism vet server.py            # 审查单个文件
 ## 报告
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png?v=0.43.7" alt="mcprism 对在线 server 的 HTML 报告" width="86%">
+  <img src="assets/screenshot-dynamic.png?v=0.43.7-zh-demo" alt="mcprism 对在线 server 的 HTML 报告" width="86%">
 </p>
 
 跨多个 server 的批量审查（静态模式）：
