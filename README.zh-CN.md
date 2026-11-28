@@ -400,7 +400,7 @@ mcprism vet ./mcp-server/src/tool.ts
 它能识别常见的 SDK 和框架：
 
 - JavaScript/TypeScript：`@modelcontextprotocol/sdk` 的 `McpServer`、底层的 `Server.setRequestHandler`，以及各类 `.tool(...)` 注册。
-- Python：`FastMCP` 的 `@mcp.tool()` 装饰器和底层的 `call_tool` handler。
+- Python：`FastMCP` 的 `@mcp.tool()` 装饰器、底层 `call_tool` handler，以及 `.tool(...)`、`.add_tool(...)`、`.register_tool(...)` 直接传入的本地函数回调。
 - Go：mcp-go 的 `server.AddTool` / `mcp.AddTool` 回调。
 - Rust：官方 `rmcp` SDK 的 `#[tool]` 方法。
 

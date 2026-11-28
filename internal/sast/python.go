@@ -52,6 +52,10 @@ func analyzePython(path string) []Issue {
 		b.path = path
 		out = append(out, scanReachablePython(path, b, scopes)...)
 	}
+	for _, b := range extractPythonRegisteredHandlers(lines, extractPythonFunctions(lines)) {
+		b.path = path
+		out = append(out, scanReachablePython(path, b, scopes)...)
+	}
 	for _, l := range maskedPythonLines(lines) {
 		out = append(out, lineSecretIssues(path, l)...)
 	}
@@ -482,6 +486,63 @@ func extractPythonHandlers(lines []srcLine) []handlerBlock {
 		i = j
 	}
 	return blocks
+}
+
+var pyRegisteredToolCallRe = regexp.MustCompile(`\.\s*(add_tool|register_tool|addTool|registerTool|tool)\s*\(`)
+
+// extractPythonRegisteredHandlers recognizes callback functions passed to
+// common tool-registration methods, in addition to decorator-based SDKs. It
+// only follows a direct reference to an unambiguous function defined locally.
+func extractPythonRegisteredHandlers(sourceLines []srcLine, functions map[string]handlerBlock) []handlerBlock {
+	lines := maskedPythonLines(sourceLines)
+	var masked strings.Builder
+	for i, line := range lines {
+		if i > 0 {
+			masked.WriteByte('\n')
+		}
+		masked.WriteString(line.text)
+	}
+	text := masked.String()
+	var out []handlerBlock
+	seen := map[string]bool{}
+	for _, match := range pyRegisteredToolCallRe.FindAllStringSubmatchIndex(text, -1) {
+		open := strings.IndexByte(text[match[0]:match[1]], '(')
+		if open < 0 {
+			continue
+		}
+		open += match[0]
+		close := matchClose(text, open, '(', ')')
+		if close < 0 {
+			continue
+		}
+		var positional []string
+		var callback string
+		for _, arg := range splitCallArgs(text[open+1 : close]) {
+			if eq := strings.IndexByte(arg, '='); eq >= 0 {
+				key, value := strings.TrimSpace(arg[:eq]), strings.TrimSpace(arg[eq+1:])
+				switch key {
+				case "handler", "callback", "func", "function":
+					callback = value
+				}
+			} else {
+				positional = append(positional, strings.TrimSpace(arg))
+			}
+		}
+		if callback == "" && len(positional) > 0 {
+			callback = positional[len(positional)-1]
+		}
+		if !isIdent(callback) || seen[callback] {
+			continue
+		}
+		block, ok := functions[callback]
+		if !ok {
+			continue
+		}
+		block.name = callback
+		out = append(out, block)
+		seen[callback] = true
+	}
+	return out
 }
 
 func parsePyDef(line string) (string, []string, bool) {
