@@ -24,6 +24,8 @@ type javaFunction struct {
 	params    []string
 	body      string
 	startLine int
+	tool      bool
+	toolTaint map[string]bool
 }
 
 var (
@@ -31,6 +33,7 @@ var (
 	javaLambdaArgsRe   = regexp.MustCompile(`(?:\(([^()]*)\)|([A-Za-z_$][\w$]*))\s*$`)
 	javaIdentifierRe   = regexp.MustCompile(`[A-Za-z_$][\w$]*`)
 	javaFunctionRe     = regexp.MustCompile(`(?m)(?:^|[;{}])\s*(?:(?:public|protected|private|static|final|synchronized|native|abstract|default)\s+)*[\w.$<>, ?\[\]]+\s+([A-Za-z_$][\w$]*)\s*\(([^()]*)\)\s*(?:throws\s+[\w.$, ]+)?\s*\{`)
+	javaMcpToolRe      = regexp.MustCompile(`@(?:[A-Za-z_$][\w$]*\.)*McpTool\b`)
 	javaCallRe         = regexp.MustCompile(`\b([A-Za-z_$][\w$]*)\s*\(`)
 	javaAssignRe       = regexp.MustCompile(`(?:^|[;{}\n])\s*(?:final\s+)?[\w.$<>?, \t\[\]]*?\b([A-Za-z_$][\w$]*)\s*=\s*([^;{}]+);`)
 	javaProcessSinkRe  = regexp.MustCompile(`(?:new\s+ProcessBuilder|Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec)\s*\(`)
@@ -51,6 +54,14 @@ func analyzeJava(path string) []Issue {
 	var issues []Issue
 	functions := extractJavaFunctions(code)
 	queue := extractJavaHandlers(code)
+	for _, function := range functions {
+		if function.tool {
+			queue = append(queue, javaHandler{
+				body: function.body, startLine: function.startLine, name: function.name,
+				seededTaint: function.toolTaint,
+			})
+		}
+	}
 	seen := map[string]bool{}
 	for head := 0; head < len(queue); head++ {
 		handler := queue[head]
@@ -73,15 +84,29 @@ func extractJavaFunctions(code string) map[string]javaFunction {
 	functions := map[string]javaFunction{}
 	counts := map[string]int{}
 	ambiguous := map[string]bool{}
-	for _, match := range javaFunctionRe.FindAllStringSubmatchIndex(code, -1) {
-		name := code[match[2]:match[3]]
-		paramsText := code[match[4]:match[5]]
-		brace := strings.LastIndexByte(code[match[0]:match[1]], '{') + match[0]
-		close := matchClose(code, brace, '{', '}')
+	parseCode := maskJavaAnnotations(code)
+	for _, match := range javaFunctionRe.FindAllStringSubmatchIndex(parseCode, -1) {
+		name := parseCode[match[2]:match[3]]
+		paramsText := parseCode[match[4]:match[5]]
+		brace := strings.LastIndexByte(parseCode[match[0]:match[1]], '{') + match[0]
+		close := matchClose(parseCode, brace, '{', '}')
 		if close < 0 {
 			continue
 		}
 		params := javaParameterNames(paramsText)
+		toolTaint := map[string]bool{}
+		isTool := javaMcpToolRe.MatchString(code[match[0]:match[1]])
+		if isTool {
+			for _, paramText := range splitJavaTopLevel(paramsText) {
+				if javaToolContextParam(paramText) {
+					continue
+				}
+				ids := javaIdentifierRe.FindAllString(paramText, -1)
+				if len(ids) != 0 {
+					toolTaint[ids[len(ids)-1]] = true
+				}
+			}
+		}
 		counts[name]++
 		if counts[name] > 1 {
 			delete(functions, name)
@@ -90,12 +115,65 @@ func extractJavaFunctions(code string) map[string]javaFunction {
 		}
 		if !ambiguous[name] {
 			functions[name] = javaFunction{
-				name: name, params: params, body: code[brace+1 : close],
+				name: name, params: params, body: code[brace+1 : close], tool: isTool, toolTaint: toolTaint,
 				startLine: strings.Count(code[:brace+1], "\n") + 1,
 			}
 		}
 	}
 	return functions
+}
+
+func javaToolContextParam(param string) bool {
+	for _, marker := range []string{"McpSyncServerExchange", "McpAsyncServerExchange", "McpTransportContext", "McpSyncRequestContext", "McpAsyncRequestContext", "McpMeta"} {
+		if strings.Contains(param, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func maskJavaAnnotations(src string) string {
+	b := []byte(src)
+	mask := func(start, end int) {
+		for i := start; i < end && i < len(b); i++ {
+			if b[i] != '\n' && b[i] != '\r' {
+				b[i] = ' '
+			}
+		}
+	}
+	for i := 0; i < len(b); {
+		if b[i] != '@' || i+1 >= len(b) || !isJavaIdentStart(b[i+1]) {
+			i++
+			continue
+		}
+		start := i
+		i += 2
+		for i < len(b) {
+			if isJavaIdentContinue(b[i]) || b[i] == '.' {
+				i++
+				continue
+			}
+			break
+		}
+		for i < len(b) && (b[i] == ' ' || b[i] == '\t' || b[i] == '\r' || b[i] == '\n') {
+			i++
+		}
+		if i < len(b) && b[i] == '(' {
+			if close := matchClose(string(b), i, '(', ')'); close >= 0 {
+				i = close + 1
+			}
+		}
+		mask(start, i)
+	}
+	return string(b)
+}
+
+func isJavaIdentStart(b byte) bool {
+	return b == '_' || b == '$' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
+}
+
+func isJavaIdentContinue(b byte) bool {
+	return isJavaIdentStart(b) || b >= '0' && b <= '9'
 }
 
 func javaParameterNames(text string) []string {

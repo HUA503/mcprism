@@ -37,7 +37,7 @@ downloads source, it is the one `vet` source mode that needs network access.
 | Python | `FastMCP` `@mcp.tool()`, low-level `call_tool` handler, and direct local function callbacks passed to `.tool(...)`, `.add_tool(...)` or `.register_tool(...)` |
 | Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` callbacks |
 | Rust | official `rmcp` SDK methods marked with `#[tool]` |
-| Java | Official Java SDK `.callHandler(...)` / `.toolCall(...)` lambda handlers |
+| Java | Official Java SDK `.callHandler(...)` / `.toolCall(...)` lambda handlers; Spring AI `@McpTool` methods |
 
 Files with the extensions `.js .jsx .ts .tsx .mts .cts .mjs .cjs`, `.py`, `.go`,
 `.rs` and `.java` are reviewed. Cargo projects are recognized through
@@ -97,9 +97,10 @@ function references passed to `.tool(...)`, `.add_tool(...)` and
 objects or dynamically selected callbacks. Java analysis currently recognizes
 direct argument reads in explicit Java SDK callback lambdas and checks nearby
 process, URL, filesystem, script-evaluation, object-deserialization and
-class-loading sinks. It follows uniquely named same-file helper methods when
-tainted arguments are passed directly, up to eight calls deep. It does not
-resolve Spring annotations, bean wiring, reflection-based registration or
+class-loading sinks. It also recognizes Spring AI `@McpTool` methods and treats
+their non-context parameters as tool input. It follows uniquely named same-file
+helper methods when tainted arguments are passed directly, up to eight calls
+deep. It does not resolve other bean wiring, reflection-based registration or
 returned values. JavaScript/TypeScript, Python and Go analysis
 follows simple local assignments and propagates taint through arguments passed
 to unambiguous helper functions. JavaScript/TypeScript helper tracking covers function declarations
