@@ -1480,6 +1480,7 @@ type handlerBlock struct {
 	goImportDepth   int
 	goSourceBytes   int64
 	goReturnType    string
+	goToolHandler   bool
 	rustModuleDepth int
 }
 

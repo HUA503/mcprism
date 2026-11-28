@@ -39,9 +39,13 @@ func analyzeGoWithFunctions(path string, functions map[string]handlerBlock, inde
 		}
 	}
 	var out []Issue
-	for _, b := range extractGoHandlers(maskGoComments(src)) {
-		b.path = path
-		b.receiverTypes = fileReceiverTypes
+	for _, b := range extractGoHandlersWithFunctions(maskGoComments(src), functions) {
+		if b.path == "" {
+			b.path = path
+		}
+		if b.receiverTypes == nil {
+			b.receiverTypes = fileReceiverTypes
+		}
 		out = append(out, scanReachableGo(path, b, allFunctions, index)...)
 	}
 	for _, l := range maskedGoLines(lines) {
@@ -480,6 +484,7 @@ func extractGoPackageFunctions(path string) (string, map[string]handlerBlock) {
 			}
 			block := goFunctionBlock(string(src), fset, fn, filePath, imports)
 			block.receiverTypes = fileReceiverTypes
+			block.goToolHandler = goMCPToolHandler(fn.Type, file)
 			if fn.Recv == nil {
 				name := fn.Name.Name
 				counts[name]++
@@ -514,47 +519,96 @@ func extractGoFunctionsFromPath(path string) map[string]handlerBlock {
 
 // ---------- handler extraction ----------
 
-var goAddToolRe = regexp.MustCompile(`\.?AddTool\s*\(`)
 var goCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
 
 // extractGoHandlers finds mcp-go tool registrations (server.AddTool / mcp.AddTool)
-// and returns each tool's callback body.
+// and returns each tool's callback body. It accepts inline function literals
+// and directly named handlers with the MCP CallToolRequest signature.
 func extractGoHandlers(src string) []handlerBlock {
+	return extractGoHandlersWithFunctions(src, extractGoFunctions(src))
+}
+
+func extractGoHandlersWithFunctions(src string, functions map[string]handlerBlock) []handlerBlock {
 	var out []handlerBlock
-	imports := goImportAliasesFromSource(src)
-	for _, m := range goAddToolRe.FindAllStringIndex(src, -1) {
-		openParen := m[1] - 1
-		closeParen := matchClose(src, openParen, '(', ')')
-		if closeParen < 0 {
-			continue
-		}
-		// The callback is the last argument: func( ... ) { ... }.
-		seg := src[openParen:closeParen]
-		fi := strings.LastIndex(seg, "func(")
-		if fi < 0 {
-			continue
-		}
-		absFunc := openParen + fi
-		po := indexByteFrom(src, absFunc, '(', closeParen)
-		pc := matchClose(src, po, '(', ')')
-		if pc < 0 {
-			continue
-		}
-		bo := indexByteFrom(src, pc, '{', closeParen)
-		if bo < 0 {
-			continue
-		}
-		bc := matchClose(src, bo, '{', '}')
-		if bc < 0 {
-			continue
-		}
-		name := firstString(src[openParen+1 : absFunc])
-		if name == "" {
-			name = "tool"
-		}
-		out = append(out, handlerBlock{name: name, lines: linesRange(src, bo, bc), goImports: imports})
+	fset := token.NewFileSet()
+	file, _ := parser.ParseFile(fset, "", src, parser.AllErrors)
+	if file == nil {
+		return nil
 	}
+	imports := goImportAliasesFromAST(file)
+	ast.Inspect(file, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok || len(call.Args) == 0 {
+			return true
+		}
+		selector, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || selector.Sel.Name != "AddTool" {
+			return true
+		}
+		callback := call.Args[len(call.Args)-1]
+		switch handler := callback.(type) {
+		case *ast.FuncLit:
+			if handler.Body == nil {
+				return true
+			}
+			nameEnd := fset.Position(callback.Pos()).Offset
+			name := firstString(src[fset.Position(call.Args[0].Pos()).Offset:nameEnd])
+			if name == "" {
+				name = "tool"
+			}
+			open := fset.Position(handler.Body.Lbrace).Offset
+			close := fset.Position(handler.Body.Rbrace).Offset
+			out = append(out, handlerBlock{name: name, lines: linesRange(src, open, close), goImports: imports})
+		case *ast.Ident:
+			block, found := functions[handler.Name]
+			if !found || !block.goToolHandler {
+				return true
+			}
+			// The registered callback is an entry point, but its context and
+			// request parameters are not themselves tainted values. Argument
+			// extraction in its body seeds taint as it does for inline handlers.
+			block.params = nil
+			out = append(out, block)
+		}
+		return true
+	})
 	return out
+}
+
+func goMCPToolHandler(fn *ast.FuncType, file *ast.File) bool {
+	if fn == nil || fn.Params == nil || len(fn.Params.List) != 2 || len(fn.Params.List[0].Names) != 1 || len(fn.Params.List[1].Names) != 1 {
+		return false
+	}
+	imports := goImportAliasesFromAST(file)
+	contextAliases, mcpAliases := map[string]bool{}, map[string]bool{}
+	for importPath, aliases := range imports {
+		for _, alias := range aliases {
+			if importPath == "context" {
+				contextAliases[alias] = true
+			}
+			if strings.HasSuffix(importPath, "/mcp") && strings.Contains(importPath, "mcp") {
+				mcpAliases[alias] = true
+			}
+		}
+	}
+	contextType, ok := fn.Params.List[0].Type.(*ast.SelectorExpr)
+	if !ok || contextType.Sel.Name != "Context" {
+		return false
+	}
+	contextPackage, ok := contextType.X.(*ast.Ident)
+	if !ok || !contextAliases[contextPackage.Name] {
+		return false
+	}
+	requestType := fn.Params.List[1].Type
+	if pointer, ok := requestType.(*ast.StarExpr); ok {
+		requestType = pointer.X
+	}
+	requestSelector, ok := requestType.(*ast.SelectorExpr)
+	if !ok || requestSelector.Sel.Name != "CallToolRequest" {
+		return false
+	}
+	requestPackage, ok := requestSelector.X.(*ast.Ident)
+	return ok && mcpAliases[requestPackage.Name]
 }
 
 func extractGoFunctions(src string) map[string]handlerBlock {
@@ -575,6 +629,7 @@ func extractGoFunctions(src string) map[string]handlerBlock {
 		}
 		block := goFunctionBlock(src, fset, fn, "", imports)
 		block.receiverTypes = goReceiverTypesFromAST(file, goFunctionReturnTypes(file))
+		block.goToolHandler = goMCPToolHandler(fn.Type, file)
 		if fn.Recv != nil {
 			key := goMethodKey(block.receiverType, fn.Name.Name)
 			if key != "" && !ambiguousMethods[key] {

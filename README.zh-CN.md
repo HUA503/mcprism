@@ -175,7 +175,7 @@ mcprism vet server.py            # 审查单个文件
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 
 # 固定安装版本，不使用 latest
-curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.43.2 sh
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.43.3 sh
 ```
 
 ```powershell
@@ -183,7 +183,7 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 
 # 固定安装版本，不使用 latest
-$env:MC_PRISM_VERSION = "v0.43.2"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+$env:MC_PRISM_VERSION = "v0.43.3"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 ```
 
 ```sh
@@ -345,7 +345,7 @@ Registry 批量审计默认只检查一页（最多 100 条）。加上 `--all` 
 以静态模式扫描两个本地 server：
 
 ```text
-◆ mcprism   v0.43.2 · 2026-11-28
+◆ mcprism   v0.43.3 · 2026-11-28
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -411,7 +411,8 @@ mcprism vet ./mcp-server/src/tool.ts
 
 - JavaScript/TypeScript：`@modelcontextprotocol/sdk` 的 `McpServer`、底层的 `Server.setRequestHandler`，以及各类 `.tool(...)` 注册。
 - Python：`FastMCP` 的 `@mcp.tool()` 装饰器、底层 `call_tool` handler，以及 `.tool(...)`、`.add_tool(...)`、`.register_tool(...)` 直接传入的本地函数回调。
-- Go：mcp-go 的 `server.AddTool` / `mcp.AddTool` 回调。
+- Go：mcp-go 的 `server.AddTool` / `mcp.AddTool` 内联回调，以及使用
+  `context.Context` 和 `mcp.CallToolRequest` 的直接命名 handler。
 - Rust：官方 `rmcp` SDK 的 `#[tool]` 方法。
 - Java：官方 SDK 的 `.callHandler(...)` / `.toolCall(...)` lambda 回调及 Spring AI `@McpTool` 方法；可追踪同文件 helper，以及接收者类型明确且目标方法唯一的跨文件调用（最多 8 层）。
 
@@ -534,7 +535,7 @@ Roo Code 配置。全局扩展配置也会从 VS Code 兼容编辑器的存储�
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.43.2
+  rev: v0.43.3
   hooks:
     - id: mcprism
 ```
@@ -567,7 +568,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.43.2
+        uses: HUA503/mcprism@v0.43.3
         with:
           target: mcp.json
           source-target: ./server

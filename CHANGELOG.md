@@ -61,6 +61,13 @@ semantic versioning.
 - Add bilingual guidance to issue forms so English- and Chinese-speaking users
   can ask questions, report bugs and suggest features with safer examples.
 
+## [0.43.3] - 2026-11-28
+
+### Improved
+
+- Recognize directly named Go MCP tool handlers registered with mcp-go
+  `AddTool`, not only inline callback functions.
+
 ## [0.43.2] - 2026-11-28
 
 ### Added
@@ -815,6 +822,7 @@ secrets on a command line no longer appear in reports.
 [0.38.0]: https://github.com/HUA503/mcprism/compare/v0.37.0...v0.38.0
 [0.39.0]: https://github.com/HUA503/mcprism/compare/v0.38.0...v0.39.0
 [0.41.0]: https://github.com/HUA503/mcprism/compare/v0.40.0...v0.41.0
+[0.43.3]: https://github.com/HUA503/mcprism/compare/v0.43.2...v0.43.3
 [0.43.2]: https://github.com/HUA503/mcprism/compare/v0.43.1...v0.43.2
 [0.43.1]: https://github.com/HUA503/mcprism/compare/v0.43.0...v0.43.1
 [0.43.0]: https://github.com/HUA503/mcprism/compare/v0.42.5...v0.43.0
