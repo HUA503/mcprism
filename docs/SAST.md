@@ -74,7 +74,7 @@ entry. Opaque receivers, external modules, workspaces without a matching local
 module, and packages outside the scanned tree are not resolved.
 
 Python sink checks follow explicit import aliases for `os`, `subprocess`,
-`requests`, `httpx`, `urllib`, `pathlib`, `pickle`, `marshal` and `yaml`,
+`requests`, `httpx`, `urllib`, `socket`, `pathlib`, `pickle`, `marshal` and `yaml`,
 including both `import module as alias` and `from module import function as
 alias` forms. They also follow simple local callable assignments such as
 `run = subprocess.run` and chains of those assignments; reassignments and
@@ -571,6 +571,10 @@ if conn, err := dialer.DialContext(ctx, "tcp", target); err == nil {
 	defer conn.Close()
 }
 ```
+
+Python recognizes `socket.create_connection` and `.connect()` / `.connect_ex()`
+on variables assigned from `socket.socket()` when their destination is
+controlled.
 
 Vulnerable (Rust, official `rmcp` SDK):
 

@@ -905,6 +905,66 @@ func scanPythonBlock(path string, b handlerBlock, imports pythonImports) []Issue
 				"Pin a constant base URL or allow-list hosts, and block metadata endpoints and private ranges."))
 		}
 	}
+	for _, call := range pythonCalls(text, imports, "socket.create_connection") {
+		open := call.end - 1
+		close := matchClose(text, open, '(', ')')
+		if close < 0 {
+			continue
+		}
+		address, _ := splitTopComma(text[open+1 : close])
+		if !pyControllable(address, b.params) {
+			continue
+		}
+		line := off2line(call.start)
+		out = append(out, issue(path, "MCP802", "Tool argument controls an outbound network target (SSRF)", SeverityHigh, line, lineText(b, line),
+			"Use a fixed destination or allow-list approved hosts, and reject private, loopback and link-local addresses after resolving the target."))
+	}
+	socketVars := map[string]bool{}
+	socketAssignments := map[string]string{}
+	ambiguousSockets := map[string]bool{}
+	for _, line := range strings.Split(text, "\n") {
+		assignment := pyAssignmentTargetRe.FindStringSubmatch(line)
+		if assignment == nil {
+			continue
+		}
+		name, expression := assignment[1], strings.TrimSpace(assignment[2])
+		isSocket := false
+		for _, constructor := range pythonCalls(expression, imports, "socket.socket") {
+			open := constructor.end - 1
+			close := matchClose(expression, open, '(', ')')
+			if close >= 0 && strings.TrimSpace(expression[:constructor.start]) == "" && strings.TrimSpace(expression[close+1:]) == "" {
+				isSocket = true
+				break
+			}
+		}
+		if prior, exists := socketAssignments[name]; exists {
+			if prior != expression {
+				delete(socketVars, name)
+				delete(socketAssignments, name)
+				ambiguousSockets[name] = true
+			}
+		} else if isSocket && !ambiguousSockets[name] {
+			socketVars[name] = true
+			socketAssignments[name] = expression
+		}
+	}
+	for receiver := range socketVars {
+		connectRe := regexp.MustCompile(`\b` + regexp.QuoteMeta(receiver) + `\s*\.\s*(connect|connect_ex)\s*\(`)
+		for _, match := range connectRe.FindAllStringIndex(text, -1) {
+			open := match[1] - 1
+			close := matchClose(text, open, '(', ')')
+			if close < 0 {
+				continue
+			}
+			address, _ := splitTopComma(text[open+1 : close])
+			if !pyControllable(address, b.params) {
+				continue
+			}
+			line := off2line(match[0])
+			out = append(out, issue(path, "MCP802", "Tool argument controls an outbound network target (SSRF)", SeverityHigh, line, lineText(b, line),
+				"Use a fixed destination or allow-list approved hosts, and reject private, loopback and link-local addresses after resolving the target."))
+		}
+	}
 
 	// 4. filesystem paths. A path is confined only when the exact variable that
 	// reaches open()/Path() is guarded by .startswith. A startswith check on a
