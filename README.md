@@ -647,7 +647,8 @@ analyzer and manual review. Rule details and more examples are in
 - Source-code flaws: JS/TS/Python/Go/Java/C# handlers are checked for command, network,
   file, dynamic-code and deserialization risks; Rust `rmcp #[tool]` handlers
   are checked for process, `reqwest` URL, filesystem and hardcoded-secret risks.
-  C# directory scans follow uniquely resolved type-qualified helpers across files.
+  C# directory scans follow uniquely resolved helpers across files when calls
+  use a concrete type or a receiver with a known concrete type.
   See [Source-code review](#source-code-review-sast).
 - Cross-server tool name collisions, and classified connectivity failures
   (DNS / TLS / refused / timeout / command not found).
@@ -915,7 +916,7 @@ so only run servers you trust.
 - [x] Nix package
 - [x] Rust `rmcp` tool SAST
 - [x] Initial C# SAST for official SDK `[McpServerTool]` methods
-- [x] Follow uniquely resolved type-qualified C# helpers across files in directory scans
+- [x] Follow uniquely resolved C# helpers across files through concrete-type calls
 - [ ] Broader data-flow coverage for dynamic dispatch, returned values and
   complex object graphs; current cross-file and helper tracking is bounded and
   language-specific ([details](docs/SAST.md)).

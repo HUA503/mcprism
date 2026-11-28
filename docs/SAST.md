@@ -127,14 +127,18 @@ C# analysis recognizes `[McpServerTool]` methods inside `[McpServerToolType]`
 classes, tracks direct argument reads, simple local assignments and arguments
 passed to uniquely named same-file helpers up to eight calls deep. During a
 directory scan it also follows explicitly type-qualified calls such as
-`CommandRunner.Run(input)` when the class and method resolve uniquely in the
-bounded source index; sink findings point to the helper's source file. This
-cross-file index is limited to 64 C# files and 16 MiB. It checks
+`CommandRunner.Run(input)` and calls on variables with a known concrete type,
+such as `runner.Run(input)`, when the class and method resolve uniquely in the
+bounded source index; sink findings point to the helper's source file. Receiver
+types are inferred from simple parameter/local declarations and `var x = new
+Type()` assignments. This cross-file index is limited to 64 C# files and 16
+MiB. It checks
 process execution, outbound request targets, filesystem paths, dynamic code
 loading and legacy unsafe deserialization. It does not resolve manually created
 delegates, reflection, dependency-injection wiring, returned values, unqualified
-cross-file calls or ambiguous type/method names. C# parsing is lexical and may
-miss syntax hidden by complex attributes or newer language constructs.
+cross-file calls or interface dispatch through injected services; ambiguous
+type/method names are skipped. C# parsing is lexical and may miss syntax hidden
+by complex attributes or newer language constructs.
 JS/TS follows named and namespace ES imports, destructured CommonJS
 `require()` imports, and direct named calls through a statically required
 CommonJS module object when they reference exported helpers from same-directory
