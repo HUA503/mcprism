@@ -191,20 +191,24 @@ ambiguous receivers unresolved. Captured receivers are followed when their
 type has a unique same-file declaration or constructor.
 Python supports
 named imports and direct module imports with an alias, including multi-level
-relative imports inside marked packages; JS/TS follows named and namespace ES
-imports plus CommonJS `require()` imports and local helper calls in imported
-modules within the limits above. Default ES imports, computed module-object
-properties, re-exports, package resolution and other import forms are not
-resolved. The analyzers do not model arbitrary object graphs, returned values
-or dynamic dispatch. Field tracking is limited to direct, statically named
-assignments and reads. The bounded analysis keeps the scanner dependency-free
-and predictable.
+relative imports inside marked packages. JS/TS follows named, namespace and
+default ES imports plus CommonJS `require()` imports and local helper calls in
+imported modules within the limits above. Default imports are followed only
+when the local module statically exports a named function as its default (or
+exports a locally indexed helper identifier); anonymous default functions,
+computed module-object properties, re-exports, package resolution and other
+import forms are not resolved. The analyzers do not model arbitrary object
+graphs, returned values or dynamic dispatch. Field tracking is limited to
+direct, statically named assignments and reads. The bounded analysis keeps the
+scanner dependency-free and predictable.
 
 Prompt-injection checks use offline signatures rather than a language model.
 The current signatures include common English, Simplified/Traditional Chinese,
 Japanese, Korean, Spanish, French, German, Portuguese, Russian and Arabic
 patterns, including some multi-step credential collection and exfiltration
-phrasing. A second matching view removes Unicode whitespace and format
+phrasing. Chinese directives are already covered by explicit phrase patterns;
+this reduces reliance on English-only rules but does not provide Chinese
+semantic analysis. A second matching view removes Unicode whitespace and format
 characters, so line breaks or zero-width characters cannot trivially split a
 known directive; format characters are still reported separately. Coverage is
 a starter set of high-signal phrases, not complete language understanding. It

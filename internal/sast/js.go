@@ -284,6 +284,23 @@ func buildJSFunctionScope(path, src string, depth int, scopes *jsFunctionScopes)
 	scopes.functions[key] = functions
 	scopes.staticMaps[key] = jsStaticMapNames(src)
 	scopes.exports[key] = jsExportedFunctionNames(src)
+	if scopes.exports[key]["default"] {
+		structure := maskJSCode(src)
+		defaultFunction := regexp.MustCompile(`\bexport\s+default\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(`)
+		defaultIdentifier := regexp.MustCompile(`\bexport\s+default\s+([A-Za-z_$][\w$]*)\s*(?:;|\n|$)`)
+		name := ""
+		if m := defaultFunction.FindStringSubmatch(structure); m != nil {
+			name = m[1]
+		} else if m := defaultIdentifier.FindStringSubmatch(structure); m != nil {
+			name = m[1]
+		}
+		if helper, ok := functions[name]; ok {
+			helper.name = "default"
+			functions["default"] = helper
+		} else {
+			delete(scopes.exports[key], "default")
+		}
+	}
 	scopes.sinkImports[key] = parseJSSinkImports(src)
 	localNames := map[string]bool{}
 	for name := range functions {
@@ -299,7 +316,7 @@ func buildJSFunctionScope(path, src string, depth int, scopes *jsFunctionScopes)
 	return functions
 }
 
-// mergeJSImportedFunctions resolves named ES imports and static CommonJS
+// mergeJSImportedFunctions resolves named/default ES imports and static CommonJS
 // require imports from bounded, same-directory source modules. Only exported
 // helpers imported under unambiguous local names are added; package imports
 // and star exports are not.
@@ -401,6 +418,17 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 		merge(text[m[4]:m[5]], parseBindings(text[m[2]:m[3]], "as"))
 	}
 
+	// Default imports are followed only when the local module has one statically
+	// recognized default function export. The module loader records that export
+	// under the synthetic name "default"; default-exported values are not guessed.
+	defaultImport := regexp.MustCompile(`\bimport\s+([A-Za-z_$][\w$]*)\s+from\s*["']([^"']+)["']`)
+	for _, m := range defaultImport.FindAllStringSubmatchIndex(text, -1) {
+		if m[1]-m[0] < len("import") || structure[m[0]:m[0]+len("import")] != "import" {
+			continue
+		}
+		merge(text[m[4]:m[5]], []binding{{original: "default", alias: text[m[2]:m[3]]}})
+	}
+
 	// Namespace imports expose exported helpers through a static property
 	// selector, e.g. `import * as helpers from "./helpers"; helpers.run(x)`.
 	namespaceImport := regexp.MustCompile(`\bimport\s*\*\s+as\s+([A-Za-z_$][\w$]*)\s+from\s*["']([^"']+)["']`)
@@ -497,6 +525,19 @@ func jsExportedFunctionNames(src string) map[string]bool {
 	for _, re := range []*regexp.Regexp{exportFunction, exportVariable} {
 		for _, m := range re.FindAllStringSubmatch(structure, -1) {
 			names[m[1]] = true
+		}
+	}
+	// Support default-exported named functions and identifiers bound to a
+	// locally indexed helper. Anonymous/default expressions need parsing and
+	// intentionally remain unresolved.
+	defaultFunction := regexp.MustCompile(`\bexport\s+default\s+(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(`)
+	for range defaultFunction.FindAllStringSubmatch(structure, -1) {
+		names["default"] = true
+	}
+	defaultIdentifier := regexp.MustCompile(`\bexport\s+default\s+([A-Za-z_$][\w$]*)\s*(?:;|\n|$)`)
+	for _, m := range defaultIdentifier.FindAllStringSubmatch(structure, -1) {
+		if _, indexed := extractJSFunctions(src)[m[1]]; indexed {
+			names["default"] = true
 		}
 	}
 	// Support the common CommonJS pattern `module.exports = { runHelper }`.
