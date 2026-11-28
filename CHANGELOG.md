@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Improved
 
+- Expand deterministic prompt-injection signatures with high-signal Spanish,
+  French, German, Portuguese, Russian and Arabic directives.
 - Recognize Spring AI `@McpTool` methods as Java SAST entry points, including
   parameters marked with `@McpToolParam`.
 - Follow uniquely named Java helper methods up to eight calls deep when a

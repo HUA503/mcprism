@@ -55,6 +55,33 @@ var injectionSigs = []struct {
 	{regexp.MustCompile(`(无条件|無條件|绝对|絕對|必须|必須).{0,5}(服从|服從|遵从|遵從).{0,8}(用户|用戶|请求|請求|命令|指令)`), SeverityHigh},
 	{regexp.MustCompile(`(绕过|繞過|规避|規避|禁用|停用).{0,6}(拒绝|拒絕|安全审查|安全審查|内容限制|內容限制|安全限制)`), SeverityCritical},
 	{regexp.MustCompile(`(获得|取得|拥有|擁有|授予).{0,8}(最高|管理员|管理員|root).{0,6}(权限|權限)`), SeverityHigh},
+	// Spanish, French, German and Portuguese signatures focus on direct
+	// overrides, hidden-prompt disclosure and credential exfiltration.
+	{regexp.MustCompile(`(?i)(ignora|ignoren|ignorar|olvida|olvidar|desestima).{0,12}(instrucciones|indicaciones|reglas|directivas|prompt).{0,8}(anteriores|previas|del sistema)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(revela|muestra|imprime|expone|divulga).{0,12}(prompt|instrucciones|mensaje).{0,8}(del sistema|ocultas|internas)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(env[ií]a|sube|carga|filtra|exfiltra|roba).{0,12}(secretos|credenciales|claves|archivos|datos|variables de entorno)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(sin (decir|avisar|informar) al usuario|no (le )?(digas|avises|informes) al usuario)`), SeverityHigh},
+	{regexp.MustCompile(`(?i)(ignore|oublie|oubliez|efface|méprise).{0,12}(instructions|règles|consignes|directives).{0,8}(précédentes|antérieures|du système)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(révèle|affiche|imprime|divulgue).{0,12}(prompt|instructions|message).{0,8}(système|caché|internes)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(envoie|téléverse|transmets|exfiltre|vole).{0,12}(secrets|identifiants|clés|fichiers|données|variables d.environment)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(sans (le )?dire à l.utilisateur|ne (dis|préviens|notifie) pas l.utilisateur)`), SeverityHigh},
+	{regexp.MustCompile(`(?i)(ignoriere|missachte|vergiss|verwirf).{0,12}(vorherigen|bisherigen|früheren|System).{0,8}(Anweisungen|Regeln|Vorgaben|Prompt)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(verrate|zeige|offenbare|gib preis).{0,12}(System.?prompt|versteckte Anweisungen|interne Anweisungen|Systemnachricht)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(sende|schicke|lade hoch|übertrage|exfiltriere|stiehl).{0,12}(Geheimnisse|Zugangsdaten|Schlüssel|Dateien|Daten|Umgebungsvariablen)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(ohne es dem Benutzer zu sagen|sage es dem Benutzer nicht|informiere den Benutzer nicht)`), SeverityHigh},
+	{regexp.MustCompile(`(?i)(ignore|esqueça|esquece|desconsidere).{0,12}(instruções|instrucoes|regras|diretivas|prompt).{0,8}(anteriores|prévias|previas|do sistema)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(revele|mostre|exiba|imprima|divulgue).{0,12}(prompt|instruções|instrucoes|mensagem).{0,8}(do sistema|ocultas|internas)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(envie|envia|carregue|transfira|exfiltre|roube).{0,12}(segredos|credenciais|senhas|chaves|arquivos|dados|variáveis de ambiente|variaveis de ambiente)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(sem (contar|avisar|informar) ao usuário|não (diga|avise|informe) ao usuário)`), SeverityHigh},
+	// Russian and Arabic signatures cover direct reset, disclosure and theft requests.
+	{regexp.MustCompile(`(игнорируй|забудь|отбрось|не учитывай).{0,12}(предыдущие|прежние|системные).{0,8}(инструкции|правила|указания|промпт)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(раскрой|покажи|выведи|напечатай|раскройте).{0,12}(системн[а-яё]* промпт|скрыт[а-яё]* инструкц[а-яё]*|внутренн[а-яё]* инструкц[а-яё]*)`), SeverityCritical},
+	{regexp.MustCompile(`(?i)(отправь|загрузи|передай|укради|эксфильтр[а-яё]*).{0,12}(секрет[а-яё]*|учетн[а-яё]* данн[а-яё]*|учётн[а-яё]* данн[а-яё]*|ключ[а-яё]*|файл[а-яё]*|данн[а-яё]*|переменн[а-яё]* окружения)`), SeverityCritical},
+	{regexp.MustCompile(`(не говори|не сообщай|не уведомляй).{0,8}пользовател|тайно.{0,8}(отправь|выполни|загрузи)`), SeverityHigh},
+	{regexp.MustCompile(`تجاهل.{0,12}(التعليمات|الأوامر|القواعد).{0,12}(السابقة|النظام|المطور)`), SeverityCritical},
+	{regexp.MustCompile(`(اكشف|اعرض|اطبع|أظهر).{0,12}(تعليمات النظام|الموجه النظامي|التعليمات المخفية|الرسالة الداخلية)`), SeverityCritical},
+	{regexp.MustCompile(`(أرسل|ارفع|سرّب|اسرق).{0,12}(الأسرار|بيانات الاعتماد|المفاتيح|الملفات|البيانات|متغيرات البيئة)`), SeverityCritical},
+	{regexp.MustCompile(`(لا تخبر|لا تبلغ|لا تُعلم).{0,8}المستخدم|سرّاً.{0,8}(أرسل|نفذ|ارفع)`), SeverityHigh},
 	// Japanese directives are checked with language-specific high-signal phrases;
 	// gaps allow ordinary particles without interpreting free-form text.
 	{regexp.MustCompile(`(以前|前の|これまでの|上記の|既存の).{0,4}(指示|命令|ルール|プロンプト).{0,6}(無視|忘れ|破棄)`), SeverityCritical},
