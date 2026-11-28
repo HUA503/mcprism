@@ -6,6 +6,12 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Improved
+
+- Recognize Python tool callbacks registered through common `.tool(...)`,
+  `.add_tool(...)` and `.register_tool(...)` calls when passed as direct local
+  function references.
+
 ### Added
 
 - Scan public GitHub repositories with `vet --repo [--ref]` using a bounded,

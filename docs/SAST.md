@@ -34,7 +34,7 @@ downloads source, it is the one `vet` source mode that needs network access.
 | Language | Entry points recognized |
 |---|---|
 | JavaScript / TypeScript | `McpServer.tool(...)`, `Server.setRequestHandler(CallToolRequestSchema, ...)`, generic `.tool(...)` registrations |
-| Python | `FastMCP` `@mcp.tool()`, low-level `call_tool` handler |
+| Python | `FastMCP` `@mcp.tool()`, low-level `call_tool` handler, and direct local function callbacks passed to `.tool(...)`, `.add_tool(...)` or `.register_tool(...)` |
 | Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` callbacks |
 | Rust | official `rmcp` SDK methods marked with `#[tool]` |
 
@@ -89,7 +89,10 @@ ambiguous helper names are not resolved.
 ## How taint is tracked
 
 For every registered tool, the handler parameters are marked as controlled by
-the agent. JavaScript/TypeScript, Python and Go analysis follows simple local
+the agent. Python recognizes common decorator registrations and direct local
+function references passed to `.tool(...)`, `.add_tool(...)` and
+`.register_tool(...)`; it does not infer arbitrary registry wrappers, callable
+objects or dynamically selected callbacks. JavaScript/TypeScript, Python and Go analysis follows simple local
 assignments and propagates taint through arguments passed to unambiguous helper
 functions. JavaScript/TypeScript helper tracking covers function declarations
 and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
