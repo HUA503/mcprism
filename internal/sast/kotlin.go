@@ -1,6 +1,8 @@
 package sast
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -8,8 +10,9 @@ import (
 
 // Kotlin support starts from the official Kotlin SDK's server.addTool { ... }
 // callback. This bounded lexical pass does not compile Kotlin or resolve
-// overloads, extension-function receiver types, or cross-file dispatch.
+// overloads, extension-function receiver types, or member dispatch across files.
 type kotlinToolHandler struct {
+	path      string
 	request   string
 	name      string
 	body      string
@@ -19,16 +22,41 @@ type kotlinToolHandler struct {
 }
 
 type kotlinFunction struct {
-	name      string
-	params    []string
-	body      string
-	startLine int
+	path        string
+	packageName string
+	name        string
+	params      []string
+	body        string
+	startLine   int
+	topLevel    bool
+	private     bool
+	extension   bool
+}
+
+const (
+	maxKotlinProjectFiles = 64
+	maxKotlinProjectBytes = 16 << 20
+)
+
+type kotlinFileIndex struct {
+	lines     []srcLine
+	functions map[string]kotlinFunction
+	imports   map[string]string
+	ktorCalls []string
+}
+
+type kotlinProjectIndex struct {
+	files     map[string]kotlinFileIndex
+	functions map[string]kotlinFunction
+	ambiguous map[string]bool
 }
 
 var (
 	kotlinAddToolRe      = regexp.MustCompile(`\.\s*addTool\s*\(`)
 	kotlinLambdaParamRe  = regexp.MustCompile(`(?:\(\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\)?\s*->`)
 	kotlinFunctionRe     = regexp.MustCompile(`(?m)\bfun\s+(?:<[^>]+>\s*)?(?:[A-Za-z_][\w.]*\s*\.\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\(([^()]*)\)\s*(?::[^={\n]+)?\s*\{`)
+	kotlinPackageRe      = regexp.MustCompile(`(?m)^\s*package\s+([A-Za-z_][\w.]*)`)
+	kotlinImportRe       = regexp.MustCompile(`(?m)^\s*import\s+([A-Za-z_][\w.]*)\s*(?:as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$`)
 	kotlinCallRe         = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
 	kotlinAssignmentRe   = regexp.MustCompile(`(?m)\b(?:val|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=\n]+)?\s*=\s*([^\n;]+)`)
 	kotlinKtorImportRe   = regexp.MustCompile(`(?m)^\s*import\s+io\.ktor\.client\.request\.(get|post|put|delete|request)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$`)
@@ -41,6 +69,62 @@ var (
 )
 
 func analyzeKotlin(path string) []Issue {
+	return analyzeKotlinWithIndex(path, nil)
+}
+
+func buildKotlinProjectIndex(paths []string) *kotlinProjectIndex {
+	idx := &kotlinProjectIndex{files: map[string]kotlinFileIndex{}, functions: map[string]kotlinFunction{}, ambiguous: map[string]bool{}}
+	files, bytes := 0, int64(0)
+	for _, path := range paths {
+		if (!strings.EqualFold(filepath.Ext(path), ".kt") && !strings.EqualFold(filepath.Ext(path), ".kts")) || files >= maxKotlinProjectFiles {
+			continue
+		}
+		info, err := os.Stat(path)
+		if err != nil || info.Size() > maxSourceFileSize || bytes+info.Size() > maxKotlinProjectBytes {
+			continue
+		}
+		lines, src := readLines(path)
+		if src == "" {
+			continue
+		}
+		code := maskJavaComments(src)
+		packageName := kotlinPackageName(code)
+		functions := extractKotlinFunctions(src, code)
+		for name, count := range kotlinTopLevelFunctionCounts(code) {
+			key := packageName + "." + name
+			if count > 1 && packageName != "" {
+				delete(idx.functions, key)
+				idx.ambiguous[key] = true
+			}
+		}
+		for name, fn := range functions {
+			fn.path, fn.packageName = path, packageName
+			functions[name] = fn
+			if !fn.topLevel || fn.private || fn.extension || packageName == "" {
+				continue
+			}
+			key := packageName + "." + name
+			if idx.ambiguous[key] {
+				continue
+			}
+			if _, exists := idx.functions[key]; exists {
+				delete(idx.functions, key)
+				idx.ambiguous[key] = true
+			} else if !idx.ambiguous[key] {
+				idx.functions[key] = fn
+			}
+		}
+		idx.files[path] = kotlinFileIndex{
+			lines: lines, functions: functions,
+			imports: kotlinFunctionImports(code), ktorCalls: kotlinKtorRequestCalls(code),
+		}
+		files++
+		bytes += int64(len(src))
+	}
+	return idx
+}
+
+func analyzeKotlinWithIndex(path string, index *kotlinProjectIndex) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
 		return nil
@@ -49,16 +133,34 @@ func analyzeKotlin(path string) []Issue {
 	ktorCalls := kotlinKtorRequestCalls(code)
 	functions := extractKotlinFunctions(src, code)
 	queue := extractKotlinToolHandlers(src, code)
+	imports := kotlinFunctionImports(code)
+	if index != nil {
+		if file, ok := index.files[path]; ok {
+			functions, lines, imports = file.functions, file.lines, file.imports
+		}
+	}
 	var out []Issue
 	seen := map[string]bool{}
 	for head := 0; head < len(queue); head++ {
 		handler := queue[head]
-		key := javaTaintKey(handler.name, handler.seeded)
+		handlerPath := handler.path
+		if handlerPath == "" {
+			handlerPath = path
+		}
+		handlerFunctions, handlerLines, handlerImports := functions, lines, imports
+		handlerKtorCalls := ktorCalls
+		if index != nil {
+			if file, ok := index.files[handlerPath]; ok {
+				handlerFunctions, handlerLines, handlerImports = file.functions, file.lines, file.imports
+				handlerKtorCalls = file.ktorCalls
+			}
+		}
+		key := handlerPath + "::" + javaTaintKey(handler.name, handler.seeded)
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
-		issues, helpers := scanKotlinHandler(path, lines, handler, functions, ktorCalls)
+		issues, helpers := scanKotlinHandler(handlerPath, handlerLines, handler, handlerFunctions, handlerImports, index, handlerKtorCalls)
 		out = append(out, issues...)
 		queue = append(queue, helpers...)
 	}
@@ -68,11 +170,42 @@ func analyzeKotlin(path string) []Issue {
 	return dedupIssues(out)
 }
 
+func kotlinPackageName(code string) string {
+	if match := kotlinPackageRe.FindStringSubmatch(code); match != nil {
+		return match[1]
+	}
+	return ""
+}
+
+func kotlinFunctionImports(code string) map[string]string {
+	imports := map[string]string{}
+	ambiguous := map[string]bool{}
+	for _, match := range kotlinImportRe.FindAllStringSubmatch(code, -1) {
+		qualified := match[1]
+		lastDot := strings.LastIndexByte(qualified, '.')
+		if lastDot < 0 {
+			continue
+		}
+		alias := match[2]
+		if alias == "" {
+			alias = qualified[lastDot+1:]
+		}
+		if prior, exists := imports[alias]; exists && prior != qualified {
+			delete(imports, alias)
+			ambiguous[alias] = true
+		} else if !ambiguous[alias] {
+			imports[alias] = qualified
+		}
+	}
+	return imports
+}
+
 func extractKotlinFunctions(src, code string) map[string]kotlinFunction {
 	functions := map[string]kotlinFunction{}
 	counts := map[string]int{}
 	ambiguous := map[string]bool{}
-	for _, match := range kotlinFunctionRe.FindAllStringSubmatchIndex(code, -1) {
+	matches, topLevel := kotlinFunctionMatches(code)
+	for i, match := range matches {
 		name := code[match[2]:match[3]]
 		open := strings.LastIndexByte(code[match[0]:match[1]], '{') + match[0]
 		close := matchClose(code, open, '{', '}')
@@ -87,13 +220,55 @@ func extractKotlinFunctions(src, code string) map[string]kotlinFunction {
 			continue
 		}
 		if !ambiguous[name] {
+			lineStart := strings.LastIndex(code[:match[0]], "\n") + 1
+			prefix := code[lineStart:match[0]]
 			functions[name] = kotlinFunction{
 				name: name, params: kotlinParameterNames(paramsText), body: src[open+1 : close],
 				startLine: strings.Count(src[:open+1], "\n") + 1,
+				topLevel:  topLevel[i],
+				private:   regexp.MustCompile(`\bprivate\b`).MatchString(prefix),
+				extension: strings.Contains(code[match[0]:match[2]], "."),
 			}
 		}
 	}
 	return functions
+}
+
+func kotlinTopLevelFunctionCounts(code string) map[string]int {
+	counts := map[string]int{}
+	matches, topLevel := kotlinFunctionMatches(code)
+	for i, match := range matches {
+		if topLevel[i] {
+			if strings.Contains(code[match[0]:match[2]], ".") {
+				continue
+			}
+			lineStart := strings.LastIndex(code[:match[0]], "\n") + 1
+			if regexp.MustCompile(`\bprivate\b`).MatchString(code[lineStart:match[0]]) {
+				continue
+			}
+			counts[code[match[2]:match[3]]]++
+		}
+	}
+	return counts
+}
+
+func kotlinFunctionMatches(code string) ([][]int, []bool) {
+	matches := kotlinFunctionRe.FindAllStringSubmatchIndex(code, -1)
+	topLevel := make([]bool, len(matches))
+	depth, cursor := 0, 0
+	for i, match := range matches {
+		for cursor < match[0] {
+			switch code[cursor] {
+			case '{':
+				depth++
+			case '}':
+				depth--
+			}
+			cursor++
+		}
+		topLevel[i] = depth == 0
+	}
+	return matches, topLevel
 }
 
 func kotlinParameterNames(text string) []string {
@@ -161,7 +336,7 @@ func extractKotlinToolHandlers(src, code string) []kotlinToolHandler {
 	return handlers
 }
 
-func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHandler, functions map[string]kotlinFunction, ktorCalls []string) ([]Issue, []kotlinToolHandler) {
+func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHandler, functions map[string]kotlinFunction, imports map[string]string, index *kotlinProjectIndex, ktorCalls []string) ([]Issue, []kotlinToolHandler) {
 	body := maskJavaComments(handler.body)
 	tainted := map[string]bool{}
 	for name := range handler.seeded {
@@ -216,6 +391,14 @@ func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHan
 		for _, call := range kotlinCallRe.FindAllStringSubmatchIndex(body, -1) {
 			name := body[call[2]:call[3]]
 			function, ok := functions[name]
+			if ok && function.extension {
+				continue
+			}
+			if !ok && index != nil {
+				if qualified, imported := imports[name]; imported && !index.ambiguous[qualified] {
+					function, ok = index.functions[qualified]
+				}
+			}
 			if !ok {
 				continue
 			}
@@ -235,8 +418,12 @@ func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHan
 				}
 			}
 			if len(seeded) != 0 {
+				functionPath := function.path
+				if functionPath == "" {
+					functionPath = path
+				}
 				helpers = append(helpers, kotlinToolHandler{
-					name: function.name, body: function.body, startLine: function.startLine,
+					path: functionPath, name: function.name, body: function.body, startLine: function.startLine,
 					depth: handler.depth + 1, seeded: seeded,
 				})
 			}
