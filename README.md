@@ -917,7 +917,7 @@ so only run servers you trust.
 - [x] Rust `rmcp` tool SAST
 - [x] Initial C# SAST for official SDK `[McpServerTool]` methods
 - [x] Follow uniquely resolved C# helpers across files through concrete-type calls
-- [x] Initial SAST for Kotlin SDK `server.addTool` callbacks
+- [x] Kotlin SDK `server.addTool` callbacks and same-file helper chains
 - [ ] Broader data-flow coverage for dynamic dispatch, returned values and
   complex object graphs; current cross-file and helper tracking is bounded and
   language-specific ([details](docs/SAST.md)).
