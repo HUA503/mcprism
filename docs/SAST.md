@@ -54,7 +54,9 @@ deserialization that runs code, so MCP804 and MCP805 are not emitted for Go;
 the command, SSRF, path and secret rules (MCP801/802/803/806) are.
 
 Go sink matching follows explicit package aliases for `os/exec`, `net/http`,
-`os`, `io/ioutil`, `path/filepath` and `strings`. Dot imports and aliases
+`net`, `os`, `io/ioutil`, `path/filepath` and `strings`. MCP802 checks both
+HTTP request URLs and destinations passed to `net.Dial`, `net.DialTimeout` and
+`net.Dialer.DialContext` when the dialer type is known. Dot imports and aliases
 created through local variables are not resolved, except simple local function
 values for process execution such as `run := exec.Command` and chains of those
 assignments. When a local name is assigned different values in the analyzed
@@ -525,13 +527,13 @@ A fixed command with unvalidated arguments in an array is reported at medium
 instead of critical, since it usually leads to argument injection rather than
 full command execution.
 
-## MCP802 — Tool input controls a request URL (SSRF)
+## MCP802 — Tool input controls an outbound network target (SSRF)
 
 Severity: high. CWE-918.
 
-An argument is used as the URL of an outbound request. The agent can point it at
-cloud metadata (`http://169.254.169.254/latest/meta-data/`), internal admin
-panels, or `localhost` services, and read or trigger the response.
+An argument is used as an outbound URL or network address. The agent can point
+it at cloud metadata (`http://169.254.169.254/latest/meta-data/`), internal
+admin panels, private services, or loopback endpoints.
 
 Vulnerable:
 
@@ -558,6 +560,16 @@ s.AddTool(mcp.NewTool("fetch_page",
 		}
 		return mcp.NewToolResultText(r.Status)
 	})
+```
+
+Go also checks raw network dials when the destination is controlled:
+
+```go
+target := req.RequireString("address")
+dialer := &net.Dialer{}
+if conn, err := dialer.DialContext(ctx, "tcp", target); err == nil {
+	defer conn.Close()
+}
 ```
 
 Vulnerable (Rust, official `rmcp` SDK):

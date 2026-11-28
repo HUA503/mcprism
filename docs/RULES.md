@@ -61,7 +61,7 @@ fixed code for each.
 | Rule | OWASP | Default | What it detects |
 |---|---|---|---|
 | MCP801 | MCP05 | Critical | Tool input reaches a command/process sink |
-| MCP802 | MCP02 | High | Tool input controls a request URL (SSRF) |
+| MCP802 | MCP02 | High | Tool input controls an outbound network target (SSRF) |
 | MCP803 | MCP02 | High | Tool input used as a filesystem path without confinement |
 | MCP804 | MCP05 | High (Critical with input) | Dynamic code execution (eval/Function/exec) |
 | MCP805 | MCP05 | High | Unsafe deserialization (pickle/marshal/yaml.load) |

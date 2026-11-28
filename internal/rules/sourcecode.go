@@ -64,7 +64,7 @@ var srcOWASP = map[string]string{
 
 var srcDescription = map[string]string{
 	"MCP801": "A tool handler passes an argument the agent controls into a process sink (child_process exec/spawn, os.system, subprocess with shell=True). A prompt-injected or malicious agent can choose or alter the command and run arbitrary code on the host.",
-	"MCP802": "A tool handler uses an agent-controlled argument as the URL for an outbound request (fetch, requests, httpx). This enables server-side request forgery against cloud metadata endpoints and internal services.",
+	"MCP802": "A tool handler uses an agent-controlled argument as an outbound network target (for example, a request URL or a Go net.Dial address). This can enable server-side request forgery against cloud metadata endpoints, private services and loopback addresses.",
 	"MCP803": "A tool handler uses an agent-controlled argument as a filesystem path without confining it to a base directory. Traversal sequences can read or overwrite files outside the intended folder.",
 	"MCP804": "A tool handler evaluates agent-controlled input as code (eval, Function, exec). Running attacker-influenced code gives the agent execution inside the server process.",
 	"MCP805": "A tool handler deserializes agent-controlled data with an unsafe loader (pickle, marshal, yaml.load without SafeLoader). Crafted data can lead to code execution or object injection.",

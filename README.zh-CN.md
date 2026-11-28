@@ -410,7 +410,7 @@ mcprism vet ./mcp-server/src/tool.ts
 | 规则 | sink | 默认级别 |
 |---|---|---|
 | MCP801 | 工具参数流入命令/进程 sink（`exec`、`spawn`、`os.system`、`subprocess shell=True`） | critical |
-| MCP802 | 工具参数控制请求 URL（`fetch`、`requests`、`httpx`）——SSRF | high |
+| MCP802 | 工具参数控制出站网络目标（`fetch`、`requests`、`httpx`、`net.Dial`）——SSRF | high |
 | MCP803 | 工具参数被当作文件路径，且没有限定范围 | high |
 | MCP804 | 动态执行代码（`eval`、`Function`、`exec`） | high |
 | MCP805 | 不安全反序列化（`pickle`、`marshal`、`yaml.load`） | high |
