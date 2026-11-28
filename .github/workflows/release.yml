@@ -37,7 +37,7 @@ jobs:
           extension_version="${GITHUB_REF_NAME#v}"
           npm version "$extension_version" --no-git-tag-version --allow-same-version
           vsix="mcprism-vscode-${extension_version}.vsix"
-          npx --yes @vscode/vsce@4.0.0 package --out "$vsix"
+          npx --yes @vscode/vsce@4.1.1 package --out "$vsix"
           sha256sum "$vsix" >> ../../dist/checksums.txt
           gh release upload "$GITHUB_REF_NAME" "$vsix" ../../dist/checksums.txt --clobber
       - name: Attest release archives
@@ -64,3 +64,26 @@ jobs:
           git add Formula/mcprism.rb
           git commit -m "Homebrew formula update for mcprism ${RELEASE_TAG}"
           git push origin main
+
+  vscode-marketplace:
+    if: vars.VSCODE_MARKETPLACE_PUBLISH == 'true'
+    needs: goreleaser
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Package and publish VS Code extension
+        working-directory: editors/vscode
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          extension_version="${RELEASE_TAG#v}"
+          npm version "$extension_version" --no-git-tag-version --allow-same-version
+          vsix="$RUNNER_TEMP/mcprism-vscode-${extension_version}.vsix"
+          npx --yes @vscode/vsce@4.1.1 package --out "$vsix"
+          npx --yes @vscode/vsce@4.1.1 publish --packagePath "$vsix" --oidc
