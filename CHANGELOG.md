@@ -24,7 +24,9 @@ semantic versioning.
 
 - Add initial Kotlin SAST for official SDK `server.addTool` trailing-lambda
   handlers, tracing request arguments through simple local assignments and
-  uniquely named same-file helper chains up to eight calls deep.
+  uniquely named same-file helper chains up to eight calls deep. Directory
+  scans also follow uniquely resolved, explicitly imported local top-level
+  helpers within a bounded source index.
 - Add initial C# SAST for official SDK `[McpServerTool]` methods, following
   direct input flows into process, network, filesystem, code-loading and unsafe
   deserialization sinks.

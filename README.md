@@ -648,7 +648,8 @@ analyzer and manual review. Rule details and more examples are in
   file, dynamic-code and deserialization risks; Rust `rmcp #[tool]` handlers
   are checked for process, `reqwest` URL, filesystem and hardcoded-secret risks.
   C# directory scans follow uniquely resolved helpers across files when calls
-  use a concrete type or a receiver with a known concrete type.
+  use a concrete type or a receiver with a known concrete type. Kotlin directory
+  scans follow explicitly imported, uniquely resolved top-level helpers.
   See [Source-code review](#source-code-review-sast).
 - Cross-server tool name collisions, and classified connectivity failures
   (DNS / TLS / refused / timeout / command not found).
@@ -917,7 +918,7 @@ so only run servers you trust.
 - [x] Rust `rmcp` tool SAST
 - [x] Initial C# SAST for official SDK `[McpServerTool]` methods
 - [x] Follow uniquely resolved C# helpers across files through concrete-type calls
-- [x] Kotlin SDK `server.addTool` callbacks and same-file helper chains
+- [x] Kotlin SDK `server.addTool` callbacks and bounded same-file/imported helper chains
 - [ ] Broader data-flow coverage for dynamic dispatch, returned values and
   complex object graphs; current cross-file and helper tracking is bounded and
   language-specific ([details](docs/SAST.md)).
