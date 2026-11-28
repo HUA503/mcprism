@@ -8,7 +8,8 @@ semantic versioning.
 
 ### Improved
 
-- Propagate Python and Go taint through simple tuple/unpacking assignments.
+- Propagate Python and Go taint through simple tuple/unpacking assignments,
+  including Python starred targets and list destructuring.
 - Include Go `var` declarations in tuple assignment tracking.
 
 ### Documentation
