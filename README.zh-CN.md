@@ -107,9 +107,9 @@ mcprism vet server.py            # 审查单个文件
 
 ## VS Code 编辑器
 
-先安装 `mcprism` 命令行工具，再按 [VS Code 扩展说明](editors/vscode/README.md)
-从 VSIX 安装扩展。在命令面板运行 **mcprism: Scan Workspace**，源码发现会显示在
-Problems 面板中。扫描是静态的，不会启动 MCP Server。
+先安装 `mcprism` 命令行工具，再从[最新 GitHub Release](https://github.com/HUA503/mcprism/releases)
+下载 VSIX，并按 [VS Code 扩展说明](editors/vscode/README.md) 安装。在命令面板运行
+**mcprism: Scan Workspace**，源码发现会显示在 Problems 面板中。扫描是静态的，不会启动 MCP Server。
 
 ## 目录
 

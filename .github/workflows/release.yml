@@ -26,6 +26,20 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Package and upload VS Code extension
+        working-directory: editors/vscode
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          extension_version="${GITHUB_REF_NAME#v}"
+          npm version "$extension_version" --no-git-tag-version --allow-same-version
+          vsix="mcprism-vscode-${extension_version}.vsix"
+          npx --yes @vscode/vsce@4.0.0 package --out "$vsix"
+          sha256sum "$vsix" >> ../../dist/checksums.txt
+          gh release upload "$GITHUB_REF_NAME" "$vsix" ../../dist/checksums.txt --clobber
       - name: Attest release archives
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
