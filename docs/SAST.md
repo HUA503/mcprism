@@ -198,12 +198,16 @@ imported modules within the limits above. Standalone default imports and
 default-plus-named imports are followed only when the local module statically
 exports a named function as its default (or exports a locally indexed helper
 identifier); anonymous default functions, computed module-object properties,
-re-exports, package resolution and other import forms are not resolved. Relative
-imports that escape the scan root and imports through skipped dependency/build
-directories are not followed. The analyzers do not model arbitrary object
-graphs, returned values or dynamic dispatch. Field tracking is limited to
-direct, statically named assignments and reads. The bounded analysis keeps the
-scanner dependency-free and predictable.
+re-exports and npm package resolution are not resolved. During directory scans,
+JS/TS also follows direct `compilerOptions.paths` mappings from the scan root's
+`tsconfig.json`; inherited `extends` settings and nested tsconfig files are not
+loaded. Single-file scans read the `tsconfig.json` in the file's parent
+directory. Relative imports and path aliases that escape the scan root, and
+imports through skipped dependency/build directories, are not followed. The
+analyzer does not follow a `tsconfig.json` larger than 1 MiB. It does not model
+arbitrary object graphs, returned values or dynamic dispatch. Field tracking is
+limited to direct, statically named assignments and reads. The bounded analysis
+keeps the scanner dependency-free and predictable.
 
 Prompt-injection checks use offline signatures rather than a language model.
 The current signatures include common English, Simplified/Traditional Chinese,
