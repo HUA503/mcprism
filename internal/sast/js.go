@@ -20,6 +20,7 @@ type jsFunctionScopes struct {
 	staticMaps  map[string]map[string]string
 	exports     map[string]map[string]bool
 	sinkImports map[string]jsSinkImports
+	root        string
 	bytes       int64
 	files       int
 }
@@ -32,6 +33,10 @@ type jsSinkImports struct {
 }
 
 func analyzeJS(path string) []Issue {
+	return analyzeJSWithRoot(path, filepath.Dir(path))
+}
+
+func analyzeJSWithRoot(path, root string) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
 		return nil
@@ -42,6 +47,7 @@ func analyzeJS(path string) []Issue {
 		staticMaps:  map[string]map[string]string{},
 		exports:     map[string]map[string]bool{},
 		sinkImports: map[string]jsSinkImports{},
+		root:        root,
 		bytes:       int64(len(src)),
 		files:       1,
 	}
@@ -340,8 +346,8 @@ func buildJSFunctionScope(path, src string, depth int, scopes *jsFunctionScopes)
 }
 
 // mergeJSImportedFunctions resolves named/default ES imports and static CommonJS
-// require imports from bounded, same-directory source modules. Only exported
-// helpers imported under unambiguous local names are added; package imports
+// require imports from bounded relative source modules under the scan root.
+// Only exported helpers imported under unambiguous local names are added; package imports
 // and star exports are not.
 func mergeJSImportedFunctions(path, src string, functions map[string]handlerBlock, localNames map[string]bool, depth int, scopes *jsFunctionScopes) {
 	type binding struct {
@@ -356,7 +362,7 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 	text := maskJSComments(src)
 	structure := maskJSCode(src)
 	loadModule := func(module string) (map[string]handlerBlock, map[string]bool) {
-		modulePath := jsLocalModulePath(path, module)
+		modulePath := jsLocalModulePath(path, module, scopes.root)
 		if modulePath == "" {
 			return nil, nil
 		}
@@ -442,8 +448,8 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 	}
 
 	// Default imports, including default-plus-named imports, are followed only
-	// when the local module has one statically
-	// recognized default function export. The module loader records that export
+	// when the local module has one statically recognized default function
+	// export. The module loader records that export
 	// under the synthetic name "default"; default-exported values are not guessed.
 	defaultImport := regexp.MustCompile(`\bimport\s+([A-Za-z_$][\w$]*)(?:\s*,\s*\{([^}]*)\})?\s+from\s*["']([^"']+)["']`)
 	for _, m := range defaultImport.FindAllStringSubmatchIndex(text, -1) {
@@ -518,12 +524,15 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 	}
 }
 
-func jsLocalModulePath(path, module string) string {
-	if !strings.HasPrefix(module, "./") || strings.ContainsAny(strings.TrimPrefix(module, "./"), `/\`) {
+func jsLocalModulePath(path, module, root string) string {
+	if !strings.HasPrefix(module, "./") && !strings.HasPrefix(module, "../") {
 		return ""
 	}
-	base := filepath.Join(filepath.Dir(path), strings.TrimPrefix(module, "./"))
+	base := filepath.Clean(filepath.Join(filepath.Dir(path), filepath.FromSlash(module)))
 	ext := filepath.Ext(base)
+	if ext != "" && !isJSSourceExt(ext) {
+		return ""
+	}
 	candidates := []string{base}
 	switch ext {
 	case "":
@@ -538,11 +547,59 @@ func jsLocalModulePath(path, module string) string {
 		candidates = append(candidates, strings.TrimSuffix(base, ext)+".cts")
 	}
 	for _, candidate := range candidates {
+		if !jsPathWithinRoot(root, candidate) {
+			continue
+		}
 		if info, err := os.Lstat(candidate); err == nil && info.Mode().IsRegular() && info.Size() <= maxSourceFileSize {
 			return candidate
 		}
 	}
 	return ""
+}
+
+func isJSSourceExt(ext string) bool {
+	switch strings.ToLower(ext) {
+	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs":
+		return true
+	default:
+		return false
+	}
+}
+
+func jsPathWithinRoot(root, candidate string) bool {
+	rootAbs, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	candidateAbs, err := filepath.Abs(candidate)
+	if err != nil {
+		return false
+	}
+	inside := func(base, target string) bool {
+		rel, err := filepath.Rel(base, target)
+		return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel)
+	}
+	if !inside(rootAbs, candidateAbs) {
+		return false
+	}
+	rootReal, err := filepath.EvalSymlinks(rootAbs)
+	if err != nil {
+		return false
+	}
+	candidateReal, err := filepath.EvalSymlinks(candidateAbs)
+	if err != nil || !inside(rootReal, candidateReal) {
+		return false
+	}
+	rel, err := filepath.Rel(rootAbs, candidateAbs)
+	if err != nil {
+		return false
+	}
+	for _, part := range strings.Split(filepath.Dir(rel), string(filepath.Separator)) {
+		if part != "." && skipDir(part) {
+			return false
+		}
+	}
+	return true
 }
 
 func jsExportedFunctionNames(src string) map[string]bool {

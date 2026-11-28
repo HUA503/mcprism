@@ -575,11 +575,12 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   across files in the same package, plus exported helpers imported from local
   packages in the scanned Go module (up to eight package hops, 64 files and
   16 MiB per entry). JS/TS
-  recognizes function declarations and block-bodied arrow helpers. JS/TS also
-  follows named and namespace ES imports and static CommonJS `require()` calls,
-  including destructured bindings and direct named calls through a module object, of
-  exported helpers and their helper chains across same-directory modules,
-  within bounded depth, file count and source size.
+  recognizes function declarations and block-bodied arrow helpers. JS/TS
+  follows named, namespace and default ES imports (including default-plus-named
+  imports), static CommonJS `require()` calls and direct named calls through a
+  module object for exported helpers and their helper chains across relative
+  modules inside the scan root, within bounded depth, file count and source
+  size. Single-file scans use the file's parent directory as the root.
   Python follows explicitly imported helpers and their helper chains across
   same-directory modules and relative imports within marked parent packages,
   within bounded depth, file count and source size.
