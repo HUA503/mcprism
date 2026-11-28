@@ -247,7 +247,7 @@ Batch review across many servers (static mode):
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 
 # Pin a release instead of installing the latest one
-curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.43.3 sh
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.43.4 sh
 ```
 
 ```powershell
@@ -255,7 +255,7 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 
 # Pin a release instead of installing the latest one
-$env:MC_PRISM_VERSION = "v0.43.3"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+$env:MC_PRISM_VERSION = "v0.43.4"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 ```
 
 ```sh
@@ -430,7 +430,7 @@ from command errors.
 Scanning two local servers in static mode:
 
 ```text
-◆ mcprism   v0.43.3 · 2026-11-28
+◆ mcprism   v0.43.4 · 2026-11-28
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -614,6 +614,10 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   and recognize inline or directly named mcp-go tool callbacks; it does not
   build a full-program data-flow graph. JS/Python do not use
   tree-sitter.
+- Prompt-injection signatures include high-signal Chinese and Traditional
+  Chinese variants for instruction overrides, hidden-context disclosure, and
+  credential or conversation-history transfer. Matching remains lexical and
+  cannot reliably identify every semantic paraphrase.
 - Rust analysis recognizes the official `rmcp` `#[tool]` macro and common
   process, `reqwest`, `TcpStream` network, filesystem and secret patterns,
   including direct and grouped `use` aliases for `std::process::Command` and
@@ -763,7 +767,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.43.3
+  rev: v0.43.4
   hooks:
     - id: mcprism
 ```
@@ -798,7 +802,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.43.3
+        uses: HUA503/mcprism@v0.43.4
         with:
           target: mcp.json
           source-target: ./server
