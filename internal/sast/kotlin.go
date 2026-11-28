@@ -2,14 +2,25 @@ package sast
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 // Kotlin support starts from the official Kotlin SDK's server.addTool { ... }
 // callback. This bounded lexical pass does not compile Kotlin or resolve
-// extension functions, overloads, or cross-file dispatch.
+// overloads, extension-function receiver types, or cross-file dispatch.
 type kotlinToolHandler struct {
 	request   string
+	name      string
+	body      string
+	startLine int
+	depth     int
+	seeded    map[string]bool
+}
+
+type kotlinFunction struct {
+	name      string
+	params    []string
 	body      string
 	startLine int
 }
@@ -17,6 +28,8 @@ type kotlinToolHandler struct {
 var (
 	kotlinAddToolRe      = regexp.MustCompile(`\.\s*addTool\s*\(`)
 	kotlinLambdaParamRe  = regexp.MustCompile(`(?:\(\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\)?\s*->`)
+	kotlinFunctionRe     = regexp.MustCompile(`(?m)\bfun\s+(?:<[^>]+>\s*)?(?:[A-Za-z_][\w.]*\s*\.\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\(([^()]*)\)\s*(?::[^={\n]+)?\s*\{`)
+	kotlinCallRe         = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
 	kotlinAssignmentRe   = regexp.MustCompile(`(?m)\b(?:val|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=\n]+)?\s*=\s*([^\n;]+)`)
 	kotlinKtorImportRe   = regexp.MustCompile(`(?m)^\s*import\s+io\.ktor\.client\.request\.(get|post|put|delete|request)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$`)
 	kotlinProcessSinkRe  = regexp.MustCompile(`(?:ProcessBuilder|Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec)\s*\(`)
@@ -34,14 +47,68 @@ func analyzeKotlin(path string) []Issue {
 	}
 	code := maskJavaComments(src)
 	ktorCalls := kotlinKtorRequestCalls(code)
+	functions := extractKotlinFunctions(src, code)
+	queue := extractKotlinToolHandlers(src, code)
 	var out []Issue
-	for _, handler := range extractKotlinToolHandlers(src, code) {
-		out = append(out, scanKotlinHandler(path, lines, handler, ktorCalls)...)
+	seen := map[string]bool{}
+	for head := 0; head < len(queue); head++ {
+		handler := queue[head]
+		key := javaTaintKey(handler.name, handler.seeded)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		issues, helpers := scanKotlinHandler(path, lines, handler, functions, ktorCalls)
+		out = append(out, issues...)
+		queue = append(queue, helpers...)
 	}
 	for _, line := range maskedLines(lines, maskJavaComments) {
 		out = append(out, lineSecretIssues(path, line)...)
 	}
 	return dedupIssues(out)
+}
+
+func extractKotlinFunctions(src, code string) map[string]kotlinFunction {
+	functions := map[string]kotlinFunction{}
+	counts := map[string]int{}
+	ambiguous := map[string]bool{}
+	for _, match := range kotlinFunctionRe.FindAllStringSubmatchIndex(code, -1) {
+		name := code[match[2]:match[3]]
+		open := strings.LastIndexByte(code[match[0]:match[1]], '{') + match[0]
+		close := matchClose(code, open, '{', '}')
+		if close < 0 {
+			continue
+		}
+		paramsText := code[match[4]:match[5]]
+		counts[name]++
+		if counts[name] > 1 {
+			delete(functions, name)
+			ambiguous[name] = true
+			continue
+		}
+		if !ambiguous[name] {
+			functions[name] = kotlinFunction{
+				name: name, params: kotlinParameterNames(paramsText), body: src[open+1 : close],
+				startLine: strings.Count(src[:open+1], "\n") + 1,
+			}
+		}
+	}
+	return functions
+}
+
+func kotlinParameterNames(text string) []string {
+	var names []string
+	for _, param := range splitJavaTopLevel(text) {
+		declaration := param
+		if colon := strings.IndexByte(declaration, ':'); colon >= 0 {
+			declaration = declaration[:colon]
+		}
+		ids := javaIdentifierRe.FindAllString(declaration, -1)
+		if len(ids) != 0 {
+			names = append(names, ids[len(ids)-1])
+		}
+	}
+	return names
 }
 
 func kotlinKtorRequestCalls(code string) []string {
@@ -87,18 +154,25 @@ func extractKotlinToolHandlers(src, code string) []kotlinToolHandler {
 		innerStart := bodyStart + 1 + arrow + 2
 		startLine := strings.Count(src[:innerStart], "\n") + 1
 		handlers = append(handlers, kotlinToolHandler{
-			request: params[1], body: src[innerStart:bodyEnd], startLine: startLine,
+			request: params[1], name: "tool@" + strconv.Itoa(startLine) + "#" + strconv.Itoa(len(handlers)),
+			body: src[innerStart:bodyEnd], startLine: startLine,
 		})
 	}
 	return handlers
 }
 
-func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHandler, ktorCalls []string) []Issue {
+func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHandler, functions map[string]kotlinFunction, ktorCalls []string) ([]Issue, []kotlinToolHandler) {
 	body := maskJavaComments(handler.body)
 	tainted := map[string]bool{}
-	source := regexp.MustCompile(`\b` + regexp.QuoteMeta(handler.request) + `\s*\.\s*arguments\b`)
+	for name := range handler.seeded {
+		tainted[name] = true
+	}
+	var source *regexp.Regexp
+	if handler.request != "" {
+		source = regexp.MustCompile(`\b` + regexp.QuoteMeta(handler.request) + `\s*\.\s*arguments\b`)
+	}
 	exprIsTainted := func(expr string) bool {
-		if source.MatchString(expr) {
+		if source != nil && source.MatchString(expr) {
 			return true
 		}
 		for name := range tainted {
@@ -118,6 +192,7 @@ func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHan
 		}
 	}
 	var out []Issue
+	var helpers []kotlinToolHandler
 	addSink := func(pattern *regexp.Regexp, ruleID, title string, severity Severity, advice string) {
 		for _, match := range pattern.FindAllStringIndex(body, -1) {
 			open := strings.LastIndexByte(body[match[0]:match[1]], '(')
@@ -135,6 +210,36 @@ func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHan
 				code = trimCode(sourceLines[line-1].text)
 			}
 			out = append(out, Issue{RuleID: ruleID, Title: title, Severity: severity, File: path, Line: line, Code: code, Advice: advice})
+		}
+	}
+	if handler.depth < 8 {
+		for _, call := range kotlinCallRe.FindAllStringSubmatchIndex(body, -1) {
+			name := body[call[2]:call[3]]
+			function, ok := functions[name]
+			if !ok {
+				continue
+			}
+			open := strings.LastIndexByte(body[call[0]:call[1]], '(') + call[0]
+			close := matchClose(body, open, '(', ')')
+			if close < 0 {
+				continue
+			}
+			args := splitJavaTopLevel(body[open+1 : close])
+			if len(args) != len(function.params) {
+				continue
+			}
+			seeded := map[string]bool{}
+			for i, arg := range args {
+				if exprIsTainted(arg) {
+					seeded[function.params[i]] = true
+				}
+			}
+			if len(seeded) != 0 {
+				helpers = append(helpers, kotlinToolHandler{
+					name: function.name, body: function.body, startLine: function.startLine,
+					depth: handler.depth + 1, seeded: seeded,
+				})
+			}
 		}
 	}
 	addSink(kotlinProcessSinkRe, "MCP801", "Agent-controlled input reaches Kotlin process execution", SeverityCritical,
@@ -158,5 +263,5 @@ func scanKotlinHandler(path string, sourceLines []srcLine, handler kotlinToolHan
 		"Do not deserialize attacker-controlled bytes. Use a safe data format and validate its schema.")
 	addSink(kotlinClassLoadRe, "MCP807", "Agent-controlled input selects a Kotlin class", SeverityMedium,
 		"Use an allow-list of supported class names instead of loading a class selected by tool input.")
-	return out
+	return out, helpers
 }

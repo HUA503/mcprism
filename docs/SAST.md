@@ -145,9 +145,11 @@ SDK's `server.addTool(...) { request -> ... }` API. It follows direct reads of
 `request.arguments` through simple `val`/`var` assignments into process,
 request-target, filesystem, script-evaluation, deserialization and class-loading
 sinks. Request calls from explicitly imported Ktor `get`, `post`, `put`,
-`delete` and `request` extensions are included. It does not follow helper
-functions, implicit `it` callbacks, cross-file calls or complex expressions;
-the Kotlin pass is lexical and does not compile the project.
+`delete` and `request` extensions are included. It follows uniquely named
+same-file block-bodied helper functions up to eight calls deep. It does not
+follow implicit `it` callbacks, cross-file calls, expression-bodied helpers,
+overloads or complex expressions; the Kotlin pass is lexical and does not
+compile the project.
 JS/TS follows named and namespace ES imports, destructured CommonJS
 `require()` imports, and direct named calls through a statically required
 CommonJS module object when they reference exported helpers from same-directory
@@ -389,14 +391,18 @@ Vulnerable (Kotlin, official SDK):
 ```kotlin
 import java.io.File
 
+fun readFile(path: String): String {
+    return File(path).readText()
+}
+
 server.addTool(name = "read_file", description = "Read a file") { request ->
     val path = request.arguments?.get("path")?.jsonPrimitive?.content ?: error("path required")
-    File(path).readText()
+    readFile(path)
 }
 ```
 
-The scanner marks `path` as tool-controlled and reports MCP803 at the `File`
-construction.
+The scanner marks `path` as tool-controlled, follows `readFile`, and reports
+MCP803 at the `File` construction.
 
 Vulnerable (Go), a tool argument handed to a shell:
 
