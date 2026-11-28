@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Improved
 
+- Detect Rust MCP tool input passed to standard-library and Tokio
+  `TcpStream::connect`, plus standard-library `connect_timeout` destinations.
 - Detect tool-controlled destinations passed to Node.js `net.connect`,
   `net.createConnection` and `tls.connect` calls.
 - Detect Python tool input passed to `socket.create_connection` and to
