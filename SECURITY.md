@@ -4,8 +4,8 @@
 
 | Version | Supported |
 |---|---|
-| 0.8.x | ✅ |
-| Older versions | ❌ |
+| Latest stable release | ✅ |
+| Older releases | ❌ |
 
 ## Reporting a vulnerability
 
@@ -21,6 +21,18 @@ Please report suspected security vulnerabilities **privately** using GitHub's
 You should receive an initial response within a few days. Please give the
 maintainers reasonable time to investigate and release a fix before public
 disclosure.
+
+Reports may be written in English or Chinese.
+
+### 中文报告
+
+请通过 GitHub 的[私有漏洞报告入口](https://github.com/HUA503/mcprism/security/advisories/new)
+提交安全问题，不要在公开 issue 中披露漏洞。报告可以使用中文，并尽量包含：
+
+- 漏洞说明和影响范围
+- 复现步骤（可以附 PoC）
+- 受影响的版本、提交和运行环境
+- 建议的修复方式（如有）
 
 ## Security posture of mcprism itself
 
