@@ -664,7 +664,7 @@ func pyTaintedNames(lines []srcLine, seeds []string, fileStaticMaps map[string]b
 		}
 	}
 	assign := regexp.MustCompile(`^\s*([A-Za-z_]\w*)(?:\s*:[^=]+)?\s*=\s*(.*)$`)
-	tupleAssign := regexp.MustCompile(`^\s*\(?\s*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)+\s*,?)\s*\)?\s*=\s*(.*)$`)
+	tupleAssign := regexp.MustCompile(`^\s*[\(\[]?\s*((?:\*?[A-Za-z_]\w*\s*,\s*)+\*?[A-Za-z_]\w*\s*,?)\s*[\)\]]?\s*=\s*(.*)$`)
 	for changed := true; changed; {
 		changed = false
 		staticMaps := pyStaticMapNames(lines, set)
@@ -686,7 +686,7 @@ func pyTaintedNames(lines []srcLine, seeds []string, fileStaticMaps map[string]b
 			if m := tupleAssign.FindStringSubmatch(line.text); m != nil &&
 				!strings.HasPrefix(strings.TrimSpace(m[2]), "=") && pyControllable(m[2], params) {
 				for _, target := range strings.Split(strings.TrimSuffix(m[1], ","), ",") {
-					target = strings.TrimSpace(target)
+					target = strings.TrimPrefix(strings.TrimSpace(target), "*")
 					if isPyIdent(target) && !set[target] {
 						set[target] = true
 						changed = true
