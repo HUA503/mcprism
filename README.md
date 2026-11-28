@@ -24,7 +24,7 @@ servers. It looks at a server from three angles:
    cleartext transport, credentials in config, cloud metadata and private
    network targets.
 2. **Source code** — when the implementation is on disk, it reads the
-   JS/TS/Python/Go/Rust tool handlers and traces arguments an agent can control into
+   JS/TS/Python/Go/Rust/Java tool handlers and traces arguments an agent can control into
    dangerous sinks: process execution, outbound requests (SSRF) and filesystem
    paths, along with eval, unsafe deserialization and hardcoded secrets.
 3. **Runtime** — it negotiates the current stateless MCP protocol or the legacy
@@ -164,7 +164,8 @@ repository's default branch.
 ## What it does
 
 - One binary. No Python or Node setup, no LLM API key, no account.
-- Static by default. It reads the config and reviews JS/TS/Python/Go/Rust source.
+- Static by default. It reads the config and reviews JS/TS/Python/Go/Rust source,
+  plus direct callback handlers in the official Java MCP SDK.
   Pass `--dynamic` to negotiate with current or legacy MCP servers and list
   tools, resources and prompts. It never calls a tool.
 - Schema-aware. For a live server you have no source for, a string parameter
@@ -499,6 +500,9 @@ It recognizes the common SDKs and frameworks:
   handler.
 - Go: mcp-go `server.AddTool` / `mcp.AddTool` callbacks.
 - Rust: `#[tool]` methods from the official `rmcp` SDK.
+- Java: explicit `.callHandler(...)` and `.toolCall(...)` lambda handlers from
+  the official Java SDK; Java analysis currently follows direct flows in those
+  callbacks only.
 
 For each tool it treats handler arguments as attacker-controlled data. JS/TS,
 Python, Go and Rust analysis follows simple local aliases and arguments passed
@@ -596,8 +600,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   follows uniquely named same-file helpers and explicitly imported helpers
   during Cargo directory scans, but does not expand macros or resolve trait
   dispatch.
-- Only JavaScript/TypeScript, Python, Go and Rust are analyzed; servers in other
-  languages get config- and metadata-level checks only.
+- JavaScript/TypeScript, Python, Go and Rust receive their documented source
+  analysis. Java currently covers direct flows in explicit official SDK callback
+  lambdas. Other languages get config- and metadata-level checks only.
 
 For assurance on a high-risk server, pair mcprism with a full data-flow
 analyzer and manual review. Rule details and more examples are in

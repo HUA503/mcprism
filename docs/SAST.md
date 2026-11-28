@@ -37,11 +37,13 @@ downloads source, it is the one `vet` source mode that needs network access.
 | Python | `FastMCP` `@mcp.tool()`, low-level `call_tool` handler, and direct local function callbacks passed to `.tool(...)`, `.add_tool(...)` or `.register_tool(...)` |
 | Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` callbacks |
 | Rust | official `rmcp` SDK methods marked with `#[tool]` |
+| Java | Official Java SDK `.callHandler(...)` / `.toolCall(...)` lambda handlers |
 
-Files with the extensions `.js .jsx .ts .tsx .mts .cts .mjs .cjs`, `.py`, `.go`
-and `.rs` are reviewed. Cargo projects are recognized through `Cargo.toml`, and
-Rust build output under `target/` is skipped. Other dependency and build directories
-(`node_modules`, `dist`, `venv`, `__pycache__`, and similar) are skipped.
+Files with the extensions `.js .jsx .ts .tsx .mts .cts .mjs .cjs`, `.py`, `.go`,
+`.rs` and `.java` are reviewed. Cargo projects are recognized through
+`Cargo.toml`; Java projects are recognized through Maven or Gradle manifests.
+Build output such as `target/`, `build/`, `.gradle/` and `out/` is skipped, as
+are dependency and virtual-environment directories.
 
 For Go, tool arguments are read through `req.RequireString`, `req.GetString` or
 `req.Params.Arguments[...]`. Go has no `eval` and no standard-library
@@ -92,9 +94,14 @@ For every registered tool, the handler parameters are marked as controlled by
 the agent. Python recognizes common decorator registrations and direct local
 function references passed to `.tool(...)`, `.add_tool(...)` and
 `.register_tool(...)`; it does not infer arbitrary registry wrappers, callable
-objects or dynamically selected callbacks. JavaScript/TypeScript, Python and Go analysis follows simple local
-assignments and propagates taint through arguments passed to unambiguous helper
-functions. JavaScript/TypeScript helper tracking covers function declarations
+objects or dynamically selected callbacks. Java analysis currently recognizes
+direct argument reads in explicit Java SDK callback lambdas and checks nearby
+process, URL, filesystem, script-evaluation, object-deserialization and
+class-loading sinks. It does not
+resolve helper methods, Spring annotations, bean wiring, reflection-based
+registration or returned values. JavaScript/TypeScript, Python and Go analysis
+follows simple local assignments and propagates taint through arguments passed
+to unambiguous helper functions. JavaScript/TypeScript helper tracking covers function declarations
 and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
 library parser to identify function boundaries and follows unique free-function
 helpers plus receiver-type-matched methods across files in the same package.
