@@ -565,7 +565,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   Python and Go support literal dictionary/map keys.
   Python/Go local assignments conservatively inherit taint when their expression
   contains a tainted name, without checking a helper's actual return value;
-  this may over-report wrappers that always return a fixed safe value.
+  simple tuple/unpacking assignments are supported, so wrappers that always
+  return a fixed safe value may still be over-reported.
   Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods,
   same-file helpers, and explicitly imported, uniquely named free functions in
   the same Cargo package during a source-tree scan.
