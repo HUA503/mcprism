@@ -410,7 +410,7 @@ mcprism vet ./mcp-server/src/tool.ts
 | 规则 | sink | 默认级别 |
 |---|---|---|
 | MCP801 | 工具参数流入命令/进程 sink（`exec`、`spawn`、`os.system`、`subprocess shell=True`） | critical |
-| MCP802 | 工具参数控制出站网络目标（`fetch`、`requests`、`httpx`、`socket`、`net.Dial`）——SSRF | high |
+| MCP802 | 工具参数控制出站网络目标（`fetch`、`requests`、`httpx`、Python `socket`、Node.js `net` / `tls`、Go `net.Dial`）——SSRF | high |
 | MCP803 | 工具参数被当作文件路径，且没有限定范围 | high |
 | MCP804 | 动态执行代码（`eval`、`Function`、`exec`） | high |
 | MCP805 | 不安全反序列化（`pickle`、`marshal`、`yaml.load`） | high |
@@ -450,7 +450,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 
 Python 的 sink 规则会识别 `os`、`subprocess`、`requests`、`httpx`、`urllib`、`pathlib`、`pickle`、`marshal` 和 `yaml` 的显式模块/函数导入别名，也会跟踪 `run = subprocess.run` 这类简单的本地函数别名及其赋值链；动态表达式或被重新赋值为其他值的变量不会跟踪。
 
-JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`http`、`https`、`got`、`request`、`node-fetch` 和 `undici` 的具名 ES 导入及解构式 CommonJS 导入别名；支持的请求库还可通过静态模块别名调用。
+JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`http`、`https`、`got`、`request`、`node-fetch`、`undici`、`net` 和 `tls` 的具名 ES 导入及解构式 CommonJS 导入别名；支持的请求库还可通过静态模块别名调用。网络目标检查覆盖 `net.connect`、`net.createConnection` 和 `tls.connect`。
 
 - 跨文件追踪覆盖 Go 同 package 普通函数、可推断 receiver 类型的方法，以及通过 `go.mod` 导入的本地 package 已导出函数和已知类型上的方法；不会跟踪外部依赖。Python/JS/TS 跟踪显式导入的 helper，其中 Python/JS/TS 有深度、文件数和源码体积上限，且不追踪重新导出。Python 支持 `__init__.py` 标记包中的显式多层相对导入；不解析绝对 dotted package 导入。JS/TS 支持同目录模块的具名和命名空间 ES 导入、解构式 CommonJS `require()` 导入，以及通过模块对象进行的静态具名调用；不支持默认 ES 导入、动态计算的属性名或 npm 等包导入。命名空间导入仅追踪直接调用的已导出函数。Go 无法识别或无法唯一确定 receiver 类型的 method 调用仍不会追踪。JS/TS、Python 和 Go 还会追踪由受控输入赋值的简单静态字段；Python 和 Go 支持字面量字典/map 键。引擎不建模任意对象图、函数返回值或动态分派。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
 - Python/Go 会保守地把包含受控变量的局部赋值结果也视为受控，不会分析 helper 实际返回什么；简单的 tuple/list 解包赋值也会传播 taint，Python 支持 `*rest` 目标，Go 同时支持 `var` 声明。Go 的多个 RHS 表达式会按位置追踪；若单个 helper 调用返回多个值，只要调用参数受控，就会保守地将所有目标都标记为受控。因此，即使 helper 总是返回固定白名单值，调用处仍可能报风险。报告需要结合 helper 实现复核。

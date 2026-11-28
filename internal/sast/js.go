@@ -93,6 +93,15 @@ func canonicalJSSinkImport(module, imported string) string {
 		if imported == "get" {
 			return module + ".get"
 		}
+	case "net":
+		switch imported {
+		case "connect", "createConnection":
+			return module + "." + imported
+		}
+	case "tls":
+		if imported == "connect" {
+			return module + ".connect"
+		}
 	}
 	return ""
 }
@@ -148,7 +157,7 @@ func parseJSSinkImports(src string) jsSinkImports {
 			continue
 		}
 		switch module {
-		case "child_process", "axios", "got", "request", "node-fetch", "undici", "http", "https":
+		case "child_process", "axios", "got", "request", "node-fetch", "undici", "http", "https", "net", "tls":
 			add(imports.modules, imports.ambiguousModules, alias, module)
 		}
 	}
@@ -183,7 +192,7 @@ func parseJSSinkImports(src string) jsSinkImports {
 	for _, m := range requireModule.FindAllStringSubmatch(text, -1) {
 		module := strings.TrimPrefix(m[2], "node:")
 		switch module {
-		case "child_process", "axios", "got", "request", "node-fetch", "undici", "http", "https":
+		case "child_process", "axios", "got", "request", "node-fetch", "undici", "http", "https", "net", "tls":
 			add(imports.modules, imports.ambiguousModules, m[1], module)
 		}
 	}
@@ -946,6 +955,24 @@ func scanJSBlock(path string, b handlerBlock, imports jsSinkImports) []Issue {
 			out = append(out, issue(path, "MCP802", "Tool argument controls a request URL (SSRF)", SeverityHigh, line, code,
 				"Do not let agent input choose the host. Allow-list hosts or pin a constant base URL, and block metadata and private ranges."))
 		}
+	}
+	for _, call := range jsSinkCalls(structure, imports, "net.connect", "net.createConnection", "tls.connect") {
+		open := call.end - 1
+		close := matchClose(text, open, '(', ')')
+		if close < 0 {
+			continue
+		}
+		args := splitCallArgs(text[open+1 : close])
+		controlledTarget := len(args) > 0 && jsExprControllable(args[0], b.params)
+		if len(args) > 1 && !regexp.MustCompile(`(?:=>|\bfunction\b)`).MatchString(args[1]) && jsExprControllable(args[1], b.params) {
+			controlledTarget = true
+		}
+		if !controlledTarget {
+			continue
+		}
+		line := off2line(call.start)
+		out = append(out, issue(path, "MCP802", "Tool argument controls an outbound network target (SSRF)", SeverityHigh, line, lineText(b, line),
+			"Use a fixed destination or allow-list approved hosts, and reject private, loopback and link-local addresses."))
 	}
 
 	// 4. filesystem paths

@@ -82,8 +82,10 @@ dynamic callable expressions are not resolved.
 
 JavaScript/TypeScript command and request checks follow named ES imports and
 destructured CommonJS imports from `child_process`, `axios`, `http`, `https`,
-`got`, `request`, `node-fetch` and `undici`. Statically imported module objects
-are also recognized for the supported request libraries.
+`got`, `request`, `node-fetch`, `undici`, `net` and `tls`. Statically imported
+module objects are also recognized for the supported request libraries. MCP802
+checks `net.connect`, `net.createConnection` and `tls.connect`; it follows the
+first two destination arguments and skips callback-shaped second arguments.
 
 Rust process and file sinks follow direct and grouped aliases of
 `std::process::Command` and `std::fs::File` in explicit `use` declarations.
@@ -570,6 +572,14 @@ dialer := &net.Dialer{}
 if conn, err := dialer.DialContext(ctx, "tcp", target); err == nil {
 	defer conn.Close()
 }
+```
+
+Node.js checks raw TCP and TLS destinations through the built-in `net` and
+`tls` modules:
+
+```js
+const socket = net.connect(port, host);
+const secureSocket = tls.connect({ host, port: 443 });
 ```
 
 Python recognizes `socket.create_connection` and `.connect()` / `.connect_ex()`
