@@ -563,6 +563,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   within bounded depth, file count and source size.
   JS/TS, Python and Go also track taint through simple statically named fields;
   Python and Go support literal dictionary/map keys.
+  Python/Go local assignments conservatively inherit taint when their expression
+  contains a tainted name, without checking a helper's actual return value;
+  this may over-report wrappers that always return a fixed safe value.
   Rust tracking follows local aliases inside recognized `rmcp #[tool]` methods,
   same-file helpers, and explicitly imported, uniquely named free functions in
   the same Cargo package during a source-tree scan.

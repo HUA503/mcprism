@@ -133,6 +133,15 @@ or dynamic dispatch. Field tracking is limited to direct, statically named
 assignments and reads. The bounded analysis keeps the scanner dependency-free
 and predictable.
 
+Python and Go also use a conservative expression-level rule for local
+assignments: if the right-hand side contains a tainted name, the assigned value
+is treated as tainted. This can catch values passed through wrapper calls, but
+it does not summarize what a helper actually returns. For example, a helper
+that always returns a fixed allow-listed command can still make its caller's
+assignment look tainted. Review findings in context; the analyzer may
+over-report such flows as well as miss flows hidden by dynamic dispatch or
+unsupported syntax.
+
 ---
 
 ## MCP801 — Tool input reaches a command/process sink
