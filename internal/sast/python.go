@@ -74,6 +74,48 @@ var pyImportRe = regexp.MustCompile(`^import\s+(.+?)\s*$`)
 var pyFieldAssignRe = regexp.MustCompile(`^\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*|\s*\[\s*['"][A-Za-z_]\w*['"]\s*\]))\s*=\s*(.*)$`)
 var pyFieldBaseRe = regexp.MustCompile(`^([A-Za-z_]\w*)\s*(?:\.|\[)`)
 
+// pythonImportStatements joins parenthesized or backslash-continued imports
+// before parsing. Sink alias tracking and local-helper resolution share this
+// path so multiline imports behave consistently.
+func pythonImportStatements(lines []srcLine, topLevelOnly bool) []string {
+	var statements []string
+	var parts []string
+	depth := 0
+	continued := false
+	for _, line := range maskedPythonLines(lines) {
+		text := strings.TrimSpace(line.text)
+		if len(parts) == 0 {
+			if text == "" || topLevelOnly && indentOf(line.text) != 0 {
+				continue
+			}
+			if !strings.HasPrefix(text, "import ") && !strings.HasPrefix(text, "from ") {
+				continue
+			}
+		} else if text == "" && !continued && depth == 0 {
+			statements = append(statements, strings.Join(parts, " "))
+			parts = nil
+			continue
+		}
+
+		backslash := strings.HasSuffix(text, "\\")
+		if backslash {
+			text = strings.TrimSpace(strings.TrimSuffix(text, "\\"))
+		}
+		parts = append(parts, text)
+		depth += strings.Count(text, "(") - strings.Count(text, ")")
+		continued = backslash
+		if depth <= 0 && !continued {
+			statements = append(statements, strings.Join(parts, " "))
+			parts = nil
+			depth = 0
+		}
+	}
+	if len(parts) > 0 {
+		statements = append(statements, strings.Join(parts, " "))
+	}
+	return statements
+}
+
 func parsePythonImports(lines []srcLine, topLevelOnly bool) pythonImports {
 	imports := pythonImports{
 		modules: map[string]string{}, calls: map[string]string{},
@@ -90,11 +132,7 @@ func parsePythonImports(lines []srcLine, topLevelOnly bool) pythonImports {
 		}
 		dst[alias] = target
 	}
-	for _, line := range maskedPythonLines(lines) {
-		if topLevelOnly && strings.TrimSpace(line.text) != "" && indentOf(line.text) != 0 {
-			continue
-		}
-		text := strings.TrimSpace(line.text)
+	for _, text := range pythonImportStatements(lines, topLevelOnly) {
 		if m := pyImportRe.FindStringSubmatch(text); m != nil {
 			for _, item := range strings.Split(m[1], ",") {
 				fields := strings.Fields(strings.TrimSpace(item))
@@ -304,8 +342,8 @@ func mergePythonImportedFunctions(path string, lines []srcLine, functions map[st
 		count int
 	}
 	candidates := map[string]importedHelper{}
-	for _, line := range maskedPythonLines(lines) {
-		if m := pyImportRe.FindStringSubmatch(line.text); m != nil {
+	for _, text := range pythonImportStatements(lines, false) {
+		if m := pyImportRe.FindStringSubmatch(text); m != nil {
 			for _, item := range strings.Split(m[1], ",") {
 				fields := strings.Fields(strings.TrimSpace(item))
 				if len(fields) == 0 || (len(fields) != 1 && (len(fields) != 3 || fields[1] != "as")) {
@@ -342,7 +380,7 @@ func mergePythonImportedFunctions(path string, lines []srcLine, functions map[st
 			}
 			continue
 		}
-		m := pyFromImportRe.FindStringSubmatch(line.text)
+		m := pyFromImportRe.FindStringSubmatch(text)
 		if m == nil {
 			continue
 		}

@@ -130,7 +130,9 @@ functions and helpers called through explicit module aliases across
 same-directory modules, including parent-package modules reached through
 explicit relative imports. Parent traversal requires an `__init__.py` marker
 at each package level, so a crafted import cannot expand a single-file scan
-into unrelated parent directories.
+into unrelated parent directories. Parenthesized and backslash-continued
+`import` statements are handled as one statement, including multiline named
+helper imports.
 
 C# analysis recognizes `[McpServerTool]` methods inside `[McpServerToolType]`
 classes, tracks direct argument reads, simple local assignments and arguments
