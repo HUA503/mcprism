@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Improved
 
+- Follow exported methods on explicitly known types from local Go module imports,
+  including receiver types inferred from imported constructors.
 - Trace tainted receivers through uniquely resolved same-file and explicitly
   imported Kotlin top-level extension helpers during SAST scans.
 - Follow uniquely resolved type-qualified and concrete-type receiver C# helper

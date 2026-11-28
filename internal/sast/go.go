@@ -269,7 +269,20 @@ func buildGoHelperIndex(sourcePaths []string) *goHelperIndex {
 		}
 		current.functions = map[string]handlerBlock{}
 		for name, helper := range info.functions {
-			if strings.HasPrefix(name, "@") || name == "" {
+			if strings.HasPrefix(name, "@") {
+				separator := strings.LastIndexByte(name, '.')
+				if separator < 0 || separator == len(name)-1 {
+					continue
+				}
+				methodName := name[separator+1:]
+				first, _ := utf8.DecodeRuneInString(methodName)
+				if !unicode.IsUpper(first) {
+					continue
+				}
+				current.functions[name] = helper
+				continue
+			}
+			if name == "" {
 				continue
 			}
 			first, _ := utf8.DecodeRuneInString(name)
@@ -610,6 +623,9 @@ func goFunctionBlock(src string, fset *token.FileSet, fn *ast.FuncDecl, path str
 		lines: linesRange(src, fset.Position(fn.Body.Lbrace).Offset, fset.Position(fn.Body.Rbrace).Offset+1), path: path,
 		goImports: imports, goSourceBytes: int64(len(src)),
 	}
+	if fn.Type.Results != nil && len(fn.Type.Results.List) > 0 {
+		block.goReturnType = goTypeName(fn.Type.Results.List[0].Type)
+	}
 	if fn.Recv != nil && len(fn.Recv.List) > 0 {
 		field := fn.Recv.List[0]
 		block.receiverType = goTypeName(field.Type)
@@ -630,6 +646,10 @@ func goTypeName(expr ast.Expr) string {
 		return goTypeName(t.X)
 	case *ast.IndexListExpr:
 		return goTypeName(t.X)
+	case *ast.SelectorExpr:
+		if pkg, ok := t.X.(*ast.Ident); ok {
+			return pkg.Name + "." + t.Sel.Name
+		}
 	}
 	return ""
 }
@@ -752,6 +772,11 @@ func goExprType(expr ast.Expr, known map[string]string) string {
 		if id, ok := e.Fun.(*ast.Ident); ok {
 			return known[goConstructorTypeKey(id.Name)]
 		}
+		if selector, ok := e.Fun.(*ast.SelectorExpr); ok {
+			if pkg, ok := selector.X.(*ast.Ident); ok {
+				return known[goConstructorTypeKey(pkg.Name+"."+selector.Sel.Name)]
+			}
+		}
 	case *ast.Ident:
 		return known[e.Name]
 	}
@@ -850,7 +875,27 @@ func scanReachableGo(path string, entry handlerBlock, functions map[string]handl
 
 		text := maskGoComments(joinLines(block.lines))
 		ctrl := goTaintedNames(block.lines, params)
-		receiverTypes := goLocalReceiverTypes(block.lines, block.receiverTypes)
+		knownTypes := make(map[string]string, len(block.receiverTypes)+8)
+		for name, typ := range block.receiverTypes {
+			knownTypes[name] = typ
+		}
+		if index != nil {
+			for importPath, aliases := range block.goImports {
+				packageFunctions, found := index.importedFunctions[importPath]
+				if !found {
+					continue
+				}
+				for name, helper := range packageFunctions {
+					if strings.HasPrefix(name, "@") || helper.goReturnType == "" {
+						continue
+					}
+					for _, alias := range aliases {
+						knownTypes[goConstructorTypeKey(alias+"."+name)] = alias + "." + helper.goReturnType
+					}
+				}
+			}
+		}
+		receiverTypes := goLocalReceiverTypes(block.lines, knownTypes)
 		if block.receiverName != "" && block.receiverType != "" {
 			receiverTypes[block.receiverName] = block.receiverType
 		}
@@ -861,7 +906,15 @@ func scanReachableGo(path string, entry handlerBlock, functions map[string]handl
 			if call[0] > 0 && text[call[0]-1] == '.' {
 				receiver := goSelectorReceiver(text, call[0])
 				if typ := receiverTypes[receiver]; typ != "" {
-					if method, found := blockFunctions[goMethodKey(typ, name)]; found {
+					if dot := strings.IndexByte(typ, '.'); dot > 0 && index != nil {
+						importPath := goImportedPathForAlias(block.goImports, typ[:dot])
+						if packageFunctions, found := index.importedFunctions[importPath]; found {
+							helper, ok = packageFunctions[goMethodKey(typ[dot+1:], name)]
+							importedCall = ok
+						} else {
+							ok = false
+						}
+					} else if method, found := blockFunctions[goMethodKey(typ, name)]; found {
 						helper, ok = method, true
 					} else {
 						ok = false

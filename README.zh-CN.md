@@ -405,7 +405,7 @@ mcprism vet ./mcp-server/src/tool.ts
 - Rust：官方 `rmcp` SDK 的 `#[tool]` 方法。
 - Java：官方 SDK 的 `.callHandler(...)` / `.toolCall(...)` lambda 回调及 Spring AI `@McpTool` 方法；可追踪同文件 helper，以及接收者类型明确且目标方法唯一的跨文件调用（最多 8 层）。
 
-对每个工具，它把 handler 参数当作攻击者可控的数据。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 还能跨同一 package 的多个源码文件追踪唯一普通函数和 receiver 类型可识别的方法，也会沿 `go.mod` 中本地 package 的显式导入继续追踪已导出的函数（每个入口最多 8 层、64 个源码文件、16 MiB）；此外会识别标准库危险 sink 的显式导入别名。Rust 支持多层同文件 helper 调用。发现会标明文件和行号、展示代码、给出修复方式：
+对每个工具，它把 handler 参数当作攻击者可控的数据。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 还能跨同一 package 的多个源码文件追踪唯一普通函数和 receiver 类型可识别的方法，也会沿 `go.mod` 中本地 package 的显式导入继续追踪已导出的函数及已知类型的方法（每个入口最多 8 层、64 个源码文件、16 MiB）；此外会识别标准库危险 sink 的显式导入别名。Rust 支持多层同文件 helper 调用。发现会标明文件和行号、展示代码、给出修复方式：
 
 | 规则 | sink | 默认级别 |
 |---|---|---|
@@ -446,13 +446,13 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
 });
 ```
 
-引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 可跨同一 package 追踪唯一普通函数，以及 receiver 类型能从同文件声明、字面量、唯一的同 package 构造函数返回类型或当前方法 receiver 推断的方法（包括 handler 闭包捕获的对象）；目录扫描时，还会根据 `go.mod` 解析扫描树内本地 package 的显式导入，并追踪已导出的函数及其 helper 链（每个入口最多 8 层、64 个源码文件、16 MiB）。Python 和 JS/TS 可沿同目录模块的显式导入及 helper 调用链追踪（同样有深度、文件数和源码大小上限）；Python 还支持 `__init__.py` 标记包中的多层相对导入。Rust 在 Cargo 项目目录扫描时，还会跟踪通过 `crate`、`self`、`super` 显式导入的唯一命名跨文件自由函数（每个入口最多 8 层、64 个源码文件、16 MiB）；不解析分组导入、重导出、直接限定路径调用、宏或 trait 分派。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
+引擎使用模式匹配，不依赖第三方解析器，因此二进制保持小巧、自包含。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 可跨同一 package 追踪唯一普通函数，以及 receiver 类型能从同文件声明、字面量、唯一的同 package 构造函数返回类型或当前方法 receiver 推断的方法（包括 handler 闭包捕获的对象）；目录扫描时，还会根据 `go.mod` 解析扫描树内本地 package 的显式导入，并追踪已导出的函数和已知 receiver 类型上的方法及其 helper 链（每个入口最多 8 层、64 个源码文件、16 MiB）。Python 和 JS/TS 可沿同目录模块的显式导入及 helper 调用链追踪（同样有深度、文件数和源码大小上限）；Python 还支持 `__init__.py` 标记包中的多层相对导入。Rust 在 Cargo 项目目录扫描时，还会跟踪通过 `crate`、`self`、`super` 显式导入的唯一命名跨文件自由函数（每个入口最多 8 层、64 个源码文件、16 MiB）；不解析分组导入、重导出、直接限定路径调用、宏或 trait 分派。请注意下面这些边界，不要把“没报问题”理解成“证明安全”：
 
 Python 的 sink 规则会识别 `os`、`subprocess`、`requests`、`httpx`、`urllib`、`pathlib`、`pickle`、`marshal` 和 `yaml` 的显式模块/函数导入别名，也会跟踪 `run = subprocess.run` 这类简单的本地函数别名及其赋值链；动态表达式或被重新赋值为其他值的变量不会跟踪。
 
 JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`http`、`https`、`got`、`request`、`node-fetch` 和 `undici` 的具名 ES 导入及解构式 CommonJS 导入别名；支持的请求库还可通过静态模块别名调用。
 
-- 跨文件追踪覆盖 Go 同 package 普通函数、可推断 receiver 类型的方法，以及通过 `go.mod` 导入的本地 package 已导出函数；不会跟踪外部依赖或本地导入类型上的 method。Python/JS/TS 跟踪显式导入的 helper，其中 Python/JS/TS 有深度、文件数和源码体积上限，且不追踪重新导出。Python 支持 `__init__.py` 标记包中的显式多层相对导入；不解析绝对 dotted package 导入。JS/TS 支持同目录模块的具名和命名空间 ES 导入、解构式 CommonJS `require()` 导入，以及通过模块对象进行的静态具名调用；不支持默认 ES 导入、动态计算的属性名或 npm 等包导入。命名空间导入仅追踪直接调用的已导出函数。Go 无法识别或无法唯一确定 receiver 类型的 method 调用仍不会追踪。JS/TS、Python 和 Go 还会追踪由受控输入赋值的简单静态字段；Python 和 Go 支持字面量字典/map 键。引擎不建模任意对象图、函数返回值或动态分派。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
+- 跨文件追踪覆盖 Go 同 package 普通函数、可推断 receiver 类型的方法，以及通过 `go.mod` 导入的本地 package 已导出函数和已知类型上的方法；不会跟踪外部依赖。Python/JS/TS 跟踪显式导入的 helper，其中 Python/JS/TS 有深度、文件数和源码体积上限，且不追踪重新导出。Python 支持 `__init__.py` 标记包中的显式多层相对导入；不解析绝对 dotted package 导入。JS/TS 支持同目录模块的具名和命名空间 ES 导入、解构式 CommonJS `require()` 导入，以及通过模块对象进行的静态具名调用；不支持默认 ES 导入、动态计算的属性名或 npm 等包导入。命名空间导入仅追踪直接调用的已导出函数。Go 无法识别或无法唯一确定 receiver 类型的 method 调用仍不会追踪。JS/TS、Python 和 Go 还会追踪由受控输入赋值的简单静态字段；Python 和 Go 支持字面量字典/map 键。引擎不建模任意对象图、函数返回值或动态分派。sink 仍通过模式匹配识别，特殊排版或生成代码可能漏检或误判。
 - Python/Go 会保守地把包含受控变量的局部赋值结果也视为受控，不会分析 helper 实际返回什么；简单的 tuple/list 解包赋值也会传播 taint，Python 支持 `*rest` 目标，Go 同时支持 `var` 声明。Go 的多个 RHS 表达式会按位置追踪；若单个 helper 调用返回多个值，只要调用参数受控，就会保守地将所有目标都标记为受控。因此，即使 helper 总是返回固定白名单值，调用处仍可能报风险。报告需要结合 helper 实现复核。
 - Rust 跨文件追踪只在目录扫描时启用，且仅解析 Cargo 同包内简单 `crate`/`self`/`super` 导入的唯一自由函数；分组导入、重导出、直接限定路径调用和 `tests`、`examples`、`benches`、`src/bin` 文件不会纳入共享 helper 分析。
 - Go 使用标准库 `go/parser` 定位 helper 函数边界，并会跟踪 `run := exec.Command` 这类简单的本地进程执行函数别名；动态表达式和被赋予不同值的变量不会跟踪，且尚未构建全程序数据流图。JS/Python 没有使用 tree-sitter。
