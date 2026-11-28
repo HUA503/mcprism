@@ -145,20 +145,43 @@ func parseJSSinkImports(src string) jsSinkImports {
 			}
 		}
 	}
-	defaultImport := regexp.MustCompile(`\bimport\s+(?:([A-Za-z_$][\w$]*)|\*\s+as\s+([A-Za-z_$][\w$]*))\s+from\s*["']([^"']+)["']`)
-	for _, m := range defaultImport.FindAllStringSubmatch(text, -1) {
-		alias := m[1]
-		if alias == "" {
-			alias = m[2]
-		}
-		module := strings.TrimPrefix(m[3], "node:")
-		if canonical := canonicalJSSinkImport(m[3], "default"); canonical != "" {
+	defaultImport := regexp.MustCompile(`\bimport\s+([A-Za-z_$][\w$]*)(?:\s*,\s*\{([^}]*)\})?\s+from\s*["']([^"']+)["']`)
+	for _, m := range defaultImport.FindAllStringSubmatchIndex(text, -1) {
+		alias := text[m[2]:m[3]]
+		moduleText := text[m[6]:m[7]]
+		module := strings.TrimPrefix(moduleText, "node:")
+		if canonical := canonicalJSSinkImport(moduleText, "default"); canonical != "" {
 			add(imports.calls, imports.ambiguousCalls, alias, canonical)
-			continue
+		} else {
+			switch module {
+			case "child_process", "axios", "got", "request", "node-fetch", "undici", "http", "https", "net", "tls":
+				add(imports.modules, imports.ambiguousModules, alias, module)
+			}
 		}
+		if m[4] >= 0 {
+			for _, item := range splitCallArgs(text[m[4]:m[5]]) {
+				fields := strings.Fields(strings.TrimSpace(item))
+				if len(fields) == 0 {
+					continue
+				}
+				imported, namedAlias := fields[0], fields[0]
+				if len(fields) == 3 && fields[1] == "as" {
+					namedAlias = fields[2]
+				} else if len(fields) != 1 {
+					continue
+				}
+				if canonical := canonicalJSSinkImport(moduleText, imported); canonical != "" {
+					add(imports.calls, imports.ambiguousCalls, namedAlias, canonical)
+				}
+			}
+		}
+	}
+	namespaceImport := regexp.MustCompile(`\bimport\s+\*\s+as\s+([A-Za-z_$][\w$]*)\s+from\s*["']([^"']+)["']`)
+	for _, m := range namespaceImport.FindAllStringSubmatch(text, -1) {
+		module := strings.TrimPrefix(m[2], "node:")
 		switch module {
 		case "child_process", "axios", "got", "request", "node-fetch", "undici", "http", "https", "net", "tls":
-			add(imports.modules, imports.ambiguousModules, alias, module)
+			add(imports.modules, imports.ambiguousModules, m[1], module)
 		}
 	}
 	for _, pattern := range []string{
@@ -418,15 +441,20 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 		merge(text[m[4]:m[5]], parseBindings(text[m[2]:m[3]], "as"))
 	}
 
-	// Default imports are followed only when the local module has one statically
+	// Default imports, including default-plus-named imports, are followed only
+	// when the local module has one statically
 	// recognized default function export. The module loader records that export
 	// under the synthetic name "default"; default-exported values are not guessed.
-	defaultImport := regexp.MustCompile(`\bimport\s+([A-Za-z_$][\w$]*)\s+from\s*["']([^"']+)["']`)
+	defaultImport := regexp.MustCompile(`\bimport\s+([A-Za-z_$][\w$]*)(?:\s*,\s*\{([^}]*)\})?\s+from\s*["']([^"']+)["']`)
 	for _, m := range defaultImport.FindAllStringSubmatchIndex(text, -1) {
 		if m[1]-m[0] < len("import") || structure[m[0]:m[0]+len("import")] != "import" {
 			continue
 		}
-		merge(text[m[4]:m[5]], []binding{{original: "default", alias: text[m[2]:m[3]]}})
+		bindings := []binding{{original: "default", alias: text[m[2]:m[3]]}}
+		if m[4] >= 0 {
+			bindings = append(bindings, parseBindings(text[m[4]:m[5]], "as")...)
+		}
+		merge(text[m[6]:m[7]], bindings)
 	}
 
 	// Namespace imports expose exported helpers through a static property

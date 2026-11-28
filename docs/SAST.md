@@ -193,7 +193,8 @@ Python supports
 named imports and direct module imports with an alias, including multi-level
 relative imports inside marked packages. JS/TS follows named, namespace and
 default ES imports plus CommonJS `require()` imports and local helper calls in
-imported modules within the limits above. Default imports are followed only
+imported modules within the limits above. Standalone default imports and
+default-plus-named imports are followed only
 when the local module statically exports a named function as its default (or
 exports a locally indexed helper identifier); anonymous default functions,
 computed module-object properties, re-exports, package resolution and other
