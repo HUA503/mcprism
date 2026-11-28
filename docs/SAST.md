@@ -35,7 +35,7 @@ downloads source, it is the one `vet` source mode that needs network access.
 |---|---|
 | JavaScript / TypeScript | `McpServer.tool(...)`, `Server.setRequestHandler(CallToolRequestSchema, ...)`, generic `.tool(...)` registrations |
 | Python | `FastMCP` `@mcp.tool()`, low-level `call_tool` handler, and direct local function callbacks passed to `.tool(...)`, `.add_tool(...)` or `.register_tool(...)` |
-| Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` inline callbacks and directly named handlers using `context.Context` plus `mcp.CallToolRequest` |
+| Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` inline callbacks, directly named handlers and method values resolved by receiver type or a unique matching MCP handler method, using `context.Context` plus `mcp.CallToolRequest` |
 | Rust | official `rmcp` SDK methods marked with `#[tool]` |
 | Kotlin | Official Kotlin SDK `server.addTool(...) { request -> ... }` callbacks |
 | Java | Official Java SDK `.callHandler(...)` / `.toolCall(...)` lambda handlers; Spring AI `@McpTool` methods |
@@ -120,7 +120,9 @@ follows simple local assignments and propagates taint through arguments passed
 to unambiguous helper functions. JavaScript/TypeScript helper tracking covers function declarations
 and block-bodied `const`/`let`/`var` arrow functions. Go uses the standard
 library parser to identify function boundaries and MCP tool registrations,
-including directly named `AddTool` handlers with the standard request signature.
+including directly named handlers and method values with the standard request
+signature when the receiver type is known or only one matching MCP method
+exists in the package.
 It follows unique free-function helpers plus receiver-type-matched methods
 across files in the same package.
 It also follows exported functions imported from local packages in the same Go
