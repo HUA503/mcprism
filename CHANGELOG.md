@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Add initial Java SAST for tool callbacks registered through the official
+  Java SDK's `.callHandler(...)` and `.toolCall(...)` lambda APIs.
+
 ### Improved
 
 - Recognize Python tool callbacks registered through common `.tool(...)`,

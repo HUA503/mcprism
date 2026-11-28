@@ -15,7 +15,7 @@ MCP server 把 AI 助手连接到 GitHub、文件、数据库等外部工具和�
 mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server 的安全扫描器。它从三个角度审查一个 server：
 
 1. **配置**：客户端如何启动或连接它——版本是否固定、是否明文传输、配置里有没有凭据、是否指向云元数据或内网。
-2. **源码**：当实现代码就在本地时，读取 JS/TS/Python/Go/Rust 的工具 handler，追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及 eval、不安全反序列化和硬编码密钥。
+2. **源码**：当实现代码就在本地时，读取 JS/TS/Python/Go/Rust 的工具 handler，并检查官方 Java SDK 的直接回调；追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及 eval、不安全反序列化和硬编码密钥。
 3. **运行时**：自动协商新版无状态 MCP 协议或旧版握手，列出 tools、resources、prompts，并检查元数据是否被投毒；显式开启 `--read-content` 时还会读取有限的正文。它不会调用任何工具。
 
 每个 server 都会得到一份发现清单、一个 0–100 的分数和一个 A–F 的评级。整个工具是一个 Go 二进制，没有运行时依赖。本地配置和源码扫描完全离线；`registry` 命令会主动连接官方 Registry 获取公开元数据，但不会启动或连接条目中的 server。动态探测必须显式开启（`--dynamic` / `--probe`）。
@@ -129,7 +129,7 @@ mcprism vet server.py            # 审查单个文件
 ## 功能
 
 - 单个二进制。不用装 Python 或 Node，不需要 LLM API key，也不用注册账号。
-- 默认静态。它读取配置，在有本地代码时审查 JS/TS/Python/Go/Rust 源码；加 `--dynamic` 才会自动协商新旧 MCP 协议并列出 tools/resources/prompts，但不会调用任何工具。
+- 默认静态。它读取配置，在有本地代码时审查 JS/TS/Python/Go/Rust 源码，并检查官方 Java SDK 的直接回调；加 `--dynamic` 才会自动协商新旧 MCP 协议并列出 tools/resources/prompts，但不会调用任何工具。
 - 看 schema。对于没有源码的在线 server，如果名为 command、url、path 之类的字符串参数接受任意值，会按命令执行、SSRF、路径风险报出；用 enum、const、pattern 约束过的参数不报。
 - 工具投毒检测。离线、确定性的特征规则会检查工具元数据和 server instructions，覆盖常见英文、简体中文、繁体中文、日文和韩文提示注入语句，包括角色扮演式越狱和伪造新指令优先级。它能识别已知模式，但不能理解所有改写，也不能证明元数据安全。
 - 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套配置。
@@ -403,6 +403,7 @@ mcprism vet ./mcp-server/src/tool.ts
 - Python：`FastMCP` 的 `@mcp.tool()` 装饰器、底层 `call_tool` handler，以及 `.tool(...)`、`.add_tool(...)`、`.register_tool(...)` 直接传入的本地函数回调。
 - Go：mcp-go 的 `server.AddTool` / `mcp.AddTool` 回调。
 - Rust：官方 `rmcp` SDK 的 `#[tool]` 方法。
+- Java：官方 SDK 的 `.callHandler(...)` / `.toolCall(...)` lambda 回调；当前仅跟踪回调中的直接参数流。
 
 对每个工具，它把 handler 参数当作攻击者可控的数据。JS/TS、Python、Go 和 Rust 会追踪简单局部别名及传入明确 helper 的参数；Go 还能跨同一 package 的多个源码文件追踪唯一普通函数和 receiver 类型可识别的方法，也会沿 `go.mod` 中本地 package 的显式导入继续追踪已导出的函数（每个入口最多 8 层、64 个源码文件、16 MiB）；此外会识别标准库危险 sink 的显式导入别名。Rust 支持多层同文件 helper 调用。发现会标明文件和行号、展示代码、给出修复方式：
 
@@ -456,7 +457,7 @@ JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`ht
 - Rust 跨文件追踪只在目录扫描时启用，且仅解析 Cargo 同包内简单 `crate`/`self`/`super` 导入的唯一自由函数；分组导入、重导出、直接限定路径调用和 `tests`、`examples`、`benches`、`src/bin` 文件不会纳入共享 helper 分析。
 - Go 使用标准库 `go/parser` 定位 helper 函数边界，并会跟踪 `run := exec.Command` 这类简单的本地进程执行函数别名；动态表达式和被赋予不同值的变量不会跟踪，且尚未构建全程序数据流图。JS/Python 没有使用 tree-sitter。
 - Rust 识别 `rmcp` 的 `#[tool]` 宏，以及常见进程、`reqwest`、文件系统和密钥模式；进程与文件规则支持 `std::process::Command`、`std::fs::File` 的直接及分组 `use` 别名。
-- 只分析 JavaScript/TypeScript、Python、Go、Rust；其他语言写的 server 只做配置和元数据层面的检查。
+- JavaScript/TypeScript、Python、Go、Rust 会执行各自文档描述的源码分析；Java 当前仅覆盖官方 SDK 显式 lambda 回调中的直接数据流。其他语言写的 server 只做配置和元数据层面的检查。
 
 对高风险 server，请配合完整数据流分析工具和人工复核一起使用。规则细节和更多示例见 [docs/SAST.md](docs/SAST.md)。
 
