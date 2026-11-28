@@ -149,10 +149,12 @@ sinks. Request calls from explicitly imported Ktor `get`, `post`, `put`,
 same-file block-bodied and simple single-line expression-bodied helper
 functions up to eight calls deep. In directory scans it also follows uniquely
 resolved, explicitly imported top-level helper functions in local Kotlin files,
-within an index capped at 64 files and 16 MiB. It does not follow implicit `it`
-callbacks, unqualified cross-file calls, multiline expression bodies,
-extension functions, overloads or complex expressions; the Kotlin pass is
-lexical and does not compile the project.
+within an index capped at 64 files and 16 MiB. It also follows uniquely named
+same-file extension helpers and uniquely resolved, explicitly imported
+top-level extension helpers when the receiver or an argument is tainted. It
+does not follow implicit `it` callbacks, unqualified cross-file calls,
+multiline expression bodies, overloads or complex expressions; the Kotlin pass
+is lexical and does not compile the project.
 JS/TS follows named and namespace ES imports, destructured CommonJS
 `require()` imports, and direct named calls through a statically required
 CommonJS module object when they reference exported helpers from same-directory

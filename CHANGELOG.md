@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Improved
 
+- Trace tainted receivers through uniquely resolved same-file and explicitly
+  imported Kotlin top-level extension helpers during SAST scans.
 - Follow uniquely resolved type-qualified and concrete-type receiver C# helper
   calls across files during directory scans, with bounded indexing and sink
   locations in the helper file.
