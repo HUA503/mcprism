@@ -37,11 +37,12 @@ downloads source, it is the one `vet` source mode that needs network access.
 | Python | `FastMCP` `@mcp.tool()`, low-level `call_tool` handler, and direct local function callbacks passed to `.tool(...)`, `.add_tool(...)` or `.register_tool(...)` |
 | Go | mcp-go `server.AddTool(...)` / `mcp.AddTool(...)` callbacks |
 | Rust | official `rmcp` SDK methods marked with `#[tool]` |
+| Kotlin | Official Kotlin SDK `server.addTool(...) { request -> ... }` callbacks |
 | Java | Official Java SDK `.callHandler(...)` / `.toolCall(...)` lambda handlers; Spring AI `@McpTool` methods |
 | C# | Official C# SDK methods marked `[McpServerTool]` inside `[McpServerToolType]` classes |
 
 Files with the extensions `.js .jsx .ts .tsx .mts .cts .mjs .cjs`, `.py`, `.go`,
-`.rs`, `.java` and `.cs` are reviewed. Cargo projects are recognized through
+`.rs`, `.java`, `.cs`, `.kt` and `.kts` are reviewed. Cargo projects are recognized through
 `Cargo.toml`; Java projects through Maven or Gradle manifests; C# projects
 through `.csproj` or `.sln` files. Build output such as `target/`, `build/`,
 `bin/`, `obj/`, `.gradle/` and `out/` is skipped, as are dependency and
@@ -139,6 +140,14 @@ delegates, reflection, dependency-injection wiring, returned values, unqualified
 cross-file calls or interface dispatch through injected services; ambiguous
 type/method names are skipped. C# parsing is lexical and may miss syntax hidden
 by complex attributes or newer language constructs.
+Kotlin recognizes trailing-lambda callbacks registered through the official
+SDK's `server.addTool(...) { request -> ... }` API. It follows direct reads of
+`request.arguments` through simple `val`/`var` assignments into process,
+request-target, filesystem, script-evaluation, deserialization and class-loading
+sinks. Request calls from explicitly imported Ktor `get`, `post`, `put`,
+`delete` and `request` extensions are included. It does not follow helper
+functions, implicit `it` callbacks, cross-file calls or complex expressions;
+the Kotlin pass is lexical and does not compile the project.
 JS/TS follows named and namespace ES imports, destructured CommonJS
 `require()` imports, and direct named calls through a statically required
 CommonJS module object when they reference exported helpers from same-directory
@@ -374,6 +383,20 @@ public static class Tools
 
 The scanner marks the `command` parameter as tool-controlled and reports
 MCP801 at the process launch.
+
+Vulnerable (Kotlin, official SDK):
+
+```kotlin
+import java.io.File
+
+server.addTool(name = "read_file", description = "Read a file") { request ->
+    val path = request.arguments?.get("path")?.jsonPrimitive?.content ?: error("path required")
+    File(path).readText()
+}
+```
+
+The scanner marks `path` as tool-controlled and reports MCP803 at the `File`
+construction.
 
 Vulnerable (Go), a tool argument handed to a shell:
 
