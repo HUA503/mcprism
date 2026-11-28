@@ -366,6 +366,14 @@ fail:
 rules:
   MCP106:
     severity: high
+customRules:
+  - id: CUSTOM-TEAM-001
+    title: 禁止使用已弃用的 server
+    severity: high
+    field: server.target
+    pattern: '(?i)legacy-mcp-server'
+    description: 团队已停用这个 server。
+    advice: 请替换为批准使用的包。
 allow:
   packages: ["@modelcontextprotocol/*"]
 deny:
@@ -375,7 +383,7 @@ capabilities:
   requireNetworkIsolation: true
 ```
 
-命中 deny 会报 `MCP700`；在隔离要求下，有文件/shell 能力且能联网的 server 会报 `MCP701`。参考 [`examples/policy.yml`](examples/policy.yml)、[`examples/suppressions.yml`](examples/suppressions.yml) 和[策略指南](docs/POLICIES.md)。合规门和机器可读输出见 [docs/COMPLIANCE.md](docs/COMPLIANCE.md)。
+命中 deny 会报 `MCP700`；在隔离要求下，有文件/shell 能力且能联网的 server 会报 `MCP701`。`customRules` 可用 Go 正则按 server、工具/提示元数据或已有发现中的字段添加团队自定义检查；报告只显示字段和位置，不复制匹配原文。参考 [`examples/policy.yml`](examples/policy.yml)、[`examples/suppressions.yml`](examples/suppressions.yml) 和[策略指南](docs/POLICIES.md)。合规门和机器可读输出见 [docs/COMPLIANCE.md](docs/COMPLIANCE.md)。
 
 ## 源码分析（SAST）
 
@@ -639,7 +647,7 @@ flowchart TD
 
 - [ ] 随着 MCP 规范演进，增加规则、降低误报
 - [x] MCP Registry 扫描
-- [ ] 策略覆盖之外的用户自定义规则
+- [x] 策略文件中的用户自定义匹配规则
 - [x] pre-commit hook
 - [x] GitHub Actions 集成和 SARIF 输出
 - [ ] 编辑器集成（VS Code、JetBrains）

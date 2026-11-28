@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Add policy-defined custom regex checks for server settings, collected MCP
+  metadata and existing findings, with matched text omitted from reports.
+
 ## [0.42.5] - 2026-11-28
 
 ### Fixed

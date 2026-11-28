@@ -22,14 +22,19 @@ func commandBase(cmd string) string {
 	return p
 }
 
-// Enforce 对引擎结果应用策略：规则开关/严重级覆盖、deny 清单命中、
+// Enforce 对引擎结果应用策略：内置规则覆盖、自定义检查、deny 清单、
 // 网络隔离约束，然后重算分数。建议顺序：Analyze → Enforce →
 // ApplySuppressions → Rescore。
-func Enforce(results []*rules.Result, p *Policy) []*rules.Result {
+func Enforce(results []*rules.Result, p *Policy, inputs ...rules.Input) []*rules.Result {
 	if p == nil {
 		return results
 	}
-	for _, r := range results {
+	customRules := compileCustomRules(p.CustomRules)
+	for i, r := range results {
+		var input *rules.Input
+		if i < len(inputs) {
+			input = &inputs[i]
+		}
 		// 1. 规则覆盖
 		if len(p.Rules) > 0 {
 			kept := r.Findings[:0]
@@ -45,7 +50,6 @@ func Enforce(results []*rules.Result, p *Policy) []*rules.Result {
 			}
 			r.Findings = kept
 		}
-
 		// 2. deny 清单（allow 优先）
 		if hit, pat := matchDeny(r, p); hit {
 			r.Findings = append(r.Findings, rules.Finding{
@@ -67,6 +71,10 @@ func Enforce(results []*rules.Result, p *Policy) []*rules.Result {
 				Advice:      "Run the server without network egress, or split the capabilities across isolated servers.",
 			})
 		}
+
+		// 4. Team-defined checks see built-in and policy findings, but their
+		// reports contain only the matched field and location.
+		applyCustomRules(r, input, customRules)
 		rules.Rescore(r)
 	}
 	return results

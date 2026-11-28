@@ -133,7 +133,7 @@ func audit(servers []*config.Server, files []string, dynamic bool, o auditOpts) 
 	}
 
 	results := rules.AnalyzeAll(inputs)
-	results = policy.Enforce(results, pol)
+	results = policy.Enforce(results, pol, inputs...)
 
 	results = policy.ApplySuppressions(results, sups, time.Now())
 	if o.baseline != "" {

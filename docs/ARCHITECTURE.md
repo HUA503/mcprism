@@ -82,10 +82,10 @@ findings are changed by policy.
 ### policy
 
 `policy.Policy` is the parsed YAML. The package loads built-in profiles
-(`default`, `strict`, `ci`), applies rule overrides and allow/deny/network
-constraints (`Enforce`), applies an accepted-risk register
-(`ApplySuppressions`), and produces a `rules.Compliance` verdict
-(`Evaluate`).
+(`default`, `strict`, `ci`), applies rule overrides and team-defined regex
+checks plus allow/deny/network constraints (`Enforce`), applies an
+accepted-risk register (`ApplySuppressions`), and produces a
+`rules.Compliance` verdict (`Evaluate`).
 
 ### report
 

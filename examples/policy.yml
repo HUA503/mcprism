@@ -16,6 +16,17 @@ rules:
   MCP107:
     enabled: false
 
+# Organization-specific checks use regexes on supported scan fields.
+# Reports identify the field and location without copying the matched text.
+customRules:
+  - id: CUSTOM-TEAM-001
+    title: Legacy MCP server is blocked
+    severity: high
+    field: server.target
+    pattern: '(?i)legacy-mcp-server'
+    description: This team no longer allows the legacy MCP server.
+    advice: Replace it with the approved server package.
+
 # Trusted entries take precedence over deny entries.
 allow:
   packages:

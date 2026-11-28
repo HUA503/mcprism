@@ -56,6 +56,42 @@ rules:
 Severity values are `critical`, `high`, `medium`, `low` (and `info`). List rule
 IDs with `mcprism rules` or see [RULES.md](RULES.md).
 
+### customRules
+
+Add organization-specific checks without changing the built-in rule catalog.
+Each rule applies a Go regular expression to one supported field and emits a
+finding with the configured title, severity, description and advice:
+
+```yaml
+customRules:
+  - id: CUSTOM-TEAM-001
+    title: Legacy MCP server is blocked
+    severity: high
+    field: server.target
+    pattern: '(?i)legacy-mcp-server'
+    description: This team no longer allows the legacy MCP server.
+    advice: Replace it with the approved server package.
+```
+
+IDs must start with `CUSTOM-` and be unique within the policy. Severity is
+`critical`, `high`, `medium`, `low` or `info`. Patterns use Go's RE2 regular
+expression syntax; prefix a pattern with `(?i)` for case-insensitive matching.
+Policies are rejected when a custom rule is incomplete, invalid or exceeds the
+100-rule / 2048-byte-pattern limits.
+
+Supported fields are `server.name`, `server.command`, `server.args`,
+`server.url`, `server.target`, `server.transport`, `server.source`,
+`server.client`, `server.cwd`, `server.env_key`, `server.header_key`,
+`tool.name`, `tool.title`,
+`tool.description`, `tool.schema`, `resource.name`, `resource.description`,
+`prompt.name`, `prompt.description`, `content.text`, `finding.rule`,
+`finding.title`, `finding.severity`, `finding.location` and
+`finding.evidence`. Metadata fields are available when collected by the scan;
+for example, `content.text` requires an explicit dynamic content-read option.
+Reports show the matched field and location but do not include the matched text,
+which may contain sensitive data. Findings can be suppressed and used by the
+normal policy compliance gate like built-in rules.
+
 ### allow and deny
 
 Each list matches `packages`, `commands` and `domains`:
