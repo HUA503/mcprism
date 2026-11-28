@@ -524,18 +524,57 @@ var goCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
 // extractGoHandlers finds mcp-go tool registrations (server.AddTool / mcp.AddTool)
 // and returns each tool's callback body. It accepts inline function literals
 // and directly named handlers with the MCP CallToolRequest signature.
+var goAddToolRe = regexp.MustCompile(`\.?AddTool\s*\(`)
+
 func extractGoHandlers(src string) []handlerBlock {
 	return extractGoHandlersWithFunctions(src, extractGoFunctions(src))
 }
 
 func extractGoHandlersWithFunctions(src string, functions map[string]handlerBlock) []handlerBlock {
 	var out []handlerBlock
+	imports := goImportAliasesFromSource(src)
+	// Keep inline callback extraction tolerant of incomplete source snippets.
+	// AnalyzeFile is also used on fragments that are not valid Go compilation
+	// units, where go/parser will not build an AST node for a top-level call.
+	for _, match := range goAddToolRe.FindAllStringIndex(src, -1) {
+		openParen := match[1] - 1
+		closeParen := matchClose(src, openParen, '(', ')')
+		if closeParen < 0 {
+			continue
+		}
+		segment := src[openParen:closeParen]
+		funcIndex := strings.LastIndex(segment, "func(")
+		if funcIndex < 0 {
+			continue
+		}
+		absFunc := openParen + funcIndex
+		paramsOpen := indexByteFrom(src, absFunc, '(', closeParen)
+		paramsClose := matchClose(src, paramsOpen, '(', ')')
+		if paramsClose < 0 {
+			continue
+		}
+		bodyOpen := indexByteFrom(src, paramsClose, '{', closeParen)
+		if bodyOpen < 0 {
+			continue
+		}
+		bodyClose := matchClose(src, bodyOpen, '{', '}')
+		if bodyClose < 0 {
+			continue
+		}
+		name := firstString(src[openParen+1 : absFunc])
+		if name == "" {
+			name = "tool"
+		}
+		out = append(out, handlerBlock{name: name, lines: linesRange(src, bodyOpen, bodyClose), goImports: imports})
+	}
+
+	// Named handlers need AST resolution so we can verify their MCP request
+	// signature and locate their body, including declarations in sibling files.
 	fset := token.NewFileSet()
 	file, _ := parser.ParseFile(fset, "", src, parser.AllErrors)
 	if file == nil {
-		return nil
+		return out
 	}
-	imports := goImportAliasesFromAST(file)
 	ast.Inspect(file, func(node ast.Node) bool {
 		call, ok := node.(*ast.CallExpr)
 		if !ok || len(call.Args) == 0 {
@@ -547,18 +586,6 @@ func extractGoHandlersWithFunctions(src string, functions map[string]handlerBloc
 		}
 		callback := call.Args[len(call.Args)-1]
 		switch handler := callback.(type) {
-		case *ast.FuncLit:
-			if handler.Body == nil {
-				return true
-			}
-			nameEnd := fset.Position(callback.Pos()).Offset
-			name := firstString(src[fset.Position(call.Args[0].Pos()).Offset:nameEnd])
-			if name == "" {
-				name = "tool"
-			}
-			open := fset.Position(handler.Body.Lbrace).Offset
-			close := fset.Position(handler.Body.Rbrace).Offset
-			out = append(out, handlerBlock{name: name, lines: linesRange(src, open, close), goImports: imports})
 		case *ast.Ident:
 			block, found := functions[handler.Name]
 			if !found || !block.goToolHandler {
