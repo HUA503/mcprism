@@ -146,12 +146,13 @@ SDK's `server.addTool(...) { request -> ... }` API. It follows direct reads of
 request-target, filesystem, script-evaluation, deserialization and class-loading
 sinks. Request calls from explicitly imported Ktor `get`, `post`, `put`,
 `delete` and `request` extensions are included. It follows uniquely named
-same-file block-bodied helper functions up to eight calls deep. In directory
-scans it also follows uniquely resolved, explicitly imported top-level helper
-functions in local Kotlin files, within an index capped at 64 files and 16
-MiB. It does not follow implicit `it` callbacks, unqualified cross-file calls,
-expression-bodied helpers, extension functions, overloads or complex
-expressions; the Kotlin pass is lexical and does not compile the project.
+same-file block-bodied and simple single-line expression-bodied helper
+functions up to eight calls deep. In directory scans it also follows uniquely
+resolved, explicitly imported top-level helper functions in local Kotlin files,
+within an index capped at 64 files and 16 MiB. It does not follow implicit `it`
+callbacks, unqualified cross-file calls, multiline expression bodies,
+extension functions, overloads or complex expressions; the Kotlin pass is
+lexical and does not compile the project.
 JS/TS follows named and namespace ES imports, destructured CommonJS
 `require()` imports, and direct named calls through a statically required
 CommonJS module object when they reference exported helpers from same-directory
