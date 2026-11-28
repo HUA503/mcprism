@@ -1129,10 +1129,18 @@ func goTaintedNames(ls []srcLine, seeds []string) map[string]bool {
 	return set
 }
 
+var goVarDeclTargetsRe = regexp.MustCompile(`^([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)(?:\s+.*)?$`)
+
 func goAssignmentTargets(lhs string) []string {
 	lhs = strings.TrimSpace(lhs)
 	lhs = strings.TrimPrefix(lhs, "(")
 	lhs = strings.TrimSuffix(lhs, ")")
+	if strings.HasPrefix(lhs, "var ") {
+		decl := strings.TrimSpace(strings.TrimPrefix(lhs, "var "))
+		if m := goVarDeclTargetsRe.FindStringSubmatch(decl); m != nil {
+			lhs = m[1]
+		}
+	}
 	var targets []string
 	for _, target := range splitCallArgs(lhs) {
 		target = strings.TrimSpace(target)
