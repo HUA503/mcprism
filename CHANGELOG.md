@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Improved
 
+- Detect tool-controlled destinations passed to Node.js `net.connect`,
+  `net.createConnection` and `tls.connect` calls.
 - Detect Python tool input passed to `socket.create_connection` and to
   `.connect()` / `.connect_ex()` on recognized socket instances.
 - Detect Go MCP tool input passed to `net.Dial`, `net.DialTimeout` and
