@@ -67,6 +67,7 @@ function activate(context) {
     let totalFindings = 0;
     let sourceFindings = 0;
     let failedRoots = 0;
+    const documents = new Map();
 
     try {
       for (const folder of folders) {
@@ -93,7 +94,19 @@ function activate(context) {
               }
 
               const uri = vscode.Uri.file(file);
-              const range = new vscode.Range(parsed.line, 0, parsed.line, 0);
+              const uriKey = uri.toString();
+              let document = documents.get(uriKey);
+              if (!document) {
+                try {
+                  document = await vscode.workspace.openTextDocument(uri);
+                  documents.set(uriKey, document);
+                } catch (error) {
+                  output.appendLine(`Could not open ${finding.location} for line highlighting: ${error.message || error}`);
+                }
+              }
+              const line = document ? Math.min(parsed.line, document.lineCount - 1) : parsed.line;
+              const endCharacter = document ? document.lineAt(line).text.length : 0;
+              const range = new vscode.Range(line, 0, line, endCharacter);
               const diagnostic = new vscode.Diagnostic(range, finding.title || finding.description || finding.ruleId, severityFor(finding.severity));
               diagnostic.source = 'mcprism';
               diagnostic.code = finding.ruleId;
