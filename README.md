@@ -188,8 +188,9 @@ extension performs a static scan and does not launch the MCP server.
   Simplified and Traditional Chinese, Japanese, Korean, Spanish, French, German,
   Portuguese, Russian and Arabic. They cover high-signal directives such as
   policy overrides, hidden-prompt disclosure and credential exfiltration.
-  They flag known phrases; they do not understand every paraphrase or prove
-  that metadata is safe.
+  Matching also checks a view with whitespace and invisible format characters
+  removed to catch split phrases. The signatures flag known patterns; they do
+  not understand every paraphrase or prove that metadata is safe.
 - Policy as code. Turn rules on/off, change severity, allow or deny packages,
   commands and domains, and require network isolation. Built-in profiles give
   you `default`, `strict` and `ci` baselines.
