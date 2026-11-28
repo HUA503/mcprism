@@ -603,8 +603,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   trees. Go follows methods on explicitly known types from local module imports;
   opaque or ambiguous receivers remain unresolved. Python and JS/TS module
   traversal is bounded. The engine does not model arbitrary
-  object graphs, returned values, dynamic dispatch, JS/TS ES default imports,
-  computed module-object calls, or package imports. Sink
+  object graphs, returned values, dynamic dispatch, anonymous JS/TS default
+  exports, computed module-object calls, or package imports. Sink
   matching is pattern-based, so unusual formatting and generated code can still
   be missed or misclassified.
 - Go uses the standard-library `go/parser` to locate helper function boundaries;
