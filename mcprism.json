@@ -1,19 +1,19 @@
 {
-    "version": "0.43.2",
+    "version": "0.43.3",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/HUA503/mcprism/releases/download/v0.43.2/mcprism_windows_amd64.zip",
+            "url": "https://github.com/HUA503/mcprism/releases/download/v0.43.3/mcprism_windows_amd64.zip",
             "bin": [
                 "mcprism.exe"
             ],
-            "hash": "cd9454d8383d26f93e1c5269c805a404face41f32791b707a2eef255352810a0"
+            "hash": "39bf8495cc2ef1d44835c4b09999186c57e5c0b8e8f315874f4bb1a80e59ba33"
         },
         "arm64": {
-            "url": "https://github.com/HUA503/mcprism/releases/download/v0.43.2/mcprism_windows_arm64.zip",
+            "url": "https://github.com/HUA503/mcprism/releases/download/v0.43.3/mcprism_windows_arm64.zip",
             "bin": [
                 "mcprism.exe"
             ],
-            "hash": "538eb932f565d6cbac09cf4e2067bcf9b99f6ee88f70abfe8ed82d7b86eedf12"
+            "hash": "cf631af1dbf6bf18da43c0827a26930f155f6c96f7f768605ff5562a3fe31ec0"
         }
     },
     "homepage": "https://github.com/HUA503/mcprism",
