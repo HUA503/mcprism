@@ -603,28 +603,165 @@ func extractGoHandlersWithFunctions(src string, functions map[string]handlerBloc
 			return true
 		}
 		callback := call.Args[len(call.Args)-1]
-		switch handler := callback.(type) {
-		case *ast.Ident:
-			block, found := functions[handler.Name]
-			if !found || !block.goToolHandler {
-				return true
-			}
-			// The registered callback is an entry point, but its context and
-			// request parameters are not themselves tainted values. Argument
-			// extraction in its body seeds taint as it does for inline handlers.
-			block.params = nil
-			out = append(out, block)
-		case *ast.SelectorExpr:
-			block, found := resolveGoMCPSelectorHandler(handler, imports, functions, receiverTypes, index)
-			if !found {
-				return true
-			}
-			block.params = nil
-			out = append(out, block)
+		bindings := goCallbackBindingsAt(file, call.Pos())
+		block, found := resolveGoMCPCallback(callback, bindings, file, fset, src, imports, functions, receiverTypes, index, map[string]bool{})
+		if !found {
+			return true
 		}
+		// The registered callback is an entry point, but its context and
+		// request parameters are not themselves tainted values. Argument
+		// extraction in its body seeds taint as it does for inline handlers.
+		block.params = nil
+		out = append(out, block)
 		return true
 	})
 	return out
+}
+
+type goCallbackBinding struct {
+	expr     ast.Expr
+	declared bool
+}
+
+func goCallbackBindingsAt(file *ast.File, pos token.Pos) map[string]goCallbackBinding {
+	bindings := map[string]goCallbackBinding{}
+	if file == nil {
+		return bindings
+	}
+	type blockSpan struct {
+		block *ast.BlockStmt
+		span  int
+	}
+	var blocks []blockSpan
+	var functionScopes []struct {
+		node ast.Node
+		span int
+	}
+	ast.Inspect(file, func(node ast.Node) bool {
+		switch n := node.(type) {
+		case *ast.BlockStmt:
+			if n.Lbrace <= pos && pos <= n.Rbrace {
+				blocks = append(blocks, blockSpan{block: n, span: int(n.End() - n.Pos())})
+			}
+		case *ast.FuncDecl:
+			if n.Body != nil && n.Body.Pos() <= pos && pos <= n.Body.End() {
+				functionScopes = append(functionScopes, struct {
+					node ast.Node
+					span int
+				}{node: n, span: int(n.Body.End() - n.Body.Pos())})
+			}
+		case *ast.FuncLit:
+			if n.Body != nil && n.Body.Pos() <= pos && pos <= n.Body.End() {
+				functionScopes = append(functionScopes, struct {
+					node ast.Node
+					span int
+				}{node: n, span: int(n.Body.End() - n.Body.Pos())})
+			}
+		}
+		return true
+	})
+	sort.Slice(blocks, func(i, j int) bool { return blocks[i].span > blocks[j].span })
+	sort.Slice(functionScopes, func(i, j int) bool { return functionScopes[i].span > functionScopes[j].span })
+	for _, scope := range functionScopes {
+		switch fn := scope.node.(type) {
+		case *ast.FuncDecl:
+			if fn.Recv != nil {
+				for _, field := range fn.Recv.List {
+					for _, name := range field.Names {
+						bindings[name.Name] = goCallbackBinding{declared: true}
+					}
+				}
+			}
+			if fn.Type.Params != nil {
+				for _, field := range fn.Type.Params.List {
+					for _, name := range field.Names {
+						bindings[name.Name] = goCallbackBinding{declared: true}
+					}
+				}
+			}
+		case *ast.FuncLit:
+			if fn.Type.Params != nil {
+				for _, field := range fn.Type.Params.List {
+					for _, name := range field.Names {
+						bindings[name.Name] = goCallbackBinding{declared: true}
+					}
+				}
+			}
+		}
+	}
+	bind := func(lhs ast.Expr, rhs ast.Expr) {
+		name, ok := lhs.(*ast.Ident)
+		if !ok || name.Name == "_" {
+			return
+		}
+		bindings[name.Name] = goCallbackBinding{expr: rhs, declared: true}
+	}
+	for _, span := range blocks {
+		for _, stmt := range span.block.List {
+			if stmt.Pos() >= pos {
+				break
+			}
+			switch n := stmt.(type) {
+			case *ast.DeclStmt:
+				decl, ok := n.Decl.(*ast.GenDecl)
+				if !ok {
+					continue
+				}
+				for _, spec := range decl.Specs {
+					values, ok := spec.(*ast.ValueSpec)
+					if !ok {
+						continue
+					}
+					for i, name := range values.Names {
+						var rhs ast.Expr
+						if i < len(values.Values) {
+							rhs = values.Values[i]
+						}
+						bind(name, rhs)
+					}
+				}
+			case *ast.AssignStmt:
+				for i, lhs := range n.Lhs {
+					var rhs ast.Expr
+					if len(n.Lhs) == len(n.Rhs) && i < len(n.Rhs) {
+						rhs = n.Rhs[i]
+					}
+					bind(lhs, rhs)
+				}
+			}
+		}
+	}
+	return bindings
+}
+
+func resolveGoMCPCallback(expr ast.Expr, bindings map[string]goCallbackBinding, file *ast.File, fset *token.FileSet, src string, imports map[string][]string, functions map[string]handlerBlock, receiverTypes map[string]string, index *goHelperIndex, visiting map[string]bool) (handlerBlock, bool) {
+	switch handler := expr.(type) {
+	case *ast.ParenExpr:
+		return resolveGoMCPCallback(handler.X, bindings, file, fset, src, imports, functions, receiverTypes, index, visiting)
+	case *ast.Ident:
+		if binding, found := bindings[handler.Name]; found {
+			if !binding.declared || binding.expr == nil || visiting[handler.Name] {
+				return handlerBlock{}, false
+			}
+			visiting[handler.Name] = true
+			block, ok := resolveGoMCPCallback(binding.expr, bindings, file, fset, src, imports, functions, receiverTypes, index, visiting)
+			delete(visiting, handler.Name)
+			return block, ok
+		}
+		block, found := functions[handler.Name]
+		return block, found && block.goToolHandler
+	case *ast.FuncLit:
+		if handler.Body == nil || !goMCPToolHandler(handler.Type, file) {
+			return handlerBlock{}, false
+		}
+		open := fset.Position(handler.Body.Lbrace).Offset
+		close := fset.Position(handler.Body.Rbrace).Offset
+		return handlerBlock{name: "tool", lines: linesRange(src, open, close), goImports: goImportAliasesFromAST(file)}, true
+	case *ast.SelectorExpr:
+		return resolveGoMCPSelectorHandler(handler, imports, functions, receiverTypes, index)
+	default:
+		return handlerBlock{}, false
+	}
 }
 
 func resolveGoMCPSelectorHandler(handler *ast.SelectorExpr, imports map[string][]string, functions map[string]handlerBlock, receiverTypes map[string]string, index *goHelperIndex) (handlerBlock, bool) {
