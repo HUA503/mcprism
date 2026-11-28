@@ -445,6 +445,14 @@ fail:
 rules:
   MCP106:
     severity: high
+customRules:
+  - id: CUSTOM-TEAM-001
+    title: Legacy server is blocked
+    severity: high
+    field: server.target
+    pattern: '(?i)legacy-mcp-server'
+    description: The team has retired this server.
+    advice: Replace it with the approved package.
 allow:
   packages: ["@modelcontextprotocol/*"]
 deny:
@@ -459,6 +467,10 @@ under isolation is reported as `MCP701`. See [`examples/policy.yml`](examples/po
 [`examples/suppressions.yml`](examples/suppressions.yml) and the
 [policy guide](docs/POLICIES.md). For compliance gates and machine output, see
 [docs/COMPLIANCE.md](docs/COMPLIANCE.md).
+
+`customRules` adds organization-specific regex checks over server settings,
+collected metadata and built-in findings. Reports identify the matched field
+and location without copying matched text that could contain sensitive data.
 
 ## Source-code review (SAST)
 
@@ -877,7 +889,7 @@ so only run servers you trust.
 
 - [ ] More rules and fewer false positives as the MCP spec evolves
 - [x] MCP registry scanning
-- [ ] User-defined rules beyond policy overrides
+- [x] User-defined regex checks in policy files
 - [x] Pre-commit hook
 - [x] GitHub Actions integration with SARIF output
 - [ ] Editor integrations (VS Code, JetBrains)
