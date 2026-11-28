@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -51,21 +52,28 @@ type kotlinProjectIndex struct {
 	ambiguous map[string]bool
 }
 
+type kotlinFunctionMatch struct {
+	indices    []int
+	topLevel   bool
+	expression bool
+}
+
 var (
-	kotlinAddToolRe      = regexp.MustCompile(`\.\s*addTool\s*\(`)
-	kotlinLambdaParamRe  = regexp.MustCompile(`(?:\(\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\)?\s*->`)
-	kotlinFunctionRe     = regexp.MustCompile(`(?m)\bfun\s+(?:<[^>]+>\s*)?(?:[A-Za-z_][\w.]*\s*\.\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\(([^()]*)\)\s*(?::[^={\n]+)?\s*\{`)
-	kotlinPackageRe      = regexp.MustCompile(`(?m)^\s*package\s+([A-Za-z_][\w.]*)`)
-	kotlinImportRe       = regexp.MustCompile(`(?m)^\s*import\s+([A-Za-z_][\w.]*)\s*(?:as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$`)
-	kotlinCallRe         = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
-	kotlinAssignmentRe   = regexp.MustCompile(`(?m)\b(?:val|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=\n]+)?\s*=\s*([^\n;]+)`)
-	kotlinKtorImportRe   = regexp.MustCompile(`(?m)^\s*import\s+io\.ktor\.client\.request\.(get|post|put|delete|request)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$`)
-	kotlinProcessSinkRe  = regexp.MustCompile(`(?:ProcessBuilder|Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec)\s*\(`)
-	kotlinNetworkSinkRe  = regexp.MustCompile(`(?:URL|URI)\s*\(|URI\s*\.\s*create\s*\(|HttpRequest\s*\.\s*newBuilder\s*\(|\b[A-Za-z_][\w]*\s*\.\s*(?:getForObject|getForEntity|exchange|execute|GetAsync|PostAsync|PutAsync|SendAsync|GetStringAsync)\s*\(`)
-	kotlinFileSinkRe     = regexp.MustCompile(`(?:File\s*\(|Path\s*\.\s*of\s*\(|Paths\s*\.\s*get\s*\(|Files\s*\.\s*(?:readString|readAllBytes|newInputStream|newOutputStream|write|delete)\s*\()`)
-	kotlinEvalSinkRe     = regexp.MustCompile(`(?:ScriptEngine\s*\.\s*eval|\b[A-Za-z_][\w]*\s*\.\s*eval)\s*\(`)
-	kotlinClassLoadRe    = regexp.MustCompile(`Class\s*\.\s*forName\s*\(`)
-	kotlinDeserialSinkRe = regexp.MustCompile(`(?:ObjectInputStream|\b[A-Za-z_][\w]*\s*\.\s*readObject)\s*\(`)
+	kotlinAddToolRe            = regexp.MustCompile(`\.\s*addTool\s*\(`)
+	kotlinLambdaParamRe        = regexp.MustCompile(`(?:\(\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\)?\s*->`)
+	kotlinFunctionRe           = regexp.MustCompile(`(?m)\bfun\s+(?:<[^>]+>\s*)?(?:[A-Za-z_][\w.]*\s*\.\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\(([^()]*)\)\s*(?::[^={\n]+)?\s*\{`)
+	kotlinExpressionFunctionRe = regexp.MustCompile(`(?m)\bfun\s+(?:<[^>]+>\s*)?(?:[A-Za-z_][\w.]*\s*\.\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\(([^()]*)\)\s*(?::[^=\n]+)?\s*=\s*([^\n;]+)`)
+	kotlinPackageRe            = regexp.MustCompile(`(?m)^\s*package\s+([A-Za-z_][\w.]*)`)
+	kotlinImportRe             = regexp.MustCompile(`(?m)^\s*import\s+([A-Za-z_][\w.]*)\s*(?:as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$`)
+	kotlinCallRe               = regexp.MustCompile(`\b([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
+	kotlinAssignmentRe         = regexp.MustCompile(`(?m)\b(?:val|var)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=\n]+)?\s*=\s*([^\n;]+)`)
+	kotlinKtorImportRe         = regexp.MustCompile(`(?m)^\s*import\s+io\.ktor\.client\.request\.(get|post|put|delete|request)(?:\s+as\s+([A-Za-z_][A-Za-z0-9_]*))?\s*$`)
+	kotlinProcessSinkRe        = regexp.MustCompile(`(?:ProcessBuilder|Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec)\s*\(`)
+	kotlinNetworkSinkRe        = regexp.MustCompile(`(?:URL|URI)\s*\(|URI\s*\.\s*create\s*\(|HttpRequest\s*\.\s*newBuilder\s*\(|\b[A-Za-z_][\w]*\s*\.\s*(?:getForObject|getForEntity|exchange|execute|GetAsync|PostAsync|PutAsync|SendAsync|GetStringAsync)\s*\(`)
+	kotlinFileSinkRe           = regexp.MustCompile(`(?:File\s*\(|Path\s*\.\s*of\s*\(|Paths\s*\.\s*get\s*\(|Files\s*\.\s*(?:readString|readAllBytes|newInputStream|newOutputStream|write|delete)\s*\()`)
+	kotlinEvalSinkRe           = regexp.MustCompile(`(?:ScriptEngine\s*\.\s*eval|\b[A-Za-z_][\w]*\s*\.\s*eval)\s*\(`)
+	kotlinClassLoadRe          = regexp.MustCompile(`Class\s*\.\s*forName\s*\(`)
+	kotlinDeserialSinkRe       = regexp.MustCompile(`(?:ObjectInputStream|\b[A-Za-z_][\w]*\s*\.\s*readObject)\s*\(`)
 )
 
 func analyzeKotlin(path string) []Issue {
@@ -204,13 +212,22 @@ func extractKotlinFunctions(src, code string) map[string]kotlinFunction {
 	functions := map[string]kotlinFunction{}
 	counts := map[string]int{}
 	ambiguous := map[string]bool{}
-	matches, topLevel := kotlinFunctionMatches(code)
-	for i, match := range matches {
+	for _, declaration := range kotlinFunctionMatches(code) {
+		match := declaration.indices
 		name := code[match[2]:match[3]]
-		open := strings.LastIndexByte(code[match[0]:match[1]], '{') + match[0]
-		close := matchClose(code, open, '{', '}')
-		if close < 0 {
-			continue
+		var body string
+		var startLine int
+		if declaration.expression {
+			body = src[match[6]:match[7]]
+			startLine = strings.Count(src[:match[6]], "\n") + 1
+		} else {
+			open := strings.LastIndexByte(code[match[0]:match[1]], '{') + match[0]
+			close := matchClose(code, open, '{', '}')
+			if close < 0 {
+				continue
+			}
+			body = src[open+1 : close]
+			startLine = strings.Count(src[:open+1], "\n") + 1
 		}
 		paramsText := code[match[4]:match[5]]
 		counts[name]++
@@ -223,9 +240,9 @@ func extractKotlinFunctions(src, code string) map[string]kotlinFunction {
 			lineStart := strings.LastIndex(code[:match[0]], "\n") + 1
 			prefix := code[lineStart:match[0]]
 			functions[name] = kotlinFunction{
-				name: name, params: kotlinParameterNames(paramsText), body: src[open+1 : close],
-				startLine: strings.Count(src[:open+1], "\n") + 1,
-				topLevel:  topLevel[i],
+				name: name, params: kotlinParameterNames(paramsText), body: body,
+				startLine: startLine,
+				topLevel:  declaration.topLevel,
 				private:   regexp.MustCompile(`\bprivate\b`).MatchString(prefix),
 				extension: strings.Contains(code[match[0]:match[2]], "."),
 			}
@@ -236,9 +253,9 @@ func extractKotlinFunctions(src, code string) map[string]kotlinFunction {
 
 func kotlinTopLevelFunctionCounts(code string) map[string]int {
 	counts := map[string]int{}
-	matches, topLevel := kotlinFunctionMatches(code)
-	for i, match := range matches {
-		if topLevel[i] {
+	for _, declaration := range kotlinFunctionMatches(code) {
+		match := declaration.indices
+		if declaration.topLevel {
 			if strings.Contains(code[match[0]:match[2]], ".") {
 				continue
 			}
@@ -252,11 +269,20 @@ func kotlinTopLevelFunctionCounts(code string) map[string]int {
 	return counts
 }
 
-func kotlinFunctionMatches(code string) ([][]int, []bool) {
-	matches := kotlinFunctionRe.FindAllStringSubmatchIndex(code, -1)
-	topLevel := make([]bool, len(matches))
+func kotlinFunctionMatches(code string) []kotlinFunctionMatch {
+	var declarations []kotlinFunctionMatch
+	for _, indices := range kotlinFunctionRe.FindAllStringSubmatchIndex(code, -1) {
+		declarations = append(declarations, kotlinFunctionMatch{indices: indices})
+	}
+	for _, indices := range kotlinExpressionFunctionRe.FindAllStringSubmatchIndex(code, -1) {
+		declarations = append(declarations, kotlinFunctionMatch{indices: indices, expression: true})
+	}
+	sort.Slice(declarations, func(i, j int) bool {
+		return declarations[i].indices[0] < declarations[j].indices[0]
+	})
 	depth, cursor := 0, 0
-	for i, match := range matches {
+	for i := range declarations {
+		match := declarations[i].indices
 		for cursor < match[0] {
 			switch code[cursor] {
 			case '{':
@@ -266,9 +292,9 @@ func kotlinFunctionMatches(code string) ([][]int, []bool) {
 			}
 			cursor++
 		}
-		topLevel[i] = depth == 0
+		declarations[i].topLevel = depth == 0
 	}
-	return matches, topLevel
+	return declarations
 }
 
 func kotlinParameterNames(text string) []string {
