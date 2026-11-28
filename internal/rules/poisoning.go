@@ -28,16 +28,23 @@ var injectionSigs = []struct {
 	{regexp.MustCompile(`(?i)(curl|wget|fetch|download)\s+[a-z0-9]+://`), SeverityHigh},
 	// Chinese-language directives are matched explicitly so offline scanning
 	// does not depend on translation or a language model.
-	{regexp.MustCompile(`忽略.{0,8}(之前|先前|上文|以上|原有|系统|系統).{0,8}(指令|指示|提示词|提示詞|提示|规则|規則)`), SeverityCritical},
-	{regexp.MustCompile(`(忘记|忘記|忘掉|遺忘).{0,8}(之前|先前|上文|以上|原有|系统|系統).{0,8}(指令|指示|提示词|提示詞|提示|规则|規則)`), SeverityCritical},
+	{regexp.MustCompile(`忽略.{0,8}(之前|先前|上文|以上|原有|系统|系統).{0,8}(指令|指示|提示词|提示詞|提示|规则|規則|规定|規定|约束|約束|政策)`), SeverityCritical},
+	{regexp.MustCompile(`(忘记|忘記|忘掉|遺忘).{0,8}(之前|先前|上文|以上|原有|系统|系統).{0,8}(指令|指示|提示词|提示詞|提示|规则|規則|规定|規定|约束|約束|政策)`), SeverityCritical},
 	{regexp.MustCompile(`(泄露|洩露|显示|顯示|输出|輸出|打印|揭示).{0,8}(系统提示词|系統提示詞|系统指令|系統指令|内部指令|內部指令|隐藏指令|隱藏指令|提示词|提示詞)`), SeverityCritical},
 	{regexp.MustCompile(`(发送|上傳|上传|回传|回傳|窃取|竊取|外传|外傳).{0,12}(密钥|金鑰|凭据|憑證|憑據|环境变量|環境變數|系统提示词|系統提示詞|内部指令|內部指令|私钥|私鑰|令牌|權杖|cookie|机密信息|機密信息)`), SeverityCritical},
 	{regexp.MustCompile(`(读取|讀取|获取|取得|搜集|收集|查找|搜索).{0,12}(密钥|金鑰|凭据|憑證|憑據|环境变量|環境變數|私钥|私鑰|令牌|權杖|cookie|机密信息|機密信息).{0,16}(发送|傳送|傳輸|上传|上傳|回传|回傳|外传|外傳|提交)`), SeverityCritical},
+	// Chinese descriptions often frame exfiltration as routine copying,
+	// synchronization or attaching context to a reply. Require both a
+	// sensitive-data term and a transfer/write action to keep this high-signal.
+	{regexp.MustCompile(`(读取|讀取|获取|取得|搜集|收集|查找|搜索|复制|複製|提取|导出|匯出).{0,12}(密码|密碼|口令|访问令牌|存取權杖|API密钥|API金鑰|会话令牌|會話權杖|聊天记录|聊天紀錄|对话历史|對話歷史|数据库连接串|資料庫連線字串|云凭据|雲端憑證|环境变量|環境變數|cookie|凭据|憑據).{0,20}(发送|傳送|傳輸|上传|上傳|回传|回傳|外传|外傳|提交|转交|轉交|同步|抄送|附带|附加|发给|發給|传给|傳給|写入|寫入)`), SeverityCritical},
+	{regexp.MustCompile(`(把|将|將).{0,12}(密码|密碼|口令|访问令牌|存取權杖|API密钥|API金鑰|会话令牌|會話權杖|聊天记录|聊天紀錄|对话历史|對話歷史|系统提示词|系統提示詞|内部指令|內部指令|环境变量|環境變數|凭据|憑據).{0,18}(放进|放進|放入|写入|寫入|附在|附加到|嵌入|加入).{0,10}(回复|回覆|回答|消息|訊息|日志|記錄|请求|請求)`), SeverityCritical},
+	{regexp.MustCompile(`(复述|複述|引用|列出|打印|輸出|还原|還原|复制|複製).{0,12}(第一条|第一則|最初|隐藏|隱藏|内部|內部|不可见|不可見|系统|系統|开发者|開發者).{0,8}(消息|訊息|提示|指令|上下文|规则|規則)`), SeverityCritical},
 	{regexp.MustCompile(`(把|将|將).{0,8}(密钥|金鑰|凭据|憑證|憑據|环境变量|環境變數|私钥|私鑰|令牌|權杖|cookie|机密信息|機密信息).{0,12}(附加|写入|寫入|嵌入|放入).{0,10}(请求|請求|回复|回覆|消息|訊息|内容|內容).{0,8}(发送|傳送|傳輸|上传|上傳|提交)`), SeverityCritical},
 	{regexp.MustCompile(`(发送|上傳|上传|回传|回傳|窃取|竊取|外传|外傳).{0,8}(所有|全部|整个|整個|本地).{0,6}(文件|檔案|数据|資料|上下文|环境变量|環境變數)`), SeverityCritical},
 	{regexp.MustCompile(`(你现在是|你現在是|从现在开始你是|從現在開始你是)`), SeverityHigh},
 	{regexp.MustCompile(`(新的|新增的).{0,5}(系统|系統)?(指令|指示)|覆盖.{0,8}(原有|之前|系统).{0,5}(指令|规则)|覆寫.{0,8}(原有|之前|系統).{0,5}(指令|規則)|更新.{0,8}(系统提示词|系統提示詞|系统指令|系統指令|指令|指示)`), SeverityHigh},
 	{regexp.MustCompile(`(不要|請勿|请勿).{0,5}(告诉|告知|通知).{0,5}用户`), SeverityHigh},
+	{regexp.MustCompile(`(不要|請勿|请勿|别|別|避免).{0,6}(让|讓).{0,4}用户.{0,6}(知道|察觉|察覺|发现|發現|看到|得知)`), SeverityHigh},
 	{regexp.MustCompile(`(趁|在).{0,8}(用户|用戶).{0,8}(不知情|不注意|离开|離開).{0,8}(发送|傳送|傳輸|执行|執行|上传|上傳|删除|刪除)`), SeverityHigh},
 	{regexp.MustCompile(`(必须|務必|立刻|立即).{0,5}(执行|執行|运行|運行).{0,5}(命令|指令|代码|程式碼|脚本|腳本)`), SeverityHigh},
 	{regexp.MustCompile(`(立即|立刻|務必).{0,5}(执行|執行|运行|運行)(以下|这个|此|該).{0,5}(命令|指令|代码|程式碼|脚本|腳本)`), SeverityHigh},
