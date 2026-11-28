@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Improved
+
+- Follow uniquely named Java helper methods up to eight calls deep when a
+  callback passes MCP tool arguments directly to them.
+
 ### Added
 
 - Add initial Java SAST for tool callbacks registered through the official
