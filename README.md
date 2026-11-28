@@ -143,11 +143,12 @@ repository's default branch.
 
 ## VS Code
 
-Install the `mcprism` CLI and the VSIX from the latest [GitHub Release](https://github.com/HUA503/mcprism/releases),
-following the [VS Code extension guide](editors/vscode/README.md). Run
-**mcprism: Scan Workspace** from the Command Palette to review source findings
-in the Problems panel. The extension performs a static scan and does not
-launch the MCP server.
+Install the `mcprism` CLI and follow the [VS Code extension guide](editors/vscode/README.md)
+to install its VSIX. New CLI releases include the matching VSIX on the
+[GitHub Releases](https://github.com/HUA503/mcprism/releases) page; older
+releases can be packaged from source. Run **mcprism: Scan Workspace** from the
+Command Palette to review source findings in Problems. The extension performs
+a static scan and does not launch the MCP server.
 
 ## Contents
 

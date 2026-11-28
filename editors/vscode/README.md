@@ -7,12 +7,13 @@ launch the workspace's MCP server.
 
 ## Install from GitHub Releases
 
-Download the `mcprism-vscode-<version>.vsix` asset from the project's
-[GitHub Releases](https://github.com/HUA503/mcprism/releases) page. In VS Code,
-run **Extensions: Install from VSIX...** and select the downloaded file. Stable
-and prerelease CLI releases both include a matching VSIX. The extension is not
-yet published to the VS Code Marketplace. The asset's SHA-256 checksum is
-included in the release's `checksums.txt` file.
+New CLI releases include a matching `mcprism-vscode-<version>.vsix` asset on the
+project's [GitHub Releases](https://github.com/HUA503/mcprism/releases) page.
+In VS Code, run **Extensions: Install from VSIX...** and select the downloaded
+file. Its SHA-256 checksum is included in the release's `checksums.txt` file.
+Older releases may not have a VSIX asset; use the source packaging instructions
+below for those versions. The extension is not yet published to the VS Code
+Marketplace.
 
 Build or download the `mcprism` CLI using the [main installation instructions](../../README.md#install).
 For local development, package the extension from this directory with
