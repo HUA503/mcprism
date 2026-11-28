@@ -17,6 +17,9 @@ one before adding it. Optional live inspection lists tools without calling
 them; add `--read-content` to scan bounded prompt/resource text too. If you do
 not use MCP servers, you probably do not need mcprism yet.
 
+Prefer to review source in your editor? The [VS Code extension](editors/vscode/README.md)
+puts findings in the Problems panel while keeping scans static.
+
 mcprism is a security scanner for [Model Context Protocol](https://modelcontextprotocol.io/)
 servers. It looks at a server from three angles:
 

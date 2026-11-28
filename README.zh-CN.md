@@ -12,6 +12,8 @@ MCP server 把 AI 助手连接到 GitHub、文件、数据库等外部工具和�
 
 运行 `mcprism scan` 检查 AI 客户端里已配置的 server；如果没有发现配置，用 `mcprism doctor` 查看发现结果；用 `mcprism vet ...` 单独审查准备接入的 server。动态探测需要主动开启，默认只枚举能力、不调用工具；加 `--read-content` 后还会读取有限的 prompt/resource 正文进行扫描。如果你暂时不用 MCP，可能还不需要 mcprism。
 
+习惯在编辑器里审查源码？安装 [VS Code 扩展](editors/vscode/README.md)，扫描发现会显示在 Problems 面板中，且扫描不会启动 MCP Server。
+
 mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server 的安全扫描器。它从三个角度审查一个 server：
 
 1. **配置**：客户端如何启动或连接它——版本是否固定、是否明文传输、配置里有没有凭据、是否指向云元数据或内网。
