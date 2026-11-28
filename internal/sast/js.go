@@ -1127,6 +1127,7 @@ type handlerBlock struct {
 	goImports       map[string][]string
 	goImportDepth   int
 	goSourceBytes   int64
+	goReturnType    string
 	rustModuleDepth int
 }
 

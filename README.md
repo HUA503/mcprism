@@ -585,8 +585,8 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   explicitly imported Python/JS/TS helpers; and Rust free functions imported
   with simple `crate`, `self` or `super` paths from the same Cargo package.
   Rust helper traversal is bounded and excludes test/example/bench and `src/bin`
-  trees. Go leaves imported methods and
-  calls on opaque or ambiguous receivers unresolved. Python and JS/TS module
+  trees. Go follows methods on explicitly known types from local module imports;
+  opaque or ambiguous receivers remain unresolved. Python and JS/TS module
   traversal is bounded. The engine does not model arbitrary
   object graphs, returned values, dynamic dispatch, JS/TS ES default imports,
   computed module-object calls, or package imports. Sink

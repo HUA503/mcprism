@@ -61,12 +61,14 @@ assignments. When a local name is assigned different values in the analyzed
 block, it is treated as ambiguous and is not followed.
 
 When scanning a source tree with `go.mod`, Go analysis also follows calls to
-exported free functions in explicitly imported packages that are present in
-that tree. It uses the module path to map imports to local directories, follows
-the argument through further helpers in that package, and reports the sink at
-its source file and line. It does not download dependencies. This traversal is
+exported free functions and methods on explicitly known imported types in
+packages present in that tree. It uses the module path to map imports to local
+directories, follows the argument through further helpers in those packages,
+and reports the sink at its source file and line. Receiver types can come from
+an explicit type declaration, a composite literal or a uniquely indexed local
+package constructor. It does not download dependencies. This traversal is
 limited to eight imported-package hops, 64 source files and 16 MiB per tool
-entry. Imported methods, external modules, workspaces without a matching local
+entry. Opaque receivers, external modules, workspaces without a matching local
 module, and packages outside the scanned tree are not resolved.
 
 Python sink checks follow explicit import aliases for `os`, `subprocess`,
@@ -174,11 +176,11 @@ container mutation, and values returned from a function are not modeled.
 
 This is not a full-program data-flow analyzer. Cross-file tracking is limited to
 bounded Go same-package free-function calls, methods with an inferable receiver
-type, and exported free functions in local module packages; explicitly
-imported Python and JS/TS helpers; and explicitly imported Rust helpers from
-the same Cargo package. Go leaves imported methods and calls on
-opaque or ambiguous receivers unresolved. Captured receivers are followed when
-their type has a unique same-file declaration or constructor.
+type, and exported functions and methods on known types in local module
+packages; explicitly imported Python and JS/TS helpers; and explicitly imported
+Rust helpers from the same Cargo package. Go leaves calls on opaque or
+ambiguous receivers unresolved. Captured receivers are followed when their
+type has a unique same-file declaration or constructor.
 Python supports
 named imports and direct module imports with an alias, including multi-level
 relative imports inside marked packages; JS/TS follows named and namespace ES
@@ -790,8 +792,8 @@ Do not construct a module name or path from tool input.
   Go follows unique same-package free functions and receiver-type-matched
   methods across files, plus exported functions imported from local packages
   in the same module within eight package hops, 64 helper files and 16 MiB per
-  entry. It does not resolve imported methods or packages outside the scanned
-  tree. JS/TS helper tracking
+  entry. It follows methods on explicitly known imported types, but not opaque
+  receivers or packages outside the scanned tree. JS/TS helper tracking
   currently recognizes function declarations and block-bodied arrow functions;
   Rust does not resolve grouped imports, re-exports, direct qualified calls,
   trait dispatch or macro expansion. Other values passed through files, object properties,
