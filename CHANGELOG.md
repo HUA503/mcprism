@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Improved
+
+- Detect Chinese prompt-injection instructions that collect credentials and
+  transmit them in a later step or embed them in an outgoing request.
+
 ### Added
 
 - Add policy-defined custom regex checks for server settings, collected MCP

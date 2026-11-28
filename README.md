@@ -172,6 +172,7 @@ below, with no network needed.
   server instructions for common prompt-injection directives in English,
   Simplified and Traditional Chinese, Japanese and Korean, including role-play
   jailbreaks and claims that new text outranks system or developer rules.
+  Chinese signatures also cover staged credential collection and forwarding.
   They flag known patterns; they do not understand every paraphrase or prove
   that metadata is safe.
 - Policy as code. Turn rules on/off, change severity, allow or deny packages,
