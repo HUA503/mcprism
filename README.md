@@ -229,7 +229,7 @@ Batch review across many servers (static mode):
 curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | sh
 
 # Pin a release instead of installing the latest one
-curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.43.0 sh
+curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC_PRISM_VERSION=v0.43.1 sh
 ```
 
 ```powershell
@@ -237,7 +237,7 @@ curl -fsSL https://raw.githubusercontent.com/HUA503/mcprism/main/install.sh | MC
 irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 
 # Pin a release instead of installing the latest one
-$env:MC_PRISM_VERSION = "v0.43.0"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
+$env:MC_PRISM_VERSION = "v0.43.1"; irm https://raw.githubusercontent.com/HUA503/mcprism/main/install.ps1 | iex
 ```
 
 ```sh
@@ -412,7 +412,7 @@ from command errors.
 Scanning two local servers in static mode:
 
 ```text
-◆ mcprism   v0.43.0 · 2026-11-28
+◆ mcprism   v0.43.1 · 2026-11-28
 ────────────────────────────────────────────────
  A  notes  ◌ static only
   npx -y @acme/notes-mcp@2.0.1
@@ -728,7 +728,7 @@ configs are checked before they are committed:
 
 ```yaml
 - repo: https://github.com/HUA503/mcprism
-  rev: v0.43.0
+  rev: v0.43.1
   hooks:
     - id: mcprism
 ```
@@ -763,7 +763,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - id: mcprism
-        uses: HUA503/mcprism@v0.43.0
+        uses: HUA503/mcprism@v0.43.1
         with:
           target: mcp.json
           sarif-file: mcprism.sarif
