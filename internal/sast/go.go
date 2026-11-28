@@ -39,7 +39,7 @@ func analyzeGoWithFunctions(path string, functions map[string]handlerBlock, inde
 		}
 	}
 	var out []Issue
-	for _, b := range extractGoHandlersWithFunctions(maskGoComments(src), functions) {
+	for _, b := range extractGoHandlersWithFunctions(maskGoComments(src), functions, index) {
 		if b.path == "" {
 			b.path = path
 		}
@@ -527,10 +527,10 @@ var goCallRe = regexp.MustCompile(`\b([A-Za-z_]\w*)\s*\(`)
 var goAddToolRe = regexp.MustCompile(`\.?AddTool\s*\(`)
 
 func extractGoHandlers(src string) []handlerBlock {
-	return extractGoHandlersWithFunctions(src, extractGoFunctions(src))
+	return extractGoHandlersWithFunctions(src, extractGoFunctions(src), nil)
 }
 
-func extractGoHandlersWithFunctions(src string, functions map[string]handlerBlock) []handlerBlock {
+func extractGoHandlersWithFunctions(src string, functions map[string]handlerBlock, index *goHelperIndex) []handlerBlock {
 	var out []handlerBlock
 	imports := goImportAliasesFromSource(src)
 	// Keep inline callback extraction tolerant of incomplete source snippets.
@@ -575,7 +575,24 @@ func extractGoHandlersWithFunctions(src string, functions map[string]handlerBloc
 	if file == nil {
 		return out
 	}
-	receiverTypes := goReceiverTypesFromAST(file, goFunctionReturnTypes(file))
+	knownTypes := goFunctionReturnTypes(file)
+	if index != nil {
+		for importPath, aliases := range imports {
+			packageFunctions, found := index.importedFunctions[importPath]
+			if !found {
+				continue
+			}
+			for name, helper := range packageFunctions {
+				if strings.HasPrefix(name, "@") || helper.goReturnType == "" {
+					continue
+				}
+				for _, alias := range aliases {
+					knownTypes[goConstructorTypeKey(alias+"."+name)] = alias + "." + helper.goReturnType
+				}
+			}
+		}
+	}
+	receiverTypes := goReceiverTypesFromAST(file, knownTypes)
 	ast.Inspect(file, func(node ast.Node) bool {
 		call, ok := node.(*ast.CallExpr)
 		if !ok || len(call.Args) == 0 {
@@ -598,11 +615,7 @@ func extractGoHandlersWithFunctions(src string, functions map[string]handlerBloc
 			block.params = nil
 			out = append(out, block)
 		case *ast.SelectorExpr:
-			if goExprStartsWithPackageAlias(handler.X, imports) {
-				return true
-			}
-			receiverType := goExprType(handler.X, receiverTypes)
-			block, found := resolveGoMCPMethod(functions, receiverType, handler.Sel.Name)
+			block, found := resolveGoMCPSelectorHandler(handler, imports, functions, receiverTypes, index)
 			if !found {
 				return true
 			}
@@ -614,15 +627,32 @@ func extractGoHandlersWithFunctions(src string, functions map[string]handlerBloc
 	return out
 }
 
-func goExprStartsWithPackageAlias(expr ast.Expr, imports map[string][]string) bool {
-	switch node := expr.(type) {
-	case *ast.Ident:
-		return goImportedPathForAlias(imports, node.Name) != ""
-	case *ast.SelectorExpr:
-		return goExprStartsWithPackageAlias(node.X, imports)
-	default:
-		return false
+func resolveGoMCPSelectorHandler(handler *ast.SelectorExpr, imports map[string][]string, functions map[string]handlerBlock, receiverTypes map[string]string, index *goHelperIndex) (handlerBlock, bool) {
+	if receiver, ok := handler.X.(*ast.Ident); ok {
+		if importPath := goImportedPathForAlias(imports, receiver.Name); importPath != "" {
+			if index == nil {
+				return handlerBlock{}, false
+			}
+			packageFunctions, found := index.importedFunctions[importPath]
+			if !found {
+				return handlerBlock{}, false
+			}
+			block, found := packageFunctions[handler.Sel.Name]
+			return block, found && block.goToolHandler
+		}
 	}
+
+	receiverType := goExprType(handler.X, receiverTypes)
+	if dot := strings.IndexByte(receiverType, '.'); dot > 0 && index != nil {
+		if importPath := goImportedPathForAlias(imports, receiverType[:dot]); importPath != "" {
+			if packageFunctions, found := index.importedFunctions[importPath]; found {
+				block, found := packageFunctions[goMethodKey(receiverType[dot+1:], handler.Sel.Name)]
+				return block, found && block.goToolHandler
+			}
+			return handlerBlock{}, false
+		}
+	}
+	return resolveGoMCPMethod(functions, receiverType, handler.Sel.Name)
 }
 
 func resolveGoMCPMethod(functions map[string]handlerBlock, receiverType, methodName string) (handlerBlock, bool) {
