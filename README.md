@@ -174,10 +174,10 @@ repository's default branch.
   left alone.
 - Tool-poisoning checks. Deterministic offline signatures inspect tool and
   server instructions for common prompt-injection directives in English,
-  Simplified and Traditional Chinese, Japanese and Korean, including role-play
-  jailbreaks and claims that new text outranks system or developer rules.
-  Chinese signatures also cover staged credential collection and forwarding.
-  They flag known patterns; they do not understand every paraphrase or prove
+  Simplified and Traditional Chinese, Japanese, Korean, Spanish, French, German,
+  Portuguese, Russian and Arabic. They cover high-signal directives such as
+  policy overrides, hidden-prompt disclosure and credential exfiltration.
+  They flag known phrases; they do not understand every paraphrase or prove
   that metadata is safe.
 - Policy as code. Turn rules on/off, change severity, allow or deny packages,
   commands and domains, and require network isolation. Built-in profiles give
@@ -626,11 +626,9 @@ analyzer and manual review. Rule details and more examples are in
   `NODE_TLS_REJECT_UNAUTHORIZED=0`).
 - Over-broad permissions. Filesystem servers mounted at `/` or the home
   directory; sandbox or permission checks turned off.
-- Tool poisoning. Common English, Simplified Chinese, Traditional Chinese,
-  Japanese and Korean
-  injection directives, including policy overrides, role/mode changes and
-  requests to reveal hidden reasoning,
-  zero-width/bidirectional Unicode,
+- Tool poisoning. High-signal English, Simplified/Traditional Chinese, Japanese,
+  Korean, Spanish, French, German, Portuguese, Russian and Arabic
+  injection phrases (coverage varies by language), plus zero-width/bidirectional Unicode,
   Unicode Tags and Cyrillic/Greek homoglyphs (normalized with NFKC before
   matching), hidden HTML/Markdown and encoded blobs in tool names, descriptions
   and schemas. Plain instructional text is not flagged; directive language is
