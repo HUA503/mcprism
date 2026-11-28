@@ -1,6 +1,7 @@
 package sast
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,6 +14,7 @@ const (
 	maxJSModuleDepth = 8
 	maxJSModuleFiles = 64
 	maxJSModuleBytes = 16 << 20
+	maxTSConfigBytes = 1 << 20
 )
 
 type jsFunctionScopes struct {
@@ -21,8 +23,15 @@ type jsFunctionScopes struct {
 	exports     map[string]map[string]bool
 	sinkImports map[string]jsSinkImports
 	root        string
+	pathAliases []jsPathAlias
 	bytes       int64
 	files       int
+}
+
+type jsPathAlias struct {
+	pattern string
+	baseURL string
+	targets []string
 }
 
 type jsSinkImports struct {
@@ -37,6 +46,10 @@ func analyzeJS(path string) []Issue {
 }
 
 func analyzeJSWithRoot(path, root string) []Issue {
+	return analyzeJSWithPathAliases(path, root, loadJSPathAliases(root))
+}
+
+func analyzeJSWithPathAliases(path, root string, pathAliases []jsPathAlias) []Issue {
 	lines, src := readLines(path)
 	if src == "" {
 		return nil
@@ -48,6 +61,7 @@ func analyzeJSWithRoot(path, root string) []Issue {
 		exports:     map[string]map[string]bool{},
 		sinkImports: map[string]jsSinkImports{},
 		root:        root,
+		pathAliases: pathAliases,
 		bytes:       int64(len(src)),
 		files:       1,
 	}
@@ -362,7 +376,7 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 	text := maskJSComments(src)
 	structure := maskJSCode(src)
 	loadModule := func(module string) (map[string]handlerBlock, map[string]bool) {
-		modulePath := jsLocalModulePath(path, module, scopes.root)
+		modulePath := jsLocalModulePath(path, module, scopes.root, scopes.pathAliases)
 		if modulePath == "" {
 			return nil, nil
 		}
@@ -524,11 +538,30 @@ func mergeJSImportedFunctions(path, src string, functions map[string]handlerBloc
 	}
 }
 
-func jsLocalModulePath(path, module, root string) string {
-	if !strings.HasPrefix(module, "./") && !strings.HasPrefix(module, "../") {
-		return ""
+func jsLocalModulePath(path, module, root string, aliases []jsPathAlias) string {
+	if strings.HasPrefix(module, "./") || strings.HasPrefix(module, "../") {
+		base := filepath.Clean(filepath.Join(filepath.Dir(path), filepath.FromSlash(module)))
+		if resolved := jsLocalSourcePath(base, root); resolved != "" {
+			return resolved
+		}
 	}
-	base := filepath.Clean(filepath.Join(filepath.Dir(path), filepath.FromSlash(module)))
+	for _, alias := range aliases {
+		wildcard, ok := matchJSPathAlias(alias.pattern, module)
+		if !ok {
+			continue
+		}
+		for _, target := range alias.targets {
+			target = strings.Replace(target, "*", wildcard, 1)
+			base := filepath.Clean(filepath.Join(alias.baseURL, filepath.FromSlash(target)))
+			if resolved := jsLocalSourcePath(base, root); resolved != "" {
+				return resolved
+			}
+		}
+	}
+	return ""
+}
+
+func jsLocalSourcePath(base, root string) string {
 	ext := filepath.Ext(base)
 	if ext != "" && !isJSSourceExt(ext) {
 		return ""
@@ -555,6 +588,172 @@ func jsLocalModulePath(path, module, root string) string {
 		}
 	}
 	return ""
+}
+
+func matchJSPathAlias(pattern, module string) (string, bool) {
+	star := strings.IndexByte(pattern, '*')
+	if star < 0 {
+		return "", module == pattern
+	}
+	if strings.IndexByte(pattern[star+1:], '*') >= 0 {
+		return "", false
+	}
+	prefix, suffix := pattern[:star], pattern[star+1:]
+	if !strings.HasPrefix(module, prefix) || !strings.HasSuffix(module, suffix) || len(module) < len(prefix)+len(suffix) {
+		return "", false
+	}
+	return module[len(prefix) : len(module)-len(suffix)], true
+}
+
+func loadJSPathAliases(root string) []jsPathAlias {
+	configPath := filepath.Join(root, "tsconfig.json")
+	info, err := os.Lstat(configPath)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > maxTSConfigBytes {
+		return nil
+	}
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil
+	}
+	var config struct {
+		CompilerOptions struct {
+			BaseURL string              `json:"baseUrl"`
+			Paths   map[string][]string `json:"paths"`
+		} `json:"compilerOptions"`
+	}
+	if json.Unmarshal(cleanTSConfigJSONC(data), &config) != nil || len(config.CompilerOptions.Paths) == 0 {
+		return nil
+	}
+	baseRoot, err := filepath.Abs(root)
+	if err != nil {
+		return nil
+	}
+	baseURL := baseRoot
+	if config.CompilerOptions.BaseURL != "" {
+		baseURL = filepath.FromSlash(config.CompilerOptions.BaseURL)
+		if !filepath.IsAbs(baseURL) {
+			baseURL = filepath.Join(baseRoot, baseURL)
+		}
+	}
+	var aliases []jsPathAlias
+	for pattern, targets := range config.CompilerOptions.Paths {
+		if pattern == "" || strings.Count(pattern, "*") > 1 || len(targets) == 0 {
+			continue
+		}
+		validTargets := make([]string, 0, len(targets))
+		for _, target := range targets {
+			if target != "" && strings.Count(target, "*") <= 1 {
+				validTargets = append(validTargets, target)
+			}
+		}
+		if len(validTargets) > 0 {
+			aliases = append(aliases, jsPathAlias{pattern: pattern, baseURL: baseURL, targets: validTargets})
+		}
+	}
+	sort.Slice(aliases, func(i, j int) bool {
+		leftStar, rightStar := strings.IndexByte(aliases[i].pattern, '*'), strings.IndexByte(aliases[j].pattern, '*')
+		leftPrefix, rightPrefix := leftStar, rightStar
+		if leftStar < 0 {
+			leftPrefix = len(aliases[i].pattern)
+		}
+		if rightStar < 0 {
+			rightPrefix = len(aliases[j].pattern)
+		}
+		if leftPrefix != rightPrefix {
+			return leftPrefix > rightPrefix
+		}
+		leftSuffix, rightSuffix := len(aliases[i].pattern)-leftPrefix-1, len(aliases[j].pattern)-rightPrefix-1
+		if leftStar < 0 {
+			leftSuffix = 0
+		}
+		if rightStar < 0 {
+			rightSuffix = 0
+		}
+		if leftSuffix != rightSuffix {
+			return leftSuffix > rightSuffix
+		}
+		return aliases[i].pattern < aliases[j].pattern
+	})
+	return aliases
+}
+
+func cleanTSConfigJSONC(data []byte) []byte {
+	cleaned := stripTSConfigComments(data)
+	inString, escaped := false, false
+	for i := 0; i < len(cleaned); i++ {
+		if inString {
+			if escaped {
+				escaped = false
+			} else if cleaned[i] == '\\' {
+				escaped = true
+			} else if cleaned[i] == '"' {
+				inString = false
+			}
+			continue
+		}
+		if cleaned[i] == '"' {
+			inString = true
+			continue
+		}
+		if cleaned[i] != ',' {
+			continue
+		}
+		next := i + 1
+		for next < len(cleaned) && (cleaned[next] == ' ' || cleaned[next] == '\t' || cleaned[next] == '\r' || cleaned[next] == '\n') {
+			next++
+		}
+		if next < len(cleaned) && (cleaned[next] == '}' || cleaned[next] == ']') {
+			cleaned[i] = ' '
+		}
+	}
+	return cleaned
+}
+
+func stripTSConfigComments(data []byte) []byte {
+	cleaned := append([]byte(nil), data...)
+	inString, escaped := false, false
+	for i := 0; i < len(cleaned); i++ {
+		if inString {
+			if escaped {
+				escaped = false
+			} else if cleaned[i] == '\\' {
+				escaped = true
+			} else if cleaned[i] == '"' {
+				inString = false
+			}
+			continue
+		}
+		if cleaned[i] == '"' {
+			inString = true
+			continue
+		}
+		if cleaned[i] != '/' || i+1 >= len(cleaned) {
+			continue
+		}
+		if cleaned[i+1] == '/' {
+			for i < len(cleaned) && cleaned[i] != '\n' {
+				if cleaned[i] != '\r' {
+					cleaned[i] = ' '
+				}
+				i++
+			}
+		} else if cleaned[i+1] == '*' {
+			cleaned[i], cleaned[i+1] = ' ', ' '
+			i += 2
+			for i < len(cleaned) {
+				if cleaned[i] == '*' && i+1 < len(cleaned) && cleaned[i+1] == '/' {
+					cleaned[i], cleaned[i+1] = ' ', ' '
+					i++
+					break
+				}
+				if cleaned[i] != '\n' && cleaned[i] != '\r' {
+					cleaned[i] = ' '
+				}
+				i++
+			}
+		}
+	}
+	return cleaned
 }
 
 func isJSSourceExt(ext string) bool {

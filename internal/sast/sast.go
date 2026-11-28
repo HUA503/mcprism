@@ -62,6 +62,7 @@ func Analyze(root string) ([]Issue, error) {
 	javaIndex := buildJavaProjectIndex(sourcePaths)
 	csharpIndex := buildCSharpProjectIndex(sourcePaths)
 	kotlinIndex := buildKotlinProjectIndex(sourcePaths)
+	jsPathAliases := loadJSPathAliases(root)
 	var issues []Issue
 	for _, p := range sourcePaths {
 		if strings.EqualFold(filepath.Ext(p), ".go") {
@@ -89,7 +90,7 @@ func Analyze(root string) ([]Issue, error) {
 			continue
 		}
 		if isJSSourceExt(filepath.Ext(p)) {
-			issues = append(issues, analyzeJSWithRoot(p, root)...)
+			issues = append(issues, analyzeJSWithPathAliases(p, root, jsPathAliases)...)
 			continue
 		}
 		issues = append(issues, AnalyzeFile(p)...)

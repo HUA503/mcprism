@@ -580,7 +580,9 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   imports), static CommonJS `require()` calls and direct named calls through a
   module object for exported helpers and their helper chains across relative
   modules inside the scan root, within bounded depth, file count and source
-  size. Single-file scans use the file's parent directory as the root.
+  size. Direct `compilerOptions.paths` mappings from the root `tsconfig.json`
+  are followed; inherited or nested tsconfig files are not loaded. Single-file
+  scans use the file's parent directory as the root.
   Python follows explicitly imported helpers and their helper chains across
   same-directory modules and relative imports within marked parent packages,
   within bounded depth, file count and source size.
@@ -604,7 +606,7 @@ server.tool("git", { name: z.string() }, async ({ name }) => {
   opaque or ambiguous receivers remain unresolved. Python and JS/TS module
   traversal is bounded. The engine does not model arbitrary
   object graphs, returned values, dynamic dispatch, anonymous JS/TS default
-  exports, computed module-object calls, or package imports. Sink
+  exports, computed module-object calls, or npm package imports. Sink
   matching is pattern-based, so unusual formatting and generated code can still
   be missed or misclassified.
 - Go uses the standard-library `go/parser` to locate helper function boundaries;
