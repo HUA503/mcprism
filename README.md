@@ -53,7 +53,7 @@ probing is strictly opt-in (`--dynamic` / `--probe`).
 ---
 
 <p align="center">
-  <img src="assets/demo.gif?v=0.14.0" alt="mcprism checking safe and vulnerable MCP server configurations" width="78%">
+  <img src="assets/demo.gif?v=0.43.7" alt="mcprism checking safe and vulnerable MCP server configurations" width="78%">
 </p>
 
 <p align="center">
@@ -138,7 +138,7 @@ for static review; it never runs the downloaded code. Omit `--ref` to use the
 repository's default branch.
 
 <p align="center">
-  <img src="assets/vet.png?v=0.9.2" alt="mcprism vet catching a curl|sh launch command" width="94%">
+  <img src="assets/vet.png?v=0.43.7" alt="mcprism vet catching a curl|sh launch command" width="94%">
 </p>
 
 ## VS Code
@@ -231,13 +231,13 @@ a static scan and does not launch the MCP server.
 ## Report
 
 <p align="center">
-  <img src="assets/screenshot-dynamic.png?v=0.14.0" alt="mcprism HTML report for a live server" width="86%">
+  <img src="assets/screenshot-dynamic.png?v=0.43.7" alt="mcprism HTML report for a live server" width="86%">
 </p>
 
 Batch review across many servers (static mode):
 
 <p align="center">
-  <img src="assets/screenshot-static.png?v=0.14.0" alt="mcprism HTML report across many servers" width="70%">
+  <img src="assets/screenshot-static.png?v=0.43.7" alt="mcprism HTML report across many servers" width="70%">
 </p>
 
 ## Install
@@ -641,7 +641,7 @@ analyzer and manual review. Rule details and more examples are in
 [docs/SAST.md](docs/SAST.md).
 
 <p align="center">
-  <img src="assets/sast.png?v=0.9.2" alt="mcprism source-code review findings" width="94%">
+  <img src="assets/sast.png?v=0.43.7" alt="mcprism source-code review findings" width="94%">
 </p>
 
 ## What it detects
