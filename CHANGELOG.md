@@ -6,6 +6,11 @@ semantic versioning.
 
 ## [Unreleased]
 
+### Community
+
+- Add bilingual guidance to issue forms so English- and Chinese-speaking users
+  can ask questions, report bugs and suggest features with safer examples.
+
 ## [0.43.1] - 2026-11-28
 
 ### Improved

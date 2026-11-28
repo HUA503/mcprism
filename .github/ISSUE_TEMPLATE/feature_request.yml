@@ -4,37 +4,40 @@ labels: [enhancement]
 body:
   - type: markdown
     attributes:
-      value: Thanks for suggesting an improvement!
+      value: |
+        Thanks for suggesting an improvement! You can fill this form in English or Chinese. Do not include credentials or private server details; report vulnerabilities privately using `SECURITY.md`.
+
+        感谢提出改进建议！你可以用中文或英文填写此表单。请勿包含凭据或私有 server 信息；安全漏洞请按照 `SECURITY.md` 私下报告。
   - type: dropdown
     id: kind
     attributes:
-      label: Type of request
+      label: Type of request / 建议类型
       options:
-        - New detection rule
-        - Output / reporting improvement
-        - Client / transport support
-        - CI / integration
-        - Other
+        - New detection rule / 新检测规则
+        - Output / reporting improvement / 输出或报告改进
+        - Client / transport support / 客户端或传输支持
+        - CI / integration / CI 或集成
+        - Other / 其他
     validations:
       required: true
   - type: textarea
     id: problem
     attributes:
-      label: Problem or motivation
-      description: What are you trying to do, and what is missing today?
+      label: Problem or motivation / 问题或动机
+      description: What are you trying to do, and what is missing today? / 你想完成什么，当前缺少什么？
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed solution
-      description: If proposing a rule, include example evidence and why false positives will be low.
+      label: Proposed solution / 建议的解决方案
+      description: If proposing a rule, include example evidence and why false positives will be low. / 如果建议新增规则，请提供示例，并说明如何控制误报。
     validations:
       required: true
   - type: checkboxes
     id: checks
     attributes:
-      label: Confirmations
+      label: Confirmations / 确认事项
       options:
-        - label: I searched existing issues and could not find a duplicate
+        - label: I searched existing issues and could not find a duplicate / 我已搜索现有 issue，未发现重复建议
           required: true

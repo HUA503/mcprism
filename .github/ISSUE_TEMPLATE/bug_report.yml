@@ -8,11 +8,13 @@ body:
         Thanks for taking the time to file a bug report!
 
         **Before posting:** redact API keys, tokens, passwords, auth headers, private server URLs, usernames and sensitive paths. Do not attach raw configs or reports; they may contain command arguments and local paths. Share a minimal sanitized example with placeholders. Report security vulnerabilities privately using `SECURITY.md`.
+
+        **中文：** 请先删除 API key、token、密码、认证头、私有 server URL、用户名和敏感路径。不要上传原始配置或扫描报告；请使用占位符提供最小化示例。安全漏洞请按照 `SECURITY.md` 私下报告。可以用中文填写此表单。
   - type: textarea
     id: what-happened
     attributes:
-      label: What happened?
-      description: Include a sanitized command, expected behavior and actual behavior. Remove tokens or other sensitive arguments.
+      label: What happened? / 遇到了什么问题？
+      description: Include a sanitized command, expected behavior and actual behavior. Remove tokens or other sensitive arguments. / 请提供脱敏后的命令、预期行为和实际行为；删除 token 等敏感参数。
       placeholder: |
         Command: mcprism scan ...
         Expected: ...
@@ -23,29 +25,29 @@ body:
   - type: input
     id: version
     attributes:
-      label: mcprism version
-      description: Output of `mcprism version`
+      label: mcprism version / mcprism 版本
+      description: Output of `mcprism version` / 请运行 `mcprism version`
     validations:
       required: true
   - type: input
     id: environment
     attributes:
-      label: OS & architecture
+      label: OS & architecture / 操作系统和架构
       placeholder: e.g. Ubuntu 24.04 arm64, macOS 15 amd64, Windows 11
     validations:
       required: true
   - type: textarea
     id: config
     attributes:
-      label: Sanitized MCP config (optional)
+      label: Sanitized MCP config (optional) / 脱敏后的 MCP 配置（可选）
       description: Replace credentials, private hostnames and sensitive local paths with placeholders before submitting.
       render: json
   - type: checkboxes
     id: checks
     attributes:
-      label: Confirmations
+      label: Confirmations / 确认事项
       options:
-        - label: I searched existing issues and could not find a duplicate
+        - label: I searched existing issues and could not find a duplicate / 我已搜索现有 issue，未发现重复问题
           required: true
-        - label: This is not a security vulnerability (those are reported privately via SECURITY.md)
+        - label: Not a security report; use private reporting / 这不是漏洞报告；漏洞请私下提交
           required: true

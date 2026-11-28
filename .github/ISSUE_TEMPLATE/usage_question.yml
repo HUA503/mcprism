@@ -10,42 +10,46 @@ body:
         then see the [English FAQ](https://github.com/HUA503/mcprism#faq)
         or [中文常见问题](https://github.com/HUA503/mcprism/blob/main/README.zh-CN.md#常见问题).
         If your question reveals a bug or missing explanation, this form helps us improve the project.
-        
+
+        You can write your question in English or Chinese. / 你可以用中文或英文提问。
+
         Do not post credentials, private server URLs, usernames, sensitive paths, or raw scan reports. For a security vulnerability, use the [private reporting instructions](https://github.com/HUA503/mcprism/blob/main/SECURITY.md).
+
+        请勿提交凭据、私有 server URL、用户名、敏感路径或原始扫描报告。安全漏洞请按照 [私下报告说明](https://github.com/HUA503/mcprism/blob/main/SECURITY.md) 提交。
   - type: dropdown
     id: topic
     attributes:
-      label: What do you need help with?
+      label: What do you need help with? / 你需要什么帮助？
       options:
-        - Installing or updating
-        - Scanning an MCP config
-        - Vetting a server or Registry entry
-        - Understanding a finding or report
-        - Policies, baselines, or suppressions
-        - CI or integrations
-        - Other
+        - Installing or updating / 安装或更新
+        - Scanning an MCP config / 扫描 MCP 配置
+        - Vetting a server or Registry entry / 审查 server 或 Registry 条目
+        - Understanding a finding or report / 理解发现项或报告
+        - Policies, baselines, or suppressions / 策略、基线或抑制项
+        - CI or integrations / CI 或集成
+        - Other / 其他
     validations:
       required: true
   - type: textarea
     id: question
     attributes:
-      label: Your question
-      description: What are you trying to do, and where did you get stuck?
+      label: Your question / 你的问题
+      description: What are you trying to do, and where did you get stuck? / 你想做什么，具体卡在哪里？
     validations:
       required: true
   - type: input
     id: version
     attributes:
-      label: mcprism version (if installed)
-      placeholder: e.g. v0.9.2
+      label: mcprism version (if installed) / mcprism 版本（如果已安装）
+      description: Run `mcprism version` / 请运行 `mcprism version`
   - type: input
     id: environment
     attributes:
-      label: OS and architecture (if relevant)
+      label: OS and architecture (if relevant) / 操作系统和架构（如相关）
       placeholder: e.g. Windows 11 x64, Ubuntu 24.04 arm64
   - type: textarea
     id: sanitized-details
     attributes:
-      label: Sanitized command or output (optional)
-      description: Remove secrets and private details; share only the smallest useful excerpt.
+      label: Sanitized command or output (optional) / 脱敏命令或输出（可选）
+      description: Remove secrets and private details; share only the smallest useful excerpt. / 删除密钥和隐私信息，只提供最小必要片段。
       render: shell
