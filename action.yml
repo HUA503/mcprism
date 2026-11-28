@@ -1,5 +1,5 @@
 name: mcprism MCP security scan
-description: Scan MCP configs and enforce policy in GitHub Actions. Write SARIF reports and detect tool inventory drift against a reviewed lock.
+description: Scan MCP configs and source code, enforce policy, write SARIF reports, and detect tool inventory drift against a reviewed lock.
 author: HUA503
 branding:
   icon: shield
@@ -13,6 +13,17 @@ inputs:
     description: MCP config file or directory to scan.
     required: false
     default: .
+  scan-config:
+    description: Run the MCP config and metadata scan. Set false for source-only SAST runs.
+    required: false
+    default: "true"
+  source-target:
+    description: Optional MCP server source tree or source file to review with static SAST. This does not run the code.
+    required: false
+  source-sarif-file:
+    description: SARIF report path for source findings, relative to the workspace.
+    required: false
+    default: mcprism-source.sarif
   profile:
     description: Built-in mcprism profile.
     required: false
@@ -44,6 +55,9 @@ outputs:
   sarif-file:
     description: Path to the generated SARIF report, relative to the workspace.
     value: ${{ steps.scan.outputs.sarif-file || steps.scan-windows.outputs.sarif-file }}
+  source-sarif-file:
+    description: Path to the source SAST SARIF report, or empty when source-target is unset.
+    value: ${{ steps.scan.outputs.source-sarif-file || steps.scan-windows.outputs.source-sarif-file }}
   version:
     description: mcprism release version used for the scan.
     value: ${{ steps.scan.outputs.version || steps.scan-windows.outputs.version }}
@@ -61,6 +75,9 @@ runs:
         MC_PRISM_VERSION: ${{ inputs.version }}
         MC_PRISM_ACTION_REF: ${{ github.action_ref }}
         MC_PRISM_TARGET: ${{ inputs.target }}
+        MC_PRISM_SCAN_CONFIG: ${{ inputs['scan-config'] }}
+        MC_PRISM_SOURCE_TARGET: ${{ inputs['source-target'] }}
+        MC_PRISM_SOURCE_SARIF_FILE: ${{ inputs['source-sarif-file'] }}
         MC_PRISM_PROFILE: ${{ inputs.profile }}
         MC_PRISM_POLICY: ${{ inputs.policy }}
         MC_PRISM_SUPPRESSIONS: ${{ inputs.suppressions }}
@@ -77,6 +94,9 @@ runs:
         MC_PRISM_VERSION: ${{ inputs.version }}
         MC_PRISM_ACTION_REF: ${{ github.action_ref }}
         MC_PRISM_TARGET: ${{ inputs.target }}
+        MC_PRISM_SCAN_CONFIG: ${{ inputs['scan-config'] }}
+        MC_PRISM_SOURCE_TARGET: ${{ inputs['source-target'] }}
+        MC_PRISM_SOURCE_SARIF_FILE: ${{ inputs['source-sarif-file'] }}
         MC_PRISM_PROFILE: ${{ inputs.profile }}
         MC_PRISM_POLICY: ${{ inputs.policy }}
         MC_PRISM_SUPPRESSIONS: ${{ inputs.suppressions }}
