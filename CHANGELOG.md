@@ -6,6 +6,8 @@ semantic versioning.
 
 ## [Unreleased]
 
+## [0.43.1] - 2026-11-28
+
 ### Improved
 
 - Propagate Python and Go taint through simple tuple/unpacking assignments,
@@ -746,6 +748,7 @@ secrets on a command line no longer appear in reports.
 [0.38.0]: https://github.com/HUA503/mcprism/compare/v0.37.0...v0.38.0
 [0.39.0]: https://github.com/HUA503/mcprism/compare/v0.38.0...v0.39.0
 [0.41.0]: https://github.com/HUA503/mcprism/compare/v0.40.0...v0.41.0
+[0.43.1]: https://github.com/HUA503/mcprism/compare/v0.43.0...v0.43.1
 [0.43.0]: https://github.com/HUA503/mcprism/compare/v0.42.5...v0.43.0
 [0.42.5]: https://github.com/HUA503/mcprism/compare/v0.42.4...v0.42.5
 [0.42.4]: https://github.com/HUA503/mcprism/compare/v0.42.3...v0.42.4
