@@ -18,7 +18,7 @@ var (
 	javaToolCallbackRe = regexp.MustCompile(`\.(callHandler|toolCall)\s*\(`)
 	javaLambdaArgsRe   = regexp.MustCompile(`(?:\(([^()]*)\)|([A-Za-z_$][\w$]*))\s*$`)
 	javaIdentifierRe   = regexp.MustCompile(`[A-Za-z_$][\w$]*`)
-	javaAssignRe       = regexp.MustCompile(`(?:^|[;{}\n])\s*(?:final\s+)?[\w.$<>?, \t\[\]]*?\b([A-Za-z_$][\w$]*)\s*=(?!=)\s*([^;{}]+);`)
+	javaAssignRe       = regexp.MustCompile(`(?:^|[;{}\n])\s*(?:final\s+)?[\w.$<>?, \t\[\]]*?\b([A-Za-z_$][\w$]*)\s*=\s*([^;{}]+);`)
 	javaProcessSinkRe  = regexp.MustCompile(`(?:new\s+ProcessBuilder|Runtime\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*exec)\s*\(`)
 	javaNetworkSinkRe  = regexp.MustCompile(`(?:new\s+URL|URI\s*\.\s*create|HttpRequest\s*\.\s*newBuilder|(?:restTemplate|httpClient|webClient|client)\s*\.\s*(?:getForObject|getForEntity|exchange|execute))\s*\(`)
 	javaFileSinkRe     = regexp.MustCompile(`(?:new\s+File|Path\s*\.\s*of|Paths\s*\.\s*get|Files\s*\.\s*(?:readString|readAllBytes|newInputStream|newOutputStream|write|delete))\s*\(`)
@@ -187,6 +187,9 @@ func scanJavaHandler(path string, sourceLines []string, handler javaHandler) []I
 		changed = false
 		for _, m := range javaAssignRe.FindAllStringSubmatch(body, -1) {
 			name, expr := m[1], m[2]
+			if strings.HasPrefix(strings.TrimSpace(expr), "=") {
+				continue
+			}
 			if tainted[name] || !exprIsTainted(expr) {
 				continue
 			}
