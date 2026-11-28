@@ -515,7 +515,7 @@ name the file and line, show the code, and say how to fix it:
 | Rule | Sink | Default |
 |---|---|---|
 | MCP801 | Tool input reaches a process/command sink (`exec`, `spawn`, `os.system`, `subprocess shell=True`) | critical |
-| MCP802 | Tool input controls an outbound network target (`fetch`, `requests`, `httpx`, `net.Dial`) — SSRF | high |
+| MCP802 | Tool input controls an outbound network target (`fetch`, `requests`, `httpx`, `socket`, `net.Dial`) — SSRF | high |
 | MCP803 | Tool input used as a filesystem path without confinement | high |
 | MCP804 | Dynamic code execution (`eval`, `Function`, `exec`) | high |
 | MCP805 | Unsafe deserialization (`pickle`, `marshal`, `yaml.load`) | high |

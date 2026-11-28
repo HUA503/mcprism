@@ -8,6 +8,8 @@ semantic versioning.
 
 ### Improved
 
+- Detect Python tool input passed to `socket.create_connection` and to
+  `.connect()` / `.connect_ex()` on recognized socket instances.
 - Detect Go MCP tool input passed to `net.Dial`, `net.DialTimeout` and
   `net.Dialer.DialContext` as an outbound network-target risk.
 - Follow exported methods on explicitly known types from local Go module imports,
