@@ -60,6 +60,7 @@ func Analyze(root string) ([]Issue, error) {
 	goIndex := buildGoHelperIndex(sourcePaths)
 	rustIndex := buildRustHelperIndex(sourcePaths, root)
 	javaIndex := buildJavaProjectIndex(sourcePaths)
+	csharpIndex := buildCSharpProjectIndex(sourcePaths)
 	var issues []Issue
 	for _, p := range sourcePaths {
 		if strings.EqualFold(filepath.Ext(p), ".go") {
@@ -76,6 +77,10 @@ func Analyze(root string) ([]Issue, error) {
 		}
 		if strings.EqualFold(filepath.Ext(p), ".java") {
 			issues = append(issues, analyzeJavaWithIndex(p, javaIndex)...)
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(p), ".cs") {
+			issues = append(issues, analyzeCSharpWithIndex(p, csharpIndex)...)
 			continue
 		}
 		issues = append(issues, AnalyzeFile(p)...)

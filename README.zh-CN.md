@@ -475,7 +475,7 @@ JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`ht
 - 危险能力组合，比如 shell 加联网、读文件加联网、写文件加 shell。
 - 网络目标。云元数据端点（`169.254.169.254`）和私有/回环地址段。
 - 供应链风险：未固定版本的包、近似的仿冒包名、直接从远程 URL 运行代码。
-- 源码风险：JS/TS/Python/Go/Java/C# handler 会检查命令、网络、文件、动态代码和反序列化风险；Rust `rmcp #[tool]` handler 会检查进程、`reqwest` URL、文件系统和硬编码密钥风险。C# 支持官方 SDK 的 `[McpServerTool]` 方法和同文件 helper。见[源码分析（SAST）](#源码分析sast)。
+- 源码风险：JS/TS/Python/Go/Java/C# handler 会检查命令、网络、文件、动态代码和反序列化风险；Rust `rmcp #[tool]` handler 会检查进程、`reqwest` URL、文件系统和硬编码密钥风险。C# 目录扫描还会追踪唯一解析的跨文件类型限定 helper。见[源码分析（SAST）](#源码分析sast)。
 - 策略违规：被拒绝的包·命令·域名，以及违反网络隔离。
 - 跨 server 工具名冲突，以及分类后的连接失败（DNS / TLS / 拒绝连接 / 超时 / 命令不存在）。
 
@@ -659,6 +659,7 @@ flowchart TD
 - [x] Nix 包
 - [x] Rust `rmcp` MCP 工具的 SAST 支持
 - [x] 支持官方 C# MCP SDK 工具方法的初始 SAST
+- [x] C# 目录扫描支持唯一解析的跨文件类型限定 helper
 - [ ] 扩大动态分派、函数返回值和复杂对象图的数据流覆盖；当前跨文件和 helper 追踪有范围上限，且按语言分别实现。详见 [SAST 分析边界](docs/SAST.md)。
 - [ ] 为实时探测提供内置沙箱封装
 
