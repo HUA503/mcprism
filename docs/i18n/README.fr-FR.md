@@ -485,7 +485,7 @@ Non. mcprism signale les risques connus et observables. Il ne peut pas prouver q
 - [x] Formule Homebrew
 - [x] Paquet Nix
 - [x] SAST Rust pour les outils `rmcp`
-- [ ] Étendre les langages SAST (Java, C#)
+- [x] Ajouter une prise en charge SAST initiale de Java et C#
 - [ ] Étendre l’analyse des flux de données aux appels dynamiques, aux valeurs de retour et aux graphes d’objets complexes ; le suivi actuel entre fichiers et fonctions auxiliaires reste limité et dépend du langage. [Détails](../SAST.md)
 - [ ] Wrapper de sandbox intégré pour les sondes en direct
 

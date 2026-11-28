@@ -50,7 +50,7 @@ var ruleCatalog = []CatalogEntry{
 	{"MCP804", "Unsafe dynamic code execution", "MCP05", "high", "source"},
 	{"MCP805", "Unsafe deserialization", "MCP05", "high", "source"},
 	{"MCP806", "Hardcoded secret in server source", "MCP01", "high", "source"},
-	{"MCP807", "Dynamic module require with tool input", "MCP05", "medium", "source"},
+	{"MCP807", "Dynamic module or type loading with tool input", "MCP05", "medium", "source"},
 
 	{"MCP501", "MCP handshake failure", "MCP07", "medium", "connection"},
 	{"MCP502", "Capability or content review incomplete", "MCP07", "medium", "connection"},

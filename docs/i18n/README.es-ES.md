@@ -485,7 +485,7 @@ No. mcprism notifica riesgos conocidos y observables. No puede probar que un ser
 - [x] Fórmula de Homebrew
 - [x] Paquete Nix
 - [x] SAST de Rust para herramientas `rmcp`
-- [ ] Ampliar los lenguajes de SAST (Java y C#)
+- [x] Añadir soporte SAST inicial para Java y C#
 - [ ] Ampliar el análisis de flujo de datos para cubrir llamadas dinámicas, valores devueltos y grafos de objetos complejos; el seguimiento actual entre archivos y funciones auxiliares es limitado y varía según el lenguaje. [Detalles](../SAST.md)
 - [ ] Entorno aislado integrado para sondeos en vivo
 

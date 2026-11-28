@@ -4,7 +4,7 @@
 // looks at the server's own code and traces data that an agent can control
 // (tool arguments) into dangerous sinks: process execution, outbound network
 // calls and filesystem paths. It covers JavaScript/TypeScript, Python, Go,
-// Rust and a bounded subset of Java MCP tool handlers.
+// Rust, C# and bounded subsets of Java MCP tool handlers.
 package sast
 
 // Severity is the severity of a source-code finding.

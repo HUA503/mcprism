@@ -54,7 +54,7 @@ prompts. Required prompt arguments are skipped rather than guessed.`,
 				}
 				defer os.RemoveAll(dir)
 				if !sast.IsSourceProject(dir) {
-					return fmt.Errorf("GitHub repository contains no supported source project (JS/TS, Python, Go or Rust)")
+					return fmt.Errorf("GitHub repository contains no supported source project (JS/TS, Python, Go, Rust, Java or C#)")
 				}
 				return audit([]*config.Server{projectServer(dir)}, nil, false, o)
 			}
@@ -178,7 +178,7 @@ func fileServer(file string) *config.Server {
 
 func isSourceFileName(a string) bool {
 	switch strings.ToLower(filepath.Ext(a)) {
-	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs", ".java":
+	case ".js", ".jsx", ".ts", ".tsx", ".mts", ".cts", ".mjs", ".cjs", ".py", ".go", ".rs", ".java", ".cs":
 		return true
 	}
 	return false

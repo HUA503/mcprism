@@ -15,7 +15,7 @@ MCP server 把 AI 助手连接到 GitHub、文件、数据库等外部工具和�
 mcprism 是 [Model Context Protocol](https://modelcontextprotocol.io/) server 的安全扫描器。它从三个角度审查一个 server：
 
 1. **配置**：客户端如何启动或连接它——版本是否固定、是否明文传输、配置里有没有凭据、是否指向云元数据或内网。
-2. **源码**：当实现代码就在本地时，读取 JS/TS/Python/Go/Rust 的工具 handler，并检查官方 Java SDK 的直接回调；追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及 eval、不安全反序列化和硬编码密钥。
+2. **源码**：当实现代码就在本地时，读取 JS/TS/Python/Go/Rust/C# 的工具 handler，并检查官方 Java SDK 的直接回调；追踪 agent 可控的参数是否流入危险 sink：执行命令、发起请求（SSRF）、拼接文件路径，以及动态代码加载、不安全反序列化和硬编码密钥。
 3. **运行时**：自动协商新版无状态 MCP 协议或旧版握手，列出 tools、resources、prompts，并检查元数据是否被投毒；显式开启 `--read-content` 时还会读取有限的正文。它不会调用任何工具。
 
 每个 server 都会得到一份发现清单、一个 0–100 的分数和一个 A–F 的评级。整个工具是一个 Go 二进制，没有运行时依赖。本地配置和源码扫描完全离线；`registry` 命令会主动连接官方 Registry 获取公开元数据，但不会启动或连接条目中的 server。动态探测必须显式开启（`--dynamic` / `--probe`）。
@@ -129,7 +129,7 @@ mcprism vet server.py            # 审查单个文件
 ## 功能
 
 - 单个二进制。不用装 Python 或 Node，不需要 LLM API key，也不用注册账号。
-- 默认静态。它读取配置，在有本地代码时审查 JS/TS/Python/Go/Rust 源码，并检查官方 Java SDK 的直接回调；加 `--dynamic` 才会自动协商新旧 MCP 协议并列出 tools/resources/prompts，但不会调用任何工具。
+- 默认静态。它读取配置，在有本地代码时审查 JS/TS/Python/Go/Rust/C# 源码，并检查官方 Java SDK 的直接回调；加 `--dynamic` 才会自动协商新旧 MCP 协议并列出 tools/resources/prompts，但不会调用任何工具。
 - 看 schema。对于没有源码的在线 server，如果名为 command、url、path 之类的字符串参数接受任意值，会按命令执行、SSRF、路径风险报出；用 enum、const、pattern 约束过的参数不报。
 - 工具投毒检测。离线、确定性的特征规则会检查工具元数据和 server instructions，覆盖英文、中/日/韩、西班牙语、法语、德语、葡萄牙语、俄语和阿拉伯语中的一组高信号提示注入表达，例如覆盖安全规则、索取隐藏提示和外传凭据。它依赖已知短语，不能理解所有改写或证明元数据安全。
 - 策略即代码。开关规则、调整严重级、允许或拒绝包·命令·域名、要求网络隔离。内置 `default`、`strict`、`ci` 三套配置。
@@ -475,7 +475,7 @@ JS/TS 的命令执行和请求规则也会识别 `child_process`、`axios`、`ht
 - 危险能力组合，比如 shell 加联网、读文件加联网、写文件加 shell。
 - 网络目标。云元数据端点（`169.254.169.254`）和私有/回环地址段。
 - 供应链风险：未固定版本的包、近似的仿冒包名、直接从远程 URL 运行代码。
-- 源码风险：JS/TS/Python/Go handler 会检查命令、网络、文件、动态代码和反序列化风险；Rust `rmcp #[tool]` handler 会检查进程、`reqwest` URL、文件系统和硬编码密钥风险。见[源码分析（SAST）](#源码分析sast)。
+- 源码风险：JS/TS/Python/Go/Java/C# handler 会检查命令、网络、文件、动态代码和反序列化风险；Rust `rmcp #[tool]` handler 会检查进程、`reqwest` URL、文件系统和硬编码密钥风险。C# 支持官方 SDK 的 `[McpServerTool]` 方法和同文件 helper。见[源码分析（SAST）](#源码分析sast)。
 - 策略违规：被拒绝的包·命令·域名，以及违反网络隔离。
 - 跨 server 工具名冲突，以及分类后的连接失败（DNS / TLS / 拒绝连接 / 超时 / 命令不存在）。
 
@@ -658,7 +658,7 @@ flowchart TD
 - [x] Homebrew 公式
 - [x] Nix 包
 - [x] Rust `rmcp` MCP 工具的 SAST 支持
-- [ ] 支持更多 SAST 语言（C#）
+- [x] 支持官方 C# MCP SDK 工具方法的初始 SAST
 - [ ] 扩大动态分派、函数返回值和复杂对象图的数据流覆盖；当前跨文件和 helper 追踪有范围上限，且按语言分别实现。详见 [SAST 分析边界](docs/SAST.md)。
 - [ ] 为实时探测提供内置沙箱封装
 
